@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
+
+    <changeSet id="1" author="system">
+        <comment>Create enum types for the database</comment>
+
+        <!-- System roles enum -->
+        <sql>
+            CREATE TYPE system_role AS ENUM ('SYSTEM_ADMIN', 'USER');
+        </sql>
+
+        <!-- Library membership roles enum -->
+        <sql>
+            CREATE TYPE library_membership_role AS ENUM ('ADMIN', 'MEMBER');
+        </sql>
+
+        <!-- Membership status enum -->
+        <sql>
+            CREATE TYPE membership_status AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+        </sql>
+
+        <!-- Book copy status enum -->
+        <sql>
+            CREATE TYPE book_copy_status AS ENUM ('AVAILABLE', 'BORROWED', 'LOST', 'MAINTENANCE');
+        </sql>
+
+        <!-- Borrow type enum -->
+        <sql>
+            CREATE TYPE borrow_type AS ENUM ('PHYSICAL', 'DIGITAL');
+        </sql>
+
+        <!-- Borrow status enum -->
+        <sql>
+            CREATE TYPE borrow_status AS ENUM ('REQUESTED', 'APPROVED', 'REJECTED', 'RETURNED', 'EXPIRED');
+        </sql>
+
+        <!-- Account status enum -->
+        <sql>
+            CREATE TYPE account_status AS ENUM ('ACTIVE', 'SUSPENDED', 'DELETED', 'PENDING_VERIFICATION');
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

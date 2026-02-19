@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
+
+    <changeSet id="8" author="system">
+        <comment>Create digital_books table</comment>
+
+        <createTable tableName="digital_books">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_digital_books"/>
+            </column>
+            <column name="book_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_digital_books_book_id" references="books(id)"/>
+            </column>
+            <column name="file_resource_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_digital_books_file_resource_id" references="file_resources(id)"/>
+            </column>
+            <column name="file_format" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version_name" type="VARCHAR(50)"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="digital_books" columnNames="book_id,file_format" constraintName="uk_book_format"/>
+
+        <createIndex indexName="idx_book_id" tableName="digital_books">
+            <column name="book_id"/>
+        </createIndex>
+        <createIndex indexName="idx_file_resource_id" tableName="digital_books">
+            <column name="file_resource_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>
