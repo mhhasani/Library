@@ -50,19 +50,7 @@
             </column>
         </createTable>
 
-        <createIndex indexName="idx_user_id" tableName="borrows">
-            <column name="user_id"/>
-        </createIndex>
-        <createIndex indexName="idx_book_id" tableName="borrows">
-            <column name="book_id"/>
-        </createIndex>
-        <createIndex indexName="idx_book_copy_id" tableName="borrows">
-            <column name="book_copy_id"/>
-        </createIndex>
-        <createIndex indexName="idx_digital_book_id" tableName="borrows">
-            <column name="digital_book_id"/>
-        </createIndex>
-        <createIndex indexName="idx_status" tableName="borrows">
+        <createIndex indexName="idx_borrows_status" tableName="borrows">
             <column name="status"/>
         </createIndex>
         <createIndex indexName="idx_due_date" tableName="borrows">

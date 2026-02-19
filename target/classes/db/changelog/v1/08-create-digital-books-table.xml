@@ -31,12 +31,6 @@
 
         <addUniqueConstraint tableName="digital_books" columnNames="book_id,file_format" constraintName="uk_book_format"/>
 
-        <createIndex indexName="idx_book_id" tableName="digital_books">
-            <column name="book_id"/>
-        </createIndex>
-        <createIndex indexName="idx_file_resource_id" tableName="digital_books">
-            <column name="file_resource_id"/>
-        </createIndex>
     </changeSet>
 
 </databaseChangeLog>

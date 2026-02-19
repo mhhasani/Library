@@ -27,9 +27,6 @@
             </column>
         </createTable>
 
-        <createIndex indexName="idx_actor_id" tableName="audit_logs">
-            <column name="actor_id"/>
-        </createIndex>
         <createIndex indexName="idx_action" tableName="audit_logs">
             <column name="action"/>
         </createIndex>

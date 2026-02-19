@@ -1,26 +1,10 @@
-FROM eclipse-temurin:21-jdk-jammy
-
-WORKDIR /app
-
-# Copy Maven wrapper
-COPY mvnw .
-COPY .mvn .mvn
-
-# Copy pom.xml
-COPY pom.xml .
-
-# Copy source code
-COPY src src
-
-# Build the application
-RUN ./mvnw clean package -DskipTests
-
-# Create a lightweight runtime image
+# Use a lightweight JRE image
 FROM eclipse-temurin:21-jre-jammy
 
 WORKDIR /app
 
-COPY --from=0 /app/target/library-management-system-1.0.0.jar app.jar
+# Copy the pre-built JAR file
+COPY target/library-management-system-1.0.0.jar app.jar
 
 # Expose port
 EXPOSE 8080

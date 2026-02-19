@@ -33,13 +33,7 @@
 
         <addUniqueConstraint tableName="book_copies" columnNames="book_id,copy_number" constraintName="uk_book_copy_number"/>
 
-        <createIndex indexName="idx_book_id" tableName="book_copies">
-            <column name="book_id"/>
-        </createIndex>
-        <createIndex indexName="idx_library_id" tableName="book_copies">
-            <column name="library_id"/>
-        </createIndex>
-        <createIndex indexName="idx_status" tableName="book_copies">
+        <createIndex indexName="idx_book_copies_status" tableName="book_copies">
             <column name="status"/>
         </createIndex>
     </changeSet>

@@ -35,9 +35,6 @@
             </column>
         </createTable>
 
-        <createIndex indexName="idx_owner_id" tableName="libraries">
-            <column name="owner_id"/>
-        </createIndex>
         <createIndex indexName="idx_name" tableName="libraries">
             <column name="name"/>
         </createIndex>
