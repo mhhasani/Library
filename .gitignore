@@ -17,6 +17,7 @@ dependency-reduced-pom.xml
 *.swp
 *.swo
 *~
+.attach_pid*
 
 # OS
 .DS_Store

@@ -301,12 +301,12 @@ spring:
 
 ### Current Coverage
 
-| Layer | Test Count | Coverage Goal |
-|-------|------------|---------------|
-| Repository | 5 tests | 100% |
-| Service | 57 tests | 80% |
-| Controller | 38 tests | 75% |
-| **Total** | **100 tests** | **75%+** |
+| Layer      | Test Count    | Coverage Goal |
+| ---------- | ------------- | ------------- |
+| Repository | 5 tests       | 100%          |
+| Service    | 57 tests      | 80%           |
+| Controller | 38 tests      | 75%           |
+| **Total**  | **100 tests** | **75%+**      |
 
 ### Key Business Logic Covered
 

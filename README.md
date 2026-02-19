@@ -76,18 +76,18 @@ A comprehensive Java-based library management system with multi-role users, digi
 
 ## 🛠️ Technology Stack
 
-| Component | Technology | Version |
-|-----------|-----------|---------|
-| **Framework** | Spring Boot | 3.2.1 |
-| **Language** | Java | 21 |
-| **Database** | PostgreSQL | 16 |
-| **ORM** | Spring Data JPA + Hibernate | Latest |
-| **Authentication** | JWT + Spring Security | 6.x |
-| **API Documentation** | Springdoc-OpenAPI/Swagger UI | 2.1.0 |
-| **Migrations** | Liquibase | Latest |
-| **Build Tool** | Maven | 3.x |
-| **Containerization** | Docker & Docker Compose | Latest |
-| **Testing** | JUnit 5 + Mockito + TestContainers | Latest |
+| Component             | Technology                         | Version |
+| --------------------- | ---------------------------------- | ------- |
+| **Framework**         | Spring Boot                        | 3.2.1   |
+| **Language**          | Java                               | 21      |
+| **Database**          | PostgreSQL                         | 16      |
+| **ORM**               | Spring Data JPA + Hibernate        | Latest  |
+| **Authentication**    | JWT + Spring Security              | 6.x     |
+| **API Documentation** | Springdoc-OpenAPI/Swagger UI       | 2.1.0   |
+| **Migrations**        | Liquibase                          | Latest  |
+| **Build Tool**        | Maven                              | 3.x     |
+| **Containerization**  | Docker & Docker Compose            | Latest  |
+| **Testing**           | JUnit 5 + Mockito + TestContainers | Latest  |
 
 ## 🚀 Getting Started
 
