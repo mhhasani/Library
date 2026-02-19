@@ -20,7 +20,7 @@
             <column name="book_id" type="BIGINT">
                 <constraints nullable="false" foreignKeyName="fk_borrows_book_id" references="books(id)"/>
             </column>
-            <column name="borrow_type" type="borrow_type">
+            <column name="borrow_type" type="VARCHAR(50)">
                 <constraints nullable="false"/>
             </column>
             <column name="book_copy_id" type="BIGINT">
@@ -29,7 +29,7 @@
             <column name="digital_book_id" type="BIGINT">
                 <constraints foreignKeyName="fk_borrows_digital_book_id" references="digital_books(id)"/>
             </column>
-            <column name="status" type="borrow_status" defaultValue="REQUESTED">
+            <column name="status" type="VARCHAR(50)" defaultValue="REQUESTED">
                 <constraints nullable="false"/>
             </column>
             <column name="approved_by" type="BIGINT">

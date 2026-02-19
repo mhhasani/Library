@@ -20,7 +20,7 @@
             <column name="copy_number" type="INT">
                 <constraints nullable="false"/>
             </column>
-            <column name="status" type="book_copy_status" defaultValue="AVAILABLE">
+            <column name="status" type="VARCHAR(50)" defaultValue="AVAILABLE">
                 <constraints nullable="false"/>
             </column>
             <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">

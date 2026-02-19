@@ -24,10 +24,10 @@
                 <constraints nullable="false"/>
             </column>
             <column name="phone_number" type="VARCHAR(20)"/>
-            <column name="system_role" type="system_role" defaultValue="USER">
+            <column name="system_role" type="VARCHAR(50)" defaultValue="USER">
                 <constraints nullable="false"/>
             </column>
-            <column name="account_status" type="account_status" defaultValue="PENDING_VERIFICATION">
+            <column name="account_status" type="VARCHAR(50)" defaultValue="PENDING_VERIFICATION">
                 <constraints nullable="false"/>
             </column>
             <column name="last_login_at" type="TIMESTAMP"/>

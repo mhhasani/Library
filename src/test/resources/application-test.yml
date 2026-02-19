@@ -1,14 +1,16 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;DATABASE_TO_UPPER=false
+    # Use unique DB per test class to avoid Liquibase DATABASECHANGELOG conflicts
+    url: jdbc:h2:mem:testdb-${random.uuid};MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;DATABASE_TO_UPPER=false
     driver-class-name: org.h2.Driver
     username: sa
     password:
   liquibase:
-    enabled: false  # Disable Liquibase, use JPA to create schema
+    enabled: true  # Run Liquibase migrations to match production
+    default-schema: PUBLIC
   jpa:
     hibernate:
-      ddl-auto: create-drop  # Create schema from entities, drop on close
+      ddl-auto: none  # Let Liquibase handle schema
     properties:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect

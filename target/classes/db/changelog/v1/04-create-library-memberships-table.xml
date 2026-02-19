@@ -17,10 +17,10 @@
             <column name="library_id" type="BIGINT">
                 <constraints nullable="false" foreignKeyName="fk_library_memberships_library_id" references="libraries(id)"/>
             </column>
-            <column name="role" type="library_membership_role" defaultValue="MEMBER">
+            <column name="role" type="VARCHAR(50)" defaultValue="MEMBER">
                 <constraints nullable="false"/>
             </column>
-            <column name="status" type="membership_status" defaultValue="PENDING">
+            <column name="status" type="VARCHAR(50)" defaultValue="PENDING">
                 <constraints nullable="false"/>
             </column>
             <column name="approved_by" type="BIGINT">
