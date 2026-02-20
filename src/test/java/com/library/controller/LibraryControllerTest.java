@@ -66,7 +66,7 @@ class LibraryControllerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "user@library.com", roles = "USER")
+    @WithMockUser(username = "admin@library.com", roles = "SYSTEM_ADMIN")
     @DisplayName("Should create library successfully")
     void testCreateLibrarySuccess() throws Exception {
         when(libraryService.createLibrary(any(LibraryRequest.class))).thenReturn(libraryDTO);
@@ -82,6 +82,16 @@ class LibraryControllerTest extends BaseIntegrationTest {
 
     @Test
     @WithMockUser(username = "user@library.com", roles = "USER")
+    @DisplayName("Should return 403 when regular user tries to create library")
+    void testCreateLibraryForbiddenForRegularUser() throws Exception {
+        mockMvc.perform(post("/v1/libraries")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(libraryRequest)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "admin@library.com", roles = "SYSTEM_ADMIN")
     @DisplayName("Should return 400 when library name is blank")
     void testCreateLibraryInvalidRequest() throws Exception {
         LibraryRequest invalidRequest = LibraryRequest.builder()

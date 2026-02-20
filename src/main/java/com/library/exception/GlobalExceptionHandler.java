@@ -4,6 +4,7 @@ import com.library.dto.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -41,6 +42,15 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(
                 ApiResponse.error("Unauthorized", ex.getMessage()),
                 HttpStatus.UNAUTHORIZED
+        );
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleAccessDenied(AccessDeniedException ex, WebRequest request) {
+        log.error("Access denied: {}", ex.getMessage());
+        return new ResponseEntity<>(
+                ApiResponse.error("Access denied", "You do not have permission to access this resource"),
+                HttpStatus.FORBIDDEN
         );
     }
 
