@@ -5,11 +5,12 @@ import { AuthProvider } from "./context/AuthContext";
 // Route guards
 import PrivateRoute from "./components/PrivateRoute";
 import AdminRoute from "./components/AdminRoute";
-import LibraryAdminRoute from "./components/LibraryAdminRoute";
 
 // Layouts
 import UserLayout from "./layouts/UserLayout";
 import AdminLayout from "./layouts/AdminLayout";
+import LibraryLayout from "./layouts/LibraryLayout";
+import LibraryAdminLayout from "./layouts/LibraryAdminLayout";
 
 // User pages
 import HomePage from "./pages/HomePage";
@@ -33,17 +34,10 @@ import SystemLibrariesPage from "./pages/system/SystemLibrariesPage";
 
 import "./App.css";
 
-const LIBRARY_ADMIN_NAV = [
-  { to: "/admin",         end: true,  icon: "📊", label: "داشبورد" },
-  { to: "/admin/books",   end: false, icon: "📖", label: "مدیریت کتاب‌ها" },
-  { to: "/admin/members", end: false, icon: "👥", label: "اعضا و درخواست‌ها" },
-  { to: "/admin/borrows", end: false, icon: "📋", label: "امانت‌ها" },
-];
-
 const SYSTEM_ADMIN_NAV = [
-  { to: "/system",            end: true,  icon: "📊", label: "داشبورد سیستم" },
-  { to: "/system/users",      end: false, icon: "👤", label: "مدیریت کاربران" },
-  { to: "/system/libraries",  end: false, icon: "🏛️", label: "کتابخانه‌ها" },
+  { to: "/system",           end: true,  icon: "📊", label: "داشبورد سیستم" },
+  { to: "/system/users",     end: false, icon: "👤", label: "مدیریت کاربران" },
+  { to: "/system/libraries", end: false, icon: "🏛️", label: "کتابخانه‌ها" },
 ];
 
 function App() {
@@ -58,31 +52,27 @@ function App() {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/libraries" element={<LibrariesPage />} />
             <Route
-              path="/books"
-              element={<PrivateRoute><BooksPage /></PrivateRoute>}
-            />
-            <Route
-              path="/borrows"
-              element={<PrivateRoute><BorrowsPage /></PrivateRoute>}
-            />
-            <Route
               path="/profile"
               element={<PrivateRoute><ProfilePage /></PrivateRoute>}
             />
+
+            {/* Library-specific user pages */}
+            <Route path="/libraries/:libraryId" element={<LibraryLayout />}>
+              <Route
+                path="books"
+                element={<PrivateRoute><BooksPage /></PrivateRoute>}
+              />
+              <Route
+                path="borrows"
+                element={<PrivateRoute><BorrowsPage /></PrivateRoute>}
+              />
+            </Route>
           </Route>
 
           {/* ── Library admin panel ── */}
           <Route
-            path="/admin"
-            element={
-              <LibraryAdminRoute>
-                <AdminLayout
-                  title="پنل کتابدار"
-                  navItems={LIBRARY_ADMIN_NAV}
-                  backTo="/libraries"
-                />
-              </LibraryAdminRoute>
-            }
+            path="/libraries/:libraryId/admin"
+            element={<LibraryAdminLayout />}
           >
             <Route index element={<AdminDashboard />} />
             <Route path="books" element={<AdminBooksPage />} />

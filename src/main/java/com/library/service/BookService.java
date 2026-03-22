@@ -8,6 +8,7 @@ import com.library.entity.Library;
 import com.library.entity.LibraryMembership;
 import com.library.entity.enums.BookCopyStatus;
 import com.library.entity.enums.LibraryMembershipRole;
+import com.library.entity.enums.MembershipStatus;
 import com.library.exception.BadRequestException;
 import com.library.exception.ResourceNotFoundException;
 import com.library.exception.UnauthorizedException;
@@ -81,9 +82,19 @@ public class BookService {
         return mapToBookDTO(book);
     }
 
+    private void requireApprovedMembership(Long currentUserId, Long libraryId) {
+        LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
+                .orElseThrow(() -> new UnauthorizedException("User is not a member of this library"));
+        if (!membership.getStatus().equals(MembershipStatus.APPROVED)) {
+            throw new UnauthorizedException("User membership is not approved");
+        }
+    }
+
     public BookDTO getBookById(Long libraryId, Long bookId) {
-        Library library = libraryRepository.findById(libraryId)
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        libraryRepository.findById(libraryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Library not found with id: " + libraryId));
+        requireApprovedMembership(currentUserId, libraryId);
 
         Book book = bookRepository.findById(bookId)
                 .orElseThrow(() -> new ResourceNotFoundException("Book not found with id: " + bookId));
@@ -96,16 +107,20 @@ public class BookService {
     }
 
     public Page<BookDTO> getLibraryBooks(Long libraryId, Pageable pageable) {
-        Library library = libraryRepository.findById(libraryId)
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        libraryRepository.findById(libraryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Library not found with id: " + libraryId));
+        requireApprovedMembership(currentUserId, libraryId);
 
         return bookRepository.findByLibraryId(libraryId, pageable)
                 .map(this::mapToBookDTO);
     }
 
     public Page<BookDTO> searchBooks(Long libraryId, String query, Pageable pageable) {
-        Library library = libraryRepository.findById(libraryId)
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        libraryRepository.findById(libraryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Library not found with id: " + libraryId));
+        requireApprovedMembership(currentUserId, libraryId);
 
         // Search by title or author
         Page<BookDTO> titleResults = bookRepository.findByTitleContainingIgnoreCaseAndLibraryId(query, libraryId, pageable)

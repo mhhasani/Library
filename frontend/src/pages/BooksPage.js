@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useParams } from "react-router-dom";
 import { bookAPI, borrowAPI } from "../services/api";
+import { useLibrary } from "../context/LibraryContext";
 import BorrowModal from "../components/BorrowModal";
 import "./BooksPage.css";
 
 const BooksPage = () => {
+  const { libraryId } = useParams();
+  const { libraryName } = useLibrary() || {};
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [libraryId] = useState(localStorage.getItem("activeLibraryId") || "");
-  const [libraryName] = useState(localStorage.getItem("activeLibraryName") || "");
   const [selectedBook, setSelectedBook] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [borrowingError, setBorrowingError] = useState("");
@@ -18,11 +20,6 @@ const BooksPage = () => {
   const fetchBooks = useCallback(async () => {
     try {
       setLoading(true);
-      if (!libraryId) {
-        setBooks([]);
-        setError("ابتدا یک کتابخانه را از صفحه کتابخانه‌ها انتخاب کنید.");
-        return;
-      }
       const [booksRes, borrowsRes] = await Promise.all([
         bookAPI.getBooks(libraryId, { search: searchTerm }),
         borrowAPI.getBorrows(libraryId).catch(() => ({ data: { data: [] } })),
@@ -56,7 +53,6 @@ const BooksPage = () => {
 
   const handleBorrow = async (bookId) => {
     try {
-      if (!libraryId) { setBorrowingError("ابتدا کتابخانه را انتخاب کنید."); return; }
       await borrowAPI.createBorrow(libraryId, { bookId, borrowType: "PHYSICAL" });
       setIsModalOpen(false);
       setSelectedBook(null);
@@ -87,30 +83,22 @@ const BooksPage = () => {
       </div>
 
       <div className="books-body">
-        {!libraryId && (
-          <div className="info-banner">
-            📍 لطفاً ابتدا از صفحه کتابخانه‌ها یک کتابخانه فعال کنید.
-          </div>
-        )}
-
         {/* Search */}
-        {libraryId && (
-          <div className="search-container">
-            <div className="search-box">
-              <span className="search-icon">🔍</span>
-              <input
-                type="text"
-                placeholder="جستجو بر اساس عنوان یا نام نویسنده..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="search-input"
-              />
-              {searchTerm && (
-                <button className="search-clear" onClick={() => setSearchTerm("")}>✕</button>
-              )}
-            </div>
+        <div className="search-container">
+          <div className="search-box">
+            <span className="search-icon">🔍</span>
+            <input
+              type="text"
+              placeholder="جستجو بر اساس عنوان یا نام نویسنده..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
+            {searchTerm && (
+              <button className="search-clear" onClick={() => setSearchTerm("")}>✕</button>
+            )}
           </div>
-        )}
+        </div>
 
         {error && <div className="error-message">{error}</div>}
 

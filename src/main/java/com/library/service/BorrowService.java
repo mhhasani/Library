@@ -301,6 +301,13 @@ public class BorrowService {
         libraryRepository.findById(libraryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Library not found"));
 
+        LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
+                .orElseThrow(() -> new UnauthorizedException("User is not a member of this library"));
+
+        if (!membership.getStatus().equals(MembershipStatus.APPROVED)) {
+            throw new UnauthorizedException("User membership is not approved");
+        }
+
         return borrowRepository.findByUserId(currentUserId).stream()
                 .filter(b -> b.getLibrary().getId().equals(libraryId))
                 .filter(b -> status == null || b.getStatus() == status)

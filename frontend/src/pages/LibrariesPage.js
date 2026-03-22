@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { libraryAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import "./LibrariesPage.css";
-
 
 const statusLabel = {
   ACTIVE: "فعال",
@@ -19,17 +19,12 @@ const roleLabel = {
 
 const LibrariesPage = () => {
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [publicLibraries, setPublicLibraries] = useState([]);
   const [userLibraries, setUserLibraries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [activeLibraryId, setActiveLibraryId] = useState(
-    localStorage.getItem("activeLibraryId") || "",
-  );
-  const [activeLibraryName, setActiveLibraryName] = useState(
-    localStorage.getItem("activeLibraryName") || "",
-  );
 
   const fetchLibraries = useCallback(async () => {
     try {
@@ -55,20 +50,10 @@ const LibrariesPage = () => {
       await libraryAPI.requestMembership(libraryId);
       setSuccessMessage("درخواست عضویت با موفقیت ارسال شد");
       setTimeout(() => setSuccessMessage(""), 4000);
+      fetchLibraries();
     } catch (err) {
       setError(err.response?.data?.message || "خطا در ارسال درخواست عضویت");
     }
-  };
-
-  const handleSetActiveLibrary = (library) => {
-    localStorage.setItem("activeLibraryId", library.id);
-    localStorage.setItem("activeLibraryName", library.name);
-    localStorage.setItem("activeLibraryRole", library.userRole || "");
-    localStorage.setItem("activeLibraryStatus", library.userStatus || "");
-    setActiveLibraryId(String(library.id));
-    setActiveLibraryName(library.name);
-    setSuccessMessage(`کتابخانه فعال به «${library.name}» تغییر کرد`);
-    setTimeout(() => setSuccessMessage(""), 3000);
   };
 
   const getUserLibraryStatus = (libraryId) => {
@@ -94,13 +79,6 @@ const LibrariesPage = () => {
         {error && <div className="error-message">{error}</div>}
         {successMessage && <div className="success-message">{successMessage}</div>}
 
-        {activeLibraryId && (
-          <div className="active-library-banner">
-            <span>🏛️</span>
-            کتابخانه فعال: <strong>{activeLibraryName}</strong>
-          </div>
-        )}
-
         {/* Your Libraries */}
         {isAuthenticated && (
           <section className="lib-section">
@@ -113,10 +91,7 @@ const LibrariesPage = () => {
             ) : (
               <div className="libraries-grid">
                 {userLibraries.map((library) => (
-                  <div key={library.id} className={`library-card ${String(library.id) === String(activeLibraryId) ? "library-card-active" : ""}`}>
-                    {String(library.id) === String(activeLibraryId) && (
-                      <div className="active-indicator">فعال</div>
-                    )}
+                  <div key={library.id} className="library-card">
                     <div className="library-card-icon">🏛️</div>
                     <h3 className="library-card-name">{library.name}</h3>
                     {library.description && (
@@ -130,9 +105,24 @@ const LibrariesPage = () => {
                         {statusLabel[library.userStatus] || library.userStatus}
                       </span>
                     </div>
-                    <button className="btn btn-primary btn-sm lib-action-btn" onClick={() => handleSetActiveLibrary(library)}>
-                      فعال کردن
-                    </button>
+                    {library.userStatus === "APPROVED" && (
+                      <div className="lib-actions-row">
+                        <button
+                          className="btn btn-primary btn-sm lib-action-btn"
+                          onClick={() => navigate(`/libraries/${library.id}/books`)}
+                        >
+                          باز کردن
+                        </button>
+                        {library.userRole === "ADMIN" && (
+                          <button
+                            className="btn btn-outline btn-sm lib-action-btn"
+                            onClick={() => navigate(`/libraries/${library.id}/admin`)}
+                          >
+                            ⚙️ مدیریت
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -152,8 +142,8 @@ const LibrariesPage = () => {
             <div className="libraries-grid">
               {publicLibraries.map((library) => {
                 const membershipInfo = getUserLibraryStatus(library.id);
-                const isMember = !!membershipInfo;
                 const isPending = membershipInfo?.status === "PENDING";
+                const isApproved = membershipInfo?.status === "APPROVED";
                 return (
                   <div key={library.id} className="library-card">
                     <div className="library-card-icon">🏛️</div>
@@ -167,12 +157,22 @@ const LibrariesPage = () => {
                       </div>
                     )}
                     {isAuthenticated ? (
-                      isMember ? (
-                        <div className={`lib-member-status ${isPending ? "pending" : "member"}`}>
-                          {isPending ? "⏳ درخواست در انتظار تأیید" : "✓ عضو هستید"}
+                      isApproved ? (
+                        <button
+                          className="btn btn-primary btn-sm lib-action-btn"
+                          onClick={() => navigate(`/libraries/${library.id}/books`)}
+                        >
+                          باز کردن
+                        </button>
+                      ) : isPending ? (
+                        <div className="lib-member-status pending">
+                          ⏳ درخواست در انتظار تأیید
                         </div>
                       ) : (
-                        <button className="btn btn-outline btn-sm lib-action-btn" onClick={() => handleRequestMembership(library.id)}>
+                        <button
+                          className="btn btn-outline btn-sm lib-action-btn"
+                          onClick={() => handleRequestMembership(library.id)}
+                        >
                           درخواست عضویت
                         </button>
                       )

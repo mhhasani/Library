@@ -198,38 +198,61 @@ class BookServiceTest extends BaseIntegrationTest {
     @DisplayName("Should throw BadRequestException when book does not belong to library")
     void testGetBookBadLibrary() {
         SecurityTestUtils.setSecurityContext(adminUser, "USER");
-        
-        // Create another library
-        User owner = User.builder()
-                .email("owner@library.com")
-                .passwordHash("$2a$10$encoded")
-                .firstName("Owner")
-                .lastName("User")
-                .systemRole(SystemRole.USER)
-                .accountStatus(AccountStatus.ACTIVE)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-        owner = userRepository.save(owner);
 
+        // Create another library owned by adminUser
         Library otherLibrary = Library.builder()
                 .name("Other Library")
-                .owner(owner)
+                .owner(adminUser)
                 .isActive(true)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
         otherLibrary = libraryRepository.save(otherLibrary);
 
+        // Add adminUser as APPROVED member of otherLibrary so membership check passes
+        LibraryMembership otherMembership = LibraryMembership.builder()
+                .user(adminUser)
+                .library(otherLibrary)
+                .role(LibraryMembershipRole.ADMIN)
+                .status(MembershipStatus.APPROVED)
+                .approvedBy(adminUser)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        membershipRepository.save(otherMembership);
+
         // Create book in first library
         BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
 
-        // Try to get book from different library
+        // Try to get book from different library — membership check passes, but book-library check fails
         Long otherLibraryId = otherLibrary.getId();
         Long bookId = createdBook.getId();
         assertThatThrownBy(() -> bookService.getBookById(otherLibraryId, bookId))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("Book does not belong to this library");
+    }
+
+    @Test
+    @DisplayName("Should throw UnauthorizedException when non-member tries to read books")
+    void testGetLibraryBooksNonMember() {
+        // Create a user with no membership
+        User outsider = User.builder()
+                .email("outsider@library.com")
+                .passwordHash("$2a$10$encoded")
+                .firstName("Out")
+                .lastName("Sider")
+                .systemRole(SystemRole.USER)
+                .accountStatus(AccountStatus.ACTIVE)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        outsider = userRepository.save(outsider);
+        SecurityTestUtils.setSecurityContext(outsider, "USER");
+
+        Long libId = library.getId();
+        assertThatThrownBy(() -> bookService.getLibraryBooks(libId, PageRequest.of(0, 10)))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessageContaining("not a member");
     }
 
     @Test

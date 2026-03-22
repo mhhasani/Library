@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useParams } from "react-router-dom";
 import { borrowAPI } from "../services/api";
+import { useLibrary } from "../context/LibraryContext";
 import "./BorrowsPage.css";
 
 const STATUS_LABELS = {
@@ -25,21 +27,16 @@ const STATUS_CLASS = {
 };
 
 const BorrowsPage = () => {
+  const { libraryId } = useParams();
+  const { libraryName } = useLibrary() || {};
   const [borrows, setBorrows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
-  const [libraryId] = useState(localStorage.getItem("activeLibraryId") || "");
-  const [libraryName] = useState(localStorage.getItem("activeLibraryName") || "");
 
   const fetchBorrows = useCallback(async () => {
     try {
       setLoading(true);
-      if (!libraryId) {
-        setBorrows([]);
-        setError("ابتدا یک کتابخانه را فعال کنید.");
-        return;
-      }
       const response = await borrowAPI.getBorrows(libraryId, {
         status: filter === "all" ? undefined : filter,
       });
@@ -56,7 +53,6 @@ const BorrowsPage = () => {
 
   const handleReturnBook = async (borrowId) => {
     try {
-      if (!libraryId) { setError("ابتدا کتابخانه را انتخاب کنید."); return; }
       await borrowAPI.returnBorrow(libraryId, borrowId);
       fetchBorrows();
     } catch (err) {
@@ -65,9 +61,6 @@ const BorrowsPage = () => {
   };
 
   const isOverdue = (dueDate) => new Date(dueDate) < new Date();
-
-  const formatDate = (dateStr) =>
-    new Date(dateStr).toLocaleDateString("fa-IR");
 
   const tabs = [
     { key: "all",       label: "همه" },
@@ -97,12 +90,6 @@ const BorrowsPage = () => {
       </div>
 
       <div className="borrows-body">
-        {!libraryId && (
-          <div className="info-banner">
-            📍 لطفاً ابتدا از صفحه کتابخانه‌ها یک کتابخانه فعال کنید.
-          </div>
-        )}
-
         {error && <div className="error-message">{error}</div>}
 
         {/* Filter Tabs */}

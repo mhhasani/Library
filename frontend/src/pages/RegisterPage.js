@@ -38,7 +38,7 @@ const RegisterPage = () => {
       phoneNumber: formData.phoneNumber,
     });
     if (result.success) {
-      navigate("/books");
+      navigate("/libraries");
     } else {
       setError(result.error);
     }

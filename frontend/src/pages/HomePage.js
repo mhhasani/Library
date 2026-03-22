@@ -53,8 +53,8 @@ const HomePage = () => {
                 ثبت‌نام رایگان
               </Link>
             ) : (
-              <Link to="/books" className="btn btn-lg hero-btn-outline">
-                مرور کتاب‌ها
+              <Link to="/libraries" className="btn btn-lg hero-btn-outline">
+                مرور کتابخانه‌ها
               </Link>
             )}
           </div>

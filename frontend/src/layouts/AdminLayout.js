@@ -13,8 +13,6 @@ const AdminLayout = ({ title, subtitle, navItems, backTo = "/" }) => {
     navigate("/");
   };
 
-  const activeLibraryName = localStorage.getItem("activeLibraryName") || "";
-
   return (
     <div className="admin-shell">
       {/* ── Sidebar ── */}
@@ -24,9 +22,6 @@ const AdminLayout = ({ title, subtitle, navItems, backTo = "/" }) => {
           <div>
             <div className="sidebar-title">{title}</div>
             {subtitle && <div className="sidebar-subtitle">{subtitle}</div>}
-            {activeLibraryName && !subtitle && (
-              <div className="sidebar-subtitle">{activeLibraryName}</div>
-            )}
           </div>
         </div>
 
@@ -86,8 +81,8 @@ const AdminLayout = ({ title, subtitle, navItems, backTo = "/" }) => {
             <span />
           </button>
           <span className="topbar-title">{title}</span>
-          {activeLibraryName && (
-            <span className="topbar-library">{activeLibraryName}</span>
+          {subtitle && (
+            <span className="topbar-library">{subtitle}</span>
           )}
         </div>
 

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { bookAPI, borrowAPI, libraryAdminAPI } from "../../services/api";
+import { useLibrary } from "../../context/LibraryContext";
 import "./AdminDashboard.css";
 
 const AdminDashboard = () => {
-  const libraryId = localStorage.getItem("activeLibraryId");
-  const libraryName = localStorage.getItem("activeLibraryName") || "کتابخانه";
+  const { libraryId } = useParams();
+  const { libraryName } = useLibrary() || {};
 
   const [stats, setStats] = useState({
     totalBooks: 0,
@@ -54,7 +55,7 @@ const AdminDashboard = () => {
     <div>
       <div className="ap-header">
         <h1 className="ap-title">داشبورد</h1>
-        <p className="ap-subtitle">خلاصه وضعیت کتابخانه «{libraryName}»</p>
+        <p className="ap-subtitle">خلاصه وضعیت کتابخانه «{libraryName || "…"}»</p>
       </div>
 
       {error && <div className="error-message">{error}</div>}
@@ -93,21 +94,21 @@ const AdminDashboard = () => {
 
       {/* Quick actions */}
       <div className="adb-quick-grid">
-        <Link to="/admin/borrows" className="adb-quick-card">
+        <Link to={`/libraries/${libraryId}/admin/borrows`} className="adb-quick-card">
           <span className="adb-quick-icon">📋</span>
           <span className="adb-quick-label">بررسی درخواست‌های امانت</span>
           {stats.pendingBorrows > 0 && (
             <span className="adb-badge">{stats.pendingBorrows}</span>
           )}
         </Link>
-        <Link to="/admin/members" className="adb-quick-card">
+        <Link to={`/libraries/${libraryId}/admin/members`} className="adb-quick-card">
           <span className="adb-quick-icon">👥</span>
           <span className="adb-quick-label">بررسی درخواست‌های عضویت</span>
           {stats.pendingMembers > 0 && (
             <span className="adb-badge">{stats.pendingMembers}</span>
           )}
         </Link>
-        <Link to="/admin/books" className="adb-quick-card">
+        <Link to={`/libraries/${libraryId}/admin/books`} className="adb-quick-card">
           <span className="adb-quick-icon">➕</span>
           <span className="adb-quick-label">افزودن کتاب جدید</span>
         </Link>

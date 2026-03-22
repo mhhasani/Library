@@ -191,8 +191,14 @@
 .lib-badge-status { background: var(--color-success-bg); color: var(--color-success); }
 .lib-badge-owner  { background: var(--color-bg);         color: var(--color-text-secondary); }
 
-.lib-action-btn {
+.lib-actions-row {
   margin-top: auto;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.lib-action-btn {
   align-self: flex-start;
 }
 

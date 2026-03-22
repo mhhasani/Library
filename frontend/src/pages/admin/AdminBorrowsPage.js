@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { useParams } from "react-router-dom";
 import { borrowAPI, libraryAdminAPI } from "../../services/api";
 import "./AdminBorrowsPage.css";
 
@@ -25,7 +26,7 @@ const TABS = [
 ];
 
 const AdminBorrowsPage = () => {
-  const libraryId = localStorage.getItem("activeLibraryId");
+  const { libraryId } = useParams();
 
   const [activeTab, setActiveTab] = useState("REQUESTED");
   const [borrows, setBorrows] = useState([]);

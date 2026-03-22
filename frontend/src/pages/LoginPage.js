@@ -21,7 +21,7 @@ const LoginPage = () => {
     setLoading(true);
     const result = await login(formData);
     if (result.success) {
-      navigate("/books");
+      navigate("/libraries");
     } else {
       setError(result.error);
     }

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { useParams } from "react-router-dom";
 import { libraryAdminAPI } from "../../services/api";
 import "./AdminMembersPage.css";
 
@@ -11,7 +12,7 @@ const STATUS_CLASS = {
 };
 
 const AdminMembersPage = () => {
-  const libraryId = localStorage.getItem("activeLibraryId");
+  const { libraryId } = useParams();
 
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { useParams } from "react-router-dom";
 import { bookAPI } from "../../services/api";
 import "./AdminBooksPage.css";
 
@@ -13,7 +14,7 @@ const EMPTY_FORM = {
 };
 
 const AdminBooksPage = () => {
-  const libraryId = localStorage.getItem("activeLibraryId");
+  const { libraryId } = useParams();
 
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
