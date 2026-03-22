@@ -4,10 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import "./AuthPages.css";
 
 const LoginPage = () => {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
+  const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -15,17 +12,13 @@ const LoginPage = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-
     const result = await login(formData);
     if (result.success) {
       navigate("/books");
@@ -36,13 +29,20 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-box">
-        <h2>Login</h2>
+    <div className="auth-page">
+      <div className="auth-panel">
+        <div className="auth-brand">
+          <span className="auth-brand-icon">📚</span>
+          <span className="auth-brand-name">سامانه کتابخانه</span>
+        </div>
+        <h2 className="auth-title">ورود به حساب</h2>
+        <p className="auth-subtitle">خوش برگشتید! لطفاً اطلاعات خود را وارد کنید</p>
+
         {error && <div className="error-message">{error}</div>}
-        <form onSubmit={handleSubmit}>
+
+        <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">ایمیل</label>
             <input
               type="email"
               id="email"
@@ -50,11 +50,11 @@ const LoginPage = () => {
               value={formData.email}
               onChange={handleChange}
               required
-              placeholder="your@email.com"
+              placeholder="example@email.com"
             />
           </div>
           <div className="form-group">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">رمز عبور</label>
             <input
               type="password"
               id="password"
@@ -65,13 +65,31 @@ const LoginPage = () => {
               placeholder="••••••••"
             />
           </div>
-          <button type="submit" disabled={loading} className="submit-btn">
-            {loading ? "Logging in..." : "Login"}
+          <button type="submit" disabled={loading} className="auth-submit-btn">
+            {loading ? (
+              <span className="btn-loading">
+                <span className="btn-spinner" /> در حال ورود...
+              </span>
+            ) : (
+              "ورود"
+            )}
           </button>
         </form>
-        <p className="auth-link">
-          Don't have an account? <Link to="/register">Register here</Link>
+
+        <p className="auth-footer-text">
+          حساب کاربری ندارید؟{" "}
+          <Link to="/register" className="auth-link">ثبت‌نام کنید</Link>
         </p>
+      </div>
+
+      <div className="auth-decoration">
+        <div className="auth-deco-circle c1" />
+        <div className="auth-deco-circle c2" />
+        <div className="auth-deco-circle c3" />
+        <div className="auth-deco-text">
+          <span>📖</span>
+          <p>دروازه‌ای به دنیای کتاب و دانش</p>
+        </div>
       </div>
     </div>
   );

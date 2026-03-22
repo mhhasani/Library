@@ -19,21 +19,16 @@ const RegisterPage = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+      setError("رمز عبور و تکرار آن مطابقت ندارند");
       return;
     }
-
     setLoading(true);
     const result = await register({
       firstName: formData.firstName,
@@ -42,7 +37,6 @@ const RegisterPage = () => {
       password: formData.password,
       phoneNumber: formData.phoneNumber,
     });
-
     if (result.success) {
       navigate("/books");
     } else {
@@ -52,37 +46,47 @@ const RegisterPage = () => {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-box">
-        <h2>Register</h2>
+    <div className="auth-page auth-page-register">
+      <div className="auth-panel auth-panel-wide">
+        <div className="auth-brand">
+          <span className="auth-brand-icon">📚</span>
+          <span className="auth-brand-name">سامانه کتابخانه</span>
+        </div>
+        <h2 className="auth-title">ایجاد حساب کاربری</h2>
+        <p className="auth-subtitle">ثبت‌نام رایگان و دسترسی فوری به کتابخانه‌ها</p>
+
         {error && <div className="error-message">{error}</div>}
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="firstName">First Name</label>
-            <input
-              type="text"
-              id="firstName"
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleChange}
-              required
-              placeholder="John"
-            />
+
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="form-row-2">
+            <div className="form-group">
+              <label htmlFor="firstName">نام</label>
+              <input
+                type="text"
+                id="firstName"
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
+                required
+                placeholder="علی"
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="lastName">نام خانوادگی</label>
+              <input
+                type="text"
+                id="lastName"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                required
+                placeholder="محمدی"
+              />
+            </div>
           </div>
+
           <div className="form-group">
-            <label htmlFor="lastName">Last Name</label>
-            <input
-              type="text"
-              id="lastName"
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleChange}
-              required
-              placeholder="Doe"
-            />
-          </div>
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">ایمیل</label>
             <input
               type="email"
               id="email"
@@ -90,50 +94,63 @@ const RegisterPage = () => {
               value={formData.email}
               onChange={handleChange}
               required
-              placeholder="your@email.com"
+              placeholder="example@email.com"
             />
           </div>
+
           <div className="form-group">
-            <label htmlFor="phoneNumber">Phone Number (Optional)</label>
+            <label htmlFor="phoneNumber">شماره تلفن <span className="optional-label">(اختیاری)</span></label>
             <input
               type="tel"
               id="phoneNumber"
               name="phoneNumber"
               value={formData.phoneNumber}
               onChange={handleChange}
-              placeholder="+1234567890"
+              placeholder="09123456789"
             />
           </div>
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              placeholder="••••••••"
-            />
+
+          <div className="form-row-2">
+            <div className="form-group">
+              <label htmlFor="password">رمز عبور</label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                placeholder="••••••••"
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="confirmPassword">تکرار رمز عبور</label>
+              <input
+                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                required
+                placeholder="••••••••"
+              />
+            </div>
           </div>
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              required
-              placeholder="••••••••"
-            />
-          </div>
-          <button type="submit" disabled={loading} className="submit-btn">
-            {loading ? "Registering..." : "Register"}
+
+          <button type="submit" disabled={loading} className="auth-submit-btn">
+            {loading ? (
+              <span className="btn-loading">
+                <span className="btn-spinner" /> در حال ثبت‌نام...
+              </span>
+            ) : (
+              "ثبت‌نام"
+            )}
           </button>
         </form>
-        <p className="auth-link">
-          Already have an account? <Link to="/login">Login here</Link>
+
+        <p className="auth-footer-text">
+          حساب کاربری دارید؟{" "}
+          <Link to="/login" className="auth-link">وارد شوید</Link>
         </p>
       </div>
     </div>

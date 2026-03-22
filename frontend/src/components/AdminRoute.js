@@ -6,7 +6,7 @@ const AdminRoute = ({ children }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return <div className="loading">در حال بارگذاری...</div>;
   }
 
   if (!isAuthenticated) {
@@ -15,8 +15,8 @@ const AdminRoute = ({ children }) => {
 
   if (user?.systemRole !== "SYSTEM_ADMIN") {
     return (
-      <div style={{ padding: "2rem", textAlign: "center" }}>
-        You are not authorized to access this page.
+      <div style={{ padding: "3rem", textAlign: "center", color: "var(--color-danger)", fontSize: "1rem" }}>
+        شما مجوز دسترسی به این صفحه را ندارید.
       </div>
     );
   }

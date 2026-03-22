@@ -1,60 +1,113 @@
-import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import "./Navbar.css";
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate("/");
+    setMenuOpen(false);
   };
+
+  const isActive = (path) => location.pathname === path;
 
   return (
     <nav className="navbar">
-      <div className="navbar-container">
-        <Link to="/" className="navbar-brand">
-          📚 Library Management
+      <div className="navbar-inner">
+        <Link to="/" className="navbar-logo">
+          <span className="logo-icon">📚</span>
+          <span className="logo-text">سامانه کتابخانه</span>
         </Link>
-        <div className="navbar-menu">
-          {isAuthenticated ? (
+
+        <button
+          className="hamburger"
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="منو"
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+
+        <div className={`navbar-links ${menuOpen ? "open" : ""}`}>
+          <Link
+            to="/libraries"
+            className={`nav-link ${isActive("/libraries") ? "active" : ""}`}
+            onClick={() => setMenuOpen(false)}
+          >
+            کتابخانه‌ها
+          </Link>
+
+          {isAuthenticated && (
             <>
-              <Link to="/libraries" className="nav-link">
-                Libraries
+              <Link
+                to="/books"
+                className={`nav-link ${isActive("/books") ? "active" : ""}`}
+                onClick={() => setMenuOpen(false)}
+              >
+                کتاب‌ها
               </Link>
-              <Link to="/books" className="nav-link">
-                Books
-              </Link>
-              <Link to="/borrows" className="nav-link">
-                My Borrows
+              <Link
+                to="/borrows"
+                className={`nav-link ${isActive("/borrows") ? "active" : ""}`}
+                onClick={() => setMenuOpen(false)}
+              >
+                امانت‌های من
               </Link>
               {user?.systemRole === "SYSTEM_ADMIN" && (
-                <Link to="/admin/users" className="nav-link">
-                  Admin Users
+                <Link
+                  to="/admin/users"
+                  className={`nav-link ${isActive("/admin/users") ? "active" : ""}`}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  مدیریت کاربران
                 </Link>
               )}
-              <Link to="/profile" className="nav-link">
-                {user?.email || "Profile"}
-              </Link>
-              <button onClick={handleLogout} className="nav-link logout-btn">
-                Logout
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/libraries" className="nav-link">
-                Libraries
-              </Link>
-              <Link to="/login" className="nav-link">
-                Login
-              </Link>
-              <Link to="/register" className="nav-link">
-                Register
-              </Link>
             </>
           )}
+
+          <div className="navbar-actions">
+            {isAuthenticated ? (
+              <>
+                <Link
+                  to="/profile"
+                  className="nav-user-chip"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <span className="user-avatar">
+                    {user?.email?.charAt(0).toUpperCase()}
+                  </span>
+                  <span className="user-email">{user?.email}</span>
+                </Link>
+                <button onClick={handleLogout} className="btn-logout">
+                  خروج
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="nav-btn-outline"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  ورود
+                </Link>
+                <Link
+                  to="/register"
+                  className="nav-btn-fill"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  ثبت‌نام
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </nav>
