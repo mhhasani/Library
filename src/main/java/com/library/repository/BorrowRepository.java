@@ -23,9 +23,12 @@ public interface BorrowRepository extends JpaRepository<Borrow, Long> {
     @Query("SELECT b FROM Borrow b WHERE b.user.id = :userId AND b.status = 'APPROVED' AND b.returnDate IS NULL")
     List<Borrow> findActiveBorrowsByUser(@Param("userId") Long userId);
     
-    @Query("SELECT b FROM Borrow b WHERE b.user.id = :userId AND b.book.id = :bookId AND b.borrowType = :borrowType AND b.status = 'APPROVED' AND b.returnDate IS NULL")
+    @Query("SELECT b FROM Borrow b WHERE b.user.id = :userId AND b.book.id = :bookId AND b.borrowType = :borrowType AND b.status IN ('REQUESTED', 'APPROVED') AND b.returnDate IS NULL")
     List<Borrow> findActivePhysicalBorrowByUserAndBook(@Param("userId") Long userId, @Param("bookId") Long bookId, @Param("borrowType") BorrowType borrowType);
     
     @Query("SELECT b FROM Borrow b WHERE b.dueDate <= :dueDate AND b.status = 'APPROVED' AND b.returnDate IS NULL")
     List<Borrow> findOverdueBooks(@Param("dueDate") LocalDateTime dueDate);
+
+    List<Borrow> findByLibraryId(Long libraryId);
+    List<Borrow> findByLibraryIdAndStatus(Long libraryId, BorrowStatus status);
 }

@@ -13,5 +13,6 @@
     <include file="db/changelog/v1/08-create-digital-books-table.xml"/>
     <include file="db/changelog/v1/09-create-borrows-table.xml"/>
     <include file="db/changelog/v1/10-create-audit-logs-table.xml"/>
+    <include file="db/changelog/v1/11-add-borrow-unique-constraint.xml"/>
 
 </databaseChangeLog>

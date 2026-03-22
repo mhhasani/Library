@@ -72,8 +72,8 @@ export const borrowAPI = {
   approveBorrow: (libraryId, borrowId) =>
     api.post(`/v1/libraries/${libraryId}/borrows/${borrowId}/approve`),
   rejectBorrow: (libraryId, borrowId, reason) =>
-    api.post(`/v1/libraries/${libraryId}/borrows/${borrowId}/reject`, {
-      rejectionReason: reason,
+    api.post(`/v1/libraries/${libraryId}/borrows/${borrowId}/reject`, null, {
+      params: reason ? { reason } : undefined,
     }),
   returnBorrow: (libraryId, borrowId) =>
     api.post(`/v1/libraries/${libraryId}/borrows/${borrowId}/return`),
@@ -100,6 +100,27 @@ export const libraryAPI = {
 export const adminAPI = {
   getUsers: (status) =>
     api.get("/v1/admin/users", {
+      params: status ? { status } : undefined,
+    }),
+  updateUserStatus: (userId, status) =>
+    api.patch(`/v1/admin/users/${userId}/status`, { status }),
+  updateUserRole: (userId, role) =>
+    api.patch(`/v1/admin/users/${userId}/role`, { role }),
+  getLibraries: () => api.get("/v1/admin/libraries"),
+};
+
+// Library admin endpoints
+export const libraryAdminAPI = {
+  getMembers: (libraryId) =>
+    api.get(`/v1/libraries/${libraryId}/members`),
+  approveMembership: (libraryId, userId) =>
+    api.post(`/v1/libraries/${libraryId}/membership/${userId}/approve`),
+  rejectMembership: (libraryId, userId, reason) =>
+    api.post(`/v1/libraries/${libraryId}/membership/${userId}/reject`, null, {
+      params: reason ? { reason } : undefined,
+    }),
+  getAllBorrows: (libraryId, status) =>
+    api.get(`/v1/libraries/${libraryId}/borrows/admin/all`, {
       params: status ? { status } : undefined,
     }),
 };

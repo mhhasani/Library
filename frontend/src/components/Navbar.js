@@ -9,6 +9,13 @@ const Navbar = () => {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
+  const activeLibraryRole = localStorage.getItem("activeLibraryRole");
+  const activeLibraryStatus = localStorage.getItem("activeLibraryStatus");
+  const isLibraryAdmin =
+    isAuthenticated &&
+    activeLibraryRole === "ADMIN" &&
+    activeLibraryStatus === "APPROVED";
+
   const handleLogout = () => {
     logout();
     navigate("/");
@@ -60,13 +67,22 @@ const Navbar = () => {
               >
                 امانت‌های من
               </Link>
-              {user?.systemRole === "SYSTEM_ADMIN" && (
+              {isLibraryAdmin && (
                 <Link
-                  to="/admin/users"
-                  className={`nav-link ${isActive("/admin/users") ? "active" : ""}`}
+                  to="/admin"
+                  className={`nav-link nav-link--admin ${location.pathname.startsWith("/admin") ? "active" : ""}`}
                   onClick={() => setMenuOpen(false)}
                 >
-                  مدیریت کاربران
+                  🗂 پنل کتابدار
+                </Link>
+              )}
+              {user?.systemRole === "SYSTEM_ADMIN" && (
+                <Link
+                  to="/system"
+                  className={`nav-link nav-link--system ${location.pathname.startsWith("/system") ? "active" : ""}`}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  ⚙️ پنل سیستم
                 </Link>
               )}
             </>

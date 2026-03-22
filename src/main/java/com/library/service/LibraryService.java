@@ -2,6 +2,7 @@ package com.library.service;
 
 import com.library.dto.LibraryDTO;
 import com.library.dto.LibraryRequest;
+import com.library.dto.MembershipDTO;
 import com.library.entity.Library;
 import com.library.entity.LibraryMembership;
 import com.library.entity.User;
@@ -96,6 +97,12 @@ public class LibraryService {
     public List<LibraryDTO> getAllActiveLibraries() {
         List<Library> libraries = libraryRepository.findByIsActive(true);
         return libraries.stream()
+                .map(lib -> mapToLibraryDTO(lib, null))
+                .collect(Collectors.toList());
+    }
+
+    public List<LibraryDTO> getAllLibrariesForAdmin() {
+        return libraryRepository.findAll().stream()
                 .map(lib -> mapToLibraryDTO(lib, null))
                 .collect(Collectors.toList());
     }
@@ -206,6 +213,34 @@ public class LibraryService {
         membership.setUpdatedAt(LocalDateTime.now());
         membershipRepository.save(membership);
         log.info("Membership rejected for user {} in library {}", userId, libraryId);
+    }
+
+    public List<MembershipDTO> getLibraryMembers(Long libraryId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        LibraryMembership adminMembership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
+                .orElseThrow(() -> new UnauthorizedException("User is not a member of this library"));
+        if (adminMembership.getRole() != LibraryMembershipRole.ADMIN) {
+            throw new UnauthorizedException("Only library admins can view member list");
+        }
+        return membershipRepository.findByLibraryId(libraryId).stream()
+                .map(this::mapToMembershipDTO)
+                .collect(Collectors.toList());
+    }
+
+    private MembershipDTO mapToMembershipDTO(LibraryMembership m) {
+        return MembershipDTO.builder()
+                .id(m.getId())
+                .userId(m.getUser().getId())
+                .userEmail(m.getUser().getEmail())
+                .userName(m.getUser().getFirstName() + " " + m.getUser().getLastName())
+                .libraryId(m.getLibrary().getId())
+                .role(m.getRole())
+                .status(m.getStatus())
+                .approvedById(m.getApprovedBy() != null ? m.getApprovedBy().getId() : null)
+                .rejectionReason(m.getRejectionReason())
+                .createdAt(m.getCreatedAt())
+                .updatedAt(m.getUpdatedAt())
+                .build();
     }
 
     private LibraryDTO mapToLibraryDTO(Library library, LibraryMembership membership) {

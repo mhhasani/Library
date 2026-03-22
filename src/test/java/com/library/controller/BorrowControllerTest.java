@@ -189,4 +189,112 @@ class BorrowControllerTest extends BaseIntegrationTest {
                 .content(objectMapper.writeValueAsString(borrowRequest)))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    @WithMockUser(username = "admin@library.com", roles = "USER")
+    @DisplayName("Should get all library borrows for admin successfully")
+    void testGetLibraryAdminBorrowsSuccess() throws Exception {
+        BorrowDTO activeBorrow = BorrowDTO.builder()
+                .id(2L)
+                .bookId(1L)
+                .userId(3L)
+                .userEmail("member@test.com")
+                .bookTitle("Clean Code")
+                .borrowType(BorrowType.PHYSICAL)
+                .status(BorrowStatus.APPROVED)
+                .build();
+
+        when(borrowService.getLibraryBorrows(1L, null)).thenReturn(java.util.Arrays.asList(activeBorrow));
+
+        mockMvc.perform(get("/v1/libraries/1/borrows/admin/all"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].userEmail").value("member@test.com"))
+                .andExpect(jsonPath("$.data[0].status").value("APPROVED"));
+    }
+
+    @Test
+    @WithMockUser(username = "admin@library.com", roles = "USER")
+    @DisplayName("Should get filtered library borrows by status")
+    void testGetLibraryAdminBorrowsFilteredByStatus() throws Exception {
+        when(borrowService.getLibraryBorrows(1L, BorrowStatus.APPROVED))
+                .thenReturn(java.util.Arrays.asList(borrowDTO));
+
+        mockMvc.perform(get("/v1/libraries/1/borrows/admin/all")
+                .param("status", "APPROVED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    @WithMockUser(username = "member@library.com", roles = "USER")
+    @DisplayName("Should return 401 when non-admin requests all borrows")
+    void testGetLibraryAdminBorrowsUnauthorized() throws Exception {
+        doThrow(new UnauthorizedException("Only library admins can view all borrows"))
+                .when(borrowService).getLibraryBorrows(1L, null);
+
+        mockMvc.perform(get("/v1/libraries/1/borrows/admin/all"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(username = "user@library.com", roles = "USER")
+    @DisplayName("Should create physical borrow request successfully without bookCopyId")
+    void testCreateBorrowPhysicalSuccessWithoutCopyId() throws Exception {
+        BorrowRequest requestWithoutCopyId = BorrowRequest.builder()
+                .borrowType(BorrowType.PHYSICAL)
+                .build();
+
+        BorrowDTO autoPicked = BorrowDTO.builder()
+                .id(1L)
+                .bookId(1L)
+                .userId(1L)
+                .borrowType(BorrowType.PHYSICAL)
+                .bookCopyId(1L)
+                .build();
+
+        when(borrowService.createBorrowRequest(1L, 1L, requestWithoutCopyId)).thenReturn(autoPicked);
+
+        mockMvc.perform(post("/v1/libraries/1/borrows/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestWithoutCopyId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Borrow request created successfully"))
+                .andExpect(jsonPath("$.data.id").value(1));
+    }
+
+    @Test
+    @WithMockUser(username = "user@library.com", roles = "USER")
+    @DisplayName("Should return 400 when user already has an active physical borrow of this book")
+    void testCreateBorrowDuplicateRejected() throws Exception {
+        BorrowRequest requestWithoutCopyId = BorrowRequest.builder()
+                .borrowType(BorrowType.PHYSICAL)
+                .build();
+
+        doThrow(new BadRequestException("User already has an active physical borrow of this book"))
+                .when(borrowService).createBorrowRequest(1L, 1L, requestWithoutCopyId);
+
+        mockMvc.perform(post("/v1/libraries/1/borrows/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestWithoutCopyId)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "user@library.com", roles = "USER")
+    @DisplayName("Should return 400 when no available copy of this book")
+    void testCreateBorrowNoAvailableCopy() throws Exception {
+        BorrowRequest requestWithoutCopyId = BorrowRequest.builder()
+                .borrowType(BorrowType.PHYSICAL)
+                .build();
+
+        doThrow(new BadRequestException("No available copy of this book"))
+                .when(borrowService).createBorrowRequest(1L, 1L, requestWithoutCopyId);
+
+        mockMvc.perform(post("/v1/libraries/1/borrows/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestWithoutCopyId)))
+                .andExpect(status().isBadRequest());
+    }
 }

@@ -121,6 +121,10 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("token");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
+    localStorage.removeItem("activeLibraryId");
+    localStorage.removeItem("activeLibraryName");
+    localStorage.removeItem("activeLibraryRole");
+    localStorage.removeItem("activeLibraryStatus");
     setUser(null);
     setError(null);
   };

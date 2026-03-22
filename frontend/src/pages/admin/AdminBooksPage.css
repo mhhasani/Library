@@ -1,0 +1,69 @@
+.abk-search {
+  flex: 1;
+  min-width: 240px;
+  padding: 0.6rem 1rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  direction: rtl;
+  transition: border-color 0.18s;
+  background: #fff;
+}
+
+.abk-search:focus {
+  outline: none;
+  border-color: #1b3560;
+}
+
+.abk-title {
+  font-weight: 600;
+  color: #1b3560;
+  font-size: 0.9rem;
+}
+
+.abk-publisher {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+.abk-actions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.btn-icon--edit   { background: rgba(27, 53, 96, 0.08); }
+.btn-icon--copy   { background: rgba(200, 160, 76, 0.12); }
+.btn-icon--delete { background: rgba(239, 68, 68, 0.08); }
+
+.btn-icon:hover { filter: brightness(0.9); }
+
+.btn-danger {
+  padding: 0.55rem 1.25rem;
+  border-radius: 8px;
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+.btn-danger:hover { background: #b91c1c; }
+.btn-danger:disabled { opacity: 0.6; cursor: not-allowed; }

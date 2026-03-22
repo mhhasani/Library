@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.library.BaseIntegrationTest;
 import com.library.dto.LibraryDTO;
 import com.library.dto.LibraryRequest;
+import com.library.dto.MembershipDTO;
+import com.library.entity.enums.LibraryMembershipRole;
+import com.library.entity.enums.MembershipStatus;
 import com.library.exception.ResourceNotFoundException;
 import com.library.exception.UnauthorizedException;
 import com.library.service.LibraryService;
@@ -203,6 +206,47 @@ class LibraryControllerTest extends BaseIntegrationTest {
         mockMvc.perform(post("/v1/libraries")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(libraryRequest)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(username = "admin@library.com", roles = "USER")
+    @DisplayName("Should get library members successfully")
+    void testGetLibraryMembersSuccess() throws Exception {
+        MembershipDTO member = MembershipDTO.builder()
+                .id(1L)
+                .userId(2L)
+                .userEmail("member@test.com")
+                .userName("Ali Ahmadi")
+                .libraryId(1L)
+                .role(LibraryMembershipRole.MEMBER)
+                .status(MembershipStatus.APPROVED)
+                .build();
+
+        when(libraryService.getLibraryMembers(1L)).thenReturn(Arrays.asList(member));
+
+        mockMvc.perform(get("/v1/libraries/1/members"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].userEmail").value("member@test.com"))
+                .andExpect(jsonPath("$.data[0].status").value("APPROVED"));
+    }
+
+    @Test
+    @WithMockUser(username = "user@library.com", roles = "USER")
+    @DisplayName("Should return 401 when non-admin requests member list")
+    void testGetLibraryMembersUnauthorized() throws Exception {
+        doThrow(new UnauthorizedException("Only library admins can view member list"))
+                .when(libraryService).getLibraryMembers(1L);
+
+        mockMvc.perform(get("/v1/libraries/1/members"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Should return 401 when unauthenticated user requests member list")
+    void testGetLibraryMembersUnauthenticated() throws Exception {
+        mockMvc.perform(get("/v1/libraries/1/members"))
                 .andExpect(status().isUnauthorized());
     }
 }

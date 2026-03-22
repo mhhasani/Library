@@ -79,21 +79,22 @@ public class BorrowService {
     }
 
     private BorrowDTO createPhysicalBorrow(User user, Library library, Book book, BorrowRequest request) {
-        if (request.getBookCopyId() == null) {
-            throw new BadRequestException("Book copy ID is required for physical borrow");
-        }
+        BookCopy bookCopy;
 
-        BookCopy bookCopy = bookCopyRepository.findById(request.getBookCopyId())
-                .orElseThrow(() -> new ResourceNotFoundException("Book copy not found"));
-
-        // Check copy belongs to the book
-        if (!bookCopy.getBook().getId().equals(book.getId())) {
-            throw new BadRequestException("Book copy does not belong to this book");
-        }
-
-        // Check copy is available
-        if (bookCopy.getStatus() != BookCopyStatus.AVAILABLE) {
-            throw new BadRequestException("Book copy is not available");
+        if (request.getBookCopyId() != null) {
+            bookCopy = bookCopyRepository.findById(request.getBookCopyId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Book copy not found"));
+            if (!bookCopy.getBook().getId().equals(book.getId())) {
+                throw new BadRequestException("Book copy does not belong to this book");
+            }
+            if (bookCopy.getStatus() != BookCopyStatus.AVAILABLE) {
+                throw new BadRequestException("Book copy is not available");
+            }
+        } else {
+            // Auto-select first available copy
+            bookCopy = bookCopyRepository.findByBookIdAndStatus(book.getId(), BookCopyStatus.AVAILABLE)
+                    .stream().findFirst()
+                    .orElseThrow(() -> new BadRequestException("No available copy of this book"));
         }
 
         // Check user doesn't already have an active physical borrow of this book
@@ -201,6 +202,22 @@ public class BorrowService {
             copy.setStatus(BookCopyStatus.BORROWED);
             copy.setUpdatedAt(LocalDateTime.now());
             bookCopyRepository.save(copy);
+
+            // If no available copies remain, auto-reject all other pending requests for this book
+            long availableCopies = bookCopyRepository.countByBookIdAndStatus(borrow.getBook().getId(), BookCopyStatus.AVAILABLE);
+            if (availableCopies == 0) {
+                Long bookId = borrow.getBook().getId();
+                List<Borrow> pendingBorrows = borrowRepository.findByStatus(BorrowStatus.REQUESTED).stream()
+                        .filter(b -> b.getBook().getId().equals(bookId) && !b.getId().equals(borrowId))
+                        .collect(Collectors.toList());
+                for (Borrow pending : pendingBorrows) {
+                    pending.setStatus(BorrowStatus.REJECTED);
+                    pending.setRejectionReason("رد خودکار: موجودی کتاب به پایان رسید");
+                    pending.setUpdatedAt(LocalDateTime.now());
+                    borrowRepository.save(pending);
+                    log.info("Auto-rejected borrow {} due to no available copies of book {}", pending.getId(), bookId);
+                }
+            }
         }
 
         borrow = borrowRepository.save(borrow);
@@ -278,17 +295,15 @@ public class BorrowService {
         return mapToBorrowDTO(borrow);
     }
 
-    public List<BorrowDTO> getUserBorrows(Long libraryId) {
+    public List<BorrowDTO> getUserBorrows(Long libraryId, BorrowStatus status) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
 
-        Library library = libraryRepository.findById(libraryId)
+        libraryRepository.findById(libraryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Library not found"));
 
-        List<Borrow> borrows = borrowRepository.findByUserId(currentUserId).stream()
+        return borrowRepository.findByUserId(currentUserId).stream()
                 .filter(b -> b.getLibrary().getId().equals(libraryId))
-                .collect(Collectors.toList());
-
-        return borrows.stream()
+                .filter(b -> status == null || b.getStatus() == status)
                 .map(this::mapToBorrowDTO)
                 .collect(Collectors.toList());
     }
@@ -313,6 +328,21 @@ public class BorrowService {
         return borrows.stream()
                 .map(this::mapToBorrowDTO)
                 .collect(Collectors.toList());
+    }
+
+    public List<BorrowDTO> getLibraryBorrows(Long libraryId, BorrowStatus status) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        libraryRepository.findById(libraryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Library not found"));
+        LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
+                .orElseThrow(() -> new UnauthorizedException("User is not a member of this library"));
+        if (membership.getRole() != LibraryMembershipRole.ADMIN) {
+            throw new UnauthorizedException("Only library admins can view all borrows");
+        }
+        List<Borrow> borrows = status != null
+                ? borrowRepository.findByLibraryIdAndStatus(libraryId, status)
+                : borrowRepository.findByLibraryId(libraryId);
+        return borrows.stream().map(this::mapToBorrowDTO).collect(Collectors.toList());
     }
 
     private BorrowDTO mapToBorrowDTO(Borrow borrow) {

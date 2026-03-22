@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="11" author="library" dbms="postgresql">
+        <!--
+            Partial unique index: a user can have at most one active (REQUESTED or APPROVED)
+            borrow per book. RETURNED and REJECTED rows are excluded so historical records
+            are preserved without blocking new borrows after a book is returned.
+            Runs on PostgreSQL only — H2 (used in tests) does not support partial indexes.
+        -->
+        <sql>
+            CREATE UNIQUE INDEX idx_borrows_one_active_per_user_book
+            ON borrows (user_id, book_id)
+            WHERE status IN ('REQUESTED', 'APPROVED');
+        </sql>
+
+        <rollback>
+            DROP INDEX IF EXISTS idx_borrows_one_active_per_user_book;
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

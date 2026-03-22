@@ -13,6 +13,7 @@ const BooksPage = () => {
   const [selectedBook, setSelectedBook] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [borrowingError, setBorrowingError] = useState("");
+  const [activeBorrowedBookIds, setActiveBorrowedBookIds] = useState(new Set());
 
   const fetchBooks = useCallback(async () => {
     try {
@@ -22,10 +23,21 @@ const BooksPage = () => {
         setError("ابتدا یک کتابخانه را از صفحه کتابخانه‌ها انتخاب کنید.");
         return;
       }
-      const response = await bookAPI.getBooks(libraryId, { search: searchTerm });
-      const payload = response.data.data || response.data;
+      const [booksRes, borrowsRes] = await Promise.all([
+        bookAPI.getBooks(libraryId, { search: searchTerm }),
+        borrowAPI.getBorrows(libraryId).catch(() => ({ data: { data: [] } })),
+      ]);
+      const payload = booksRes.data.data || booksRes.data;
       const list = Array.isArray(payload) ? payload : payload?.content || [];
       setBooks(list);
+
+      const myBorrows = borrowsRes.data?.data || borrowsRes.data || [];
+      const activeIds = new Set(
+        myBorrows
+          .filter((b) => b.status === "REQUESTED" || b.status === "APPROVED")
+          .map((b) => b.bookId)
+      );
+      setActiveBorrowedBookIds(activeIds);
       setError("");
     } catch (err) {
       setError(err.response?.data?.message || "خطا در بارگذاری کتاب‌ها");
@@ -128,7 +140,11 @@ const BooksPage = () => {
                         {book.availableCopiesCount} از {book.totalCopiesCount} موجود
                       </span>
                     </div>
-                    {book.availableCopiesCount > 0 ? (
+                    {activeBorrowedBookIds.has(book.id) ? (
+                      <button className="btn btn-ghost btn-sm" disabled>
+                        ✓ درخواست ثبت شده
+                      </button>
+                    ) : book.availableCopiesCount > 0 ? (
                       <button className="btn btn-success btn-sm" onClick={() => handleBorrowClick(book)}>
                         امانت گرفتن
                       </button>

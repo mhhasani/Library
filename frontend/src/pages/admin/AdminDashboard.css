@@ -1,0 +1,45 @@
+.adb-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.adb-quick-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  text-decoration: none;
+  color: #1b3560;
+  font-weight: 600;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1.5px solid transparent;
+  transition: border-color 0.18s, box-shadow 0.18s, transform 0.15s;
+  position: relative;
+}
+
+.adb-quick-card:hover {
+  border-color: #c8a04c;
+  box-shadow: 0 4px 16px rgba(200, 160, 76, 0.15);
+  transform: translateY(-2px);
+}
+
+.adb-quick-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.adb-badge {
+  margin-right: auto;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 9999px;
+  min-width: 20px;
+  text-align: center;
+}

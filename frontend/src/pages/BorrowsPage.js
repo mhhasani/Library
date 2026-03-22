@@ -3,21 +3,25 @@ import { borrowAPI } from "../services/api";
 import "./BorrowsPage.css";
 
 const STATUS_LABELS = {
-  ACTIVE:   "فعال",
-  RETURNED: "برگشت داده شده",
-  OVERDUE:  "تأخیر دار",
-  APPROVED: "تأیید شده",
-  PENDING:  "در انتظار",
-  REJECTED: "رد شده",
+  ACTIVE:    "فعال",
+  RETURNED:  "برگشت داده شده",
+  OVERDUE:   "تأخیر دار",
+  APPROVED:  "تأیید شده",
+  PENDING:   "در انتظار",
+  REQUESTED: "در انتظار تأیید",
+  REJECTED:  "رد شده",
+  EXPIRED:   "منقضی",
 };
 
 const STATUS_CLASS = {
-  ACTIVE:   "badge-success",
-  RETURNED: "badge-muted",
-  OVERDUE:  "badge-danger",
-  APPROVED: "badge-success",
-  PENDING:  "badge-warning",
-  REJECTED: "badge-danger",
+  ACTIVE:    "badge-success",
+  RETURNED:  "badge-muted",
+  OVERDUE:   "badge-danger",
+  APPROVED:  "badge-success",
+  PENDING:   "badge-warning",
+  REQUESTED: "badge-warning",
+  REJECTED:  "badge-danger",
+  EXPIRED:   "badge-muted",
 };
 
 const BorrowsPage = () => {
@@ -66,9 +70,11 @@ const BorrowsPage = () => {
     new Date(dateStr).toLocaleDateString("fa-IR");
 
   const tabs = [
-    { key: "all",      label: "همه" },
-    { key: "ACTIVE",   label: "فعال" },
-    { key: "RETURNED", label: "برگشت داده شده" },
+    { key: "all",       label: "همه" },
+    { key: "REQUESTED", label: "⏳ در انتظار" },
+    { key: "APPROVED",  label: "✅ فعال" },
+    { key: "RETURNED",  label: "📦 برگشت داده شده" },
+    { key: "REJECTED",  label: "❌ رد شده" },
   ];
 
   if (loading) return <div className="loading">در حال بارگذاری امانت‌ها...</div>;
@@ -124,26 +130,45 @@ const BorrowsPage = () => {
               <thead>
                 <tr>
                   <th>عنوان کتاب</th>
-                  <th>شناسه کتاب</th>
-                  <th>تاریخ امانت</th>
-                  <th>تاریخ بازگشت</th>
+                  <th>نوع</th>
+                  <th>تاریخ درخواست</th>
+                  <th>موعد تحویل</th>
                   <th>وضعیت</th>
                   <th>عملیات</th>
                 </tr>
               </thead>
               <tbody>
                 {borrows.map((borrow) => {
-                  const overdue =
-                    borrow.isOverdue ||
-                    (borrow.status === "ACTIVE" && isOverdue(borrow.dueDate));
+                  const overdue = borrow.isOverdue ||
+                    (borrow.status === "APPROVED" && borrow.dueDate && isOverdue(borrow.dueDate));
                   return (
                     <tr key={borrow.id}>
-                      <td className="borrow-book-title">{borrow.bookTitle || "—"}</td>
-                      <td className="borrow-id">{borrow.bookId || "—"}</td>
-                      <td>{formatDate(borrow.borrowDate)}</td>
-                      <td className={overdue ? "td-overdue" : ""}>
-                        {formatDate(borrow.dueDate)}
-                        {overdue && <span className="overdue-tag">تأخیر</span>}
+                      <td className="borrow-book-title">
+                        {borrow.bookTitle || "—"}
+                        {borrow.copyNumber && (
+                          <div style={{ fontSize: "0.75rem", color: "#9ca3af" }}>نسخه #{borrow.copyNumber}</div>
+                        )}
+                        {borrow.status === "REJECTED" && borrow.rejectionReason && (
+                          <div style={{ fontSize: "0.75rem", color: "#dc2626", marginTop: "0.2rem" }}>
+                            دلیل رد: {borrow.rejectionReason}
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        <span className="badge badge-info">
+                          {borrow.borrowType === "PHYSICAL" ? "فیزیکی" : "دیجیتال"}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: "0.82rem", color: "#9ca3af" }}>
+                        {borrow.createdAt ? new Date(borrow.createdAt).toLocaleDateString("fa-IR") : "—"}
+                      </td>
+                      <td className={overdue ? "td-overdue" : ""} style={{ fontSize: "0.82rem" }}>
+                        {borrow.dueDate ? (
+                          <>
+                            {new Date(borrow.dueDate).toLocaleDateString("fa-IR")}
+                            {overdue && <span className="overdue-tag">تأخیر</span>}
+                          </>
+                        ) : "—"}
                       </td>
                       <td>
                         <span className={`badge ${STATUS_CLASS[borrow.status] || "badge-muted"}`}>
@@ -151,12 +176,12 @@ const BorrowsPage = () => {
                         </span>
                       </td>
                       <td>
-                        {borrow.status === "ACTIVE" ? (
+                        {borrow.status === "APPROVED" ? (
                           <button
                             className="btn btn-outline btn-sm"
                             onClick={() => handleReturnBook(borrow.id)}
                           >
-                            بازگشت
+                            بازگشت کتاب
                           </button>
                         ) : (
                           <span className="td-none">—</span>

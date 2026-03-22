@@ -1,0 +1,49 @@
+.su-filter-group {
+  display: flex;
+  gap: 0.4rem;
+  background: #f3f4f6;
+  padding: 0.25rem;
+  border-radius: 10px;
+}
+
+.su-filter-btn {
+  padding: 0.4rem 0.9rem;
+  border-radius: 8px;
+  border: none;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #6b7280;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.su-filter-btn--active {
+  background: #fff;
+  color: #1b3560;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.su-count {
+  font-size: 0.82rem;
+  color: #9ca3af;
+  margin-right: auto;
+  align-self: center;
+}
+
+.su-actions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.su-btn-suspend {
+  color: #d97706 !important;
+  border-color: #d97706 !important;
+  font-size: 0.78rem !important;
+}
+
+.su-btn-role {
+  font-size: 0.78rem !important;
+}

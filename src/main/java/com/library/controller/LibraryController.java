@@ -3,6 +3,7 @@ package com.library.controller;
 import com.library.dto.ApiResponse;
 import com.library.dto.LibraryDTO;
 import com.library.dto.LibraryRequest;
+import com.library.dto.MembershipDTO;
 import com.library.service.LibraryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -93,6 +94,14 @@ public class LibraryController {
         log.info("Deleting library: {}", libraryId);
         libraryService.deleteLibrary(libraryId);
         return ResponseEntity.ok(ApiResponse.success("Library deleted successfully"));
+    }
+
+    @GetMapping("/{libraryId}/members")
+    @Operation(summary = "Get library members", description = "Retrieve all members of a library (admin only)")
+    public ResponseEntity<ApiResponse<List<MembershipDTO>>> getLibraryMembers(@PathVariable Long libraryId) {
+        log.info("Getting members for library: {}", libraryId);
+        List<MembershipDTO> members = libraryService.getLibraryMembers(libraryId);
+        return ResponseEntity.ok(ApiResponse.success("Members retrieved successfully", members));
     }
 
     @PostMapping("/{libraryId}/membership/request")

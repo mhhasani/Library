@@ -1,0 +1,24 @@
+.amm-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1b3560;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.amm-count {
+  font-size: 0.75rem;
+}
+
+.amm-section {
+  margin-bottom: 1.5rem;
+  border: 1.5px solid rgba(200, 160, 76, 0.3);
+}
+
+.amm-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}

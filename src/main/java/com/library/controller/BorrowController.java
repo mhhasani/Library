@@ -4,6 +4,7 @@ import com.library.dto.ApiResponse;
 import com.library.dto.BorrowApprovalRequest;
 import com.library.dto.BorrowDTO;
 import com.library.dto.BorrowRequest;
+import com.library.entity.enums.BorrowStatus;
 import com.library.service.BorrowService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -91,10 +92,12 @@ public class BorrowController {
     }
 
     @GetMapping
-    @Operation(summary = "Get user's borrows", description = "Retrieve all borrow records for current user")
-    public ResponseEntity<ApiResponse<List<BorrowDTO>>> getUserBorrows(@PathVariable Long libraryId) {
-        log.info("Getting user borrows for library {}", libraryId);
-        List<BorrowDTO> borrows = borrowService.getUserBorrows(libraryId);
+    @Operation(summary = "Get user's borrows", description = "Retrieve borrow records for current user, optionally filtered by status")
+    public ResponseEntity<ApiResponse<List<BorrowDTO>>> getUserBorrows(
+            @PathVariable Long libraryId,
+            @RequestParam(required = false) BorrowStatus status) {
+        log.info("Getting user borrows for library {} with status {}", libraryId, status);
+        List<BorrowDTO> borrows = borrowService.getUserBorrows(libraryId, status);
         return ResponseEntity.ok(ApiResponse.success("User borrows retrieved successfully", borrows));
     }
 
@@ -104,5 +107,15 @@ public class BorrowController {
         log.info("Getting pending borrow requests for library {}", libraryId);
         List<BorrowDTO> borrows = borrowService.getPendingBorrows(libraryId);
         return ResponseEntity.ok(ApiResponse.success("Pending borrow requests retrieved successfully", borrows));
+    }
+
+    @GetMapping("/admin/all")
+    @Operation(summary = "Get all library borrows", description = "Retrieve all borrows in a library (admin only), optionally filtered by status")
+    public ResponseEntity<ApiResponse<List<BorrowDTO>>> getLibraryBorrows(
+            @PathVariable Long libraryId,
+            @RequestParam(required = false) BorrowStatus status) {
+        log.info("Getting all borrows for library {} with status {}", libraryId, status);
+        List<BorrowDTO> borrows = borrowService.getLibraryBorrows(libraryId, status);
+        return ResponseEntity.ok(ApiResponse.success("Library borrows retrieved successfully", borrows));
     }
 }

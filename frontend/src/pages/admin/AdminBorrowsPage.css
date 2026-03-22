@@ -1,0 +1,49 @@
+.abr-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0;
+}
+
+.abr-tab {
+  padding: 0.55rem 1.1rem;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.18s, border-color 0.18s;
+}
+
+.abr-tab:hover { color: #1b3560; }
+
+.abr-tab--active {
+  color: #1b3560;
+  border-bottom-color: #c8a04c;
+}
+
+.abr-book-title {
+  font-weight: 600;
+  color: #1b3560;
+  font-size: 0.88rem;
+}
+
+.abr-copy {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+.abr-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.abr-row--overdue td {
+  background: rgba(254, 226, 226, 0.3);
+}
