@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { NavLink, Outlet, useParams } from "react-router-dom";
+import { NavLink, Navigate, Outlet, useParams } from "react-router-dom";
 import { libraryAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { LibraryContext } from "../context/LibraryContext";
@@ -7,7 +7,7 @@ import "./LibraryLayout.css";
 
 const LibraryLayout = () => {
   const { libraryId } = useParams();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [libraryName, setLibraryName] = useState("");
   const [borrowDuration, setBorrowDuration] = useState(14);
   const [userRole, setUserRole] = useState(null);
@@ -42,6 +42,10 @@ const LibraryLayout = () => {
     })();
     return () => { cancelled = true; };
   }, [libraryId, isAuthenticated]);
+
+  if (!authLoading && !isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
 
   if (!loading && isAuthenticated && membershipStatus !== "APPROVED") {
     return (

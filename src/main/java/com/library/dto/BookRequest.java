@@ -33,9 +33,6 @@ public class BookRequest {
     @Schema(description = "Book description")
     private String description;
 
-    @Schema(description = "Cover image URL")
-    private String coverImageUrl;
-
     @Schema(description = "Auto-approve digital borrow requests", example = "false")
     private Boolean autoDigitalBorrowEnabled = false;
 }

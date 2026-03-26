@@ -98,9 +98,9 @@
 
 /* ── Books Grid ──────────────────────────────── */
 .books-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 /* ── Book Card ──────────────────────────────── */
@@ -111,46 +111,45 @@
   box-shadow: var(--shadow-sm);
   transition: var(--transition);
   display: flex;
+  flex-direction: row;
+  direction: ltr;
   overflow: hidden;
+  min-height: 200px;
 }
 
 .book-card:hover {
   box-shadow: var(--shadow-md);
-  transform: translateY(-3px);
-}
-
-.book-card-spine {
-  width: 6px;
-  background: linear-gradient(to bottom, var(--color-primary), var(--color-accent));
-  flex-shrink: 0;
+  transform: translateY(-2px);
 }
 
 .book-card-body {
-  padding: 1.25rem;
+  direction: rtl;
+  padding: 1.25rem 1.5rem;
   display: flex;
   flex-direction: column;
   flex: 1;
   gap: 0.5rem;
+  border-right: 4px solid var(--color-primary);
 }
 
 .book-card-top {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
 .book-title {
-  font-size: 0.975rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--color-text);
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 .book-author,
 .book-publisher {
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   color: var(--color-text-secondary);
   margin: 0;
 }
@@ -159,10 +158,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--color-border-light);
-  margin-top: 0.25rem;
-  gap: 0.5rem;
+  margin-top: auto;
 }
 
 .book-availability {
@@ -187,7 +187,120 @@
   white-space: nowrap;
 }
 
-@media (max-width: 480px) {
-  .books-grid { grid-template-columns: 1fr; }
+@media (max-width: 600px) {
   .books-header-inner { flex-direction: column; align-items: flex-start; }
+  .book-card-cover { width: 100px; min-height: 141px; }
+  .book-title { font-size: 0.92rem; }
+  .book-card-body { padding: 0.9rem 1rem; }
+}
+
+.digital-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  background: var(--color-info-bg);
+  color: var(--color-info);
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--radius-full);
+}
+
+.book-card-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.btn-info {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+  border: 1.5px solid var(--color-info);
+}
+.btn-info:hover { background: var(--color-info); color: #fff; }
+.btn-info:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* A4 ratio: width=142px → height=142×1.4142=201px */
+.book-card-cover {
+  width: 142px;
+  flex-shrink: 0;
+  align-self: stretch;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(160deg, #1A2F50 0%, #2d4a7a 60%, #1a3a6b 100%);
+  min-height: 201px;
+}
+
+.book-cover-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.book-cover-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 0.75rem;
+  gap: 0.6rem;
+  text-align: center;
+  direction: rtl;
+}
+
+.book-cover-placeholder-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.book-cover-placeholder-author {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.6);
+}
+
+/* Digital borrow format selection */
+.digital-format-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.digital-format-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.digital-format-option:hover { border-color: var(--color-primary); }
+.digital-format-option.selected { border-color: var(--color-primary); background: var(--color-info-bg); }
+.digital-format-option input { display: none; }
+.digital-format-badge-lg {
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--color-primary);
+  color: #fff;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+.digital-format-filename {
+  font-size: 0.85rem;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.digital-format-version {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
 }

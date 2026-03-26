@@ -19,9 +19,6 @@ public class BorrowRequest {
     @Schema(description = "Type of borrow (PHYSICAL or DIGITAL)", example = "PHYSICAL")
     private BorrowType borrowType;
 
-    @Schema(description = "Book copy ID (required for PHYSICAL borrow)", example = "1")
+    @Schema(description = "Book copy ID (optional for PHYSICAL borrow, auto-selected if omitted)", example = "1")
     private Long bookCopyId;
-
-    @Schema(description = "Digital book ID (required for DIGITAL borrow)", example = "1")
-    private Long digitalBookId;
 }

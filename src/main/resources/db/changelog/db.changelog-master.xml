@@ -14,5 +14,7 @@
     <include file="db/changelog/v1/09-create-borrows-table.xml"/>
     <include file="db/changelog/v1/10-create-audit-logs-table.xml"/>
     <include file="db/changelog/v1/11-add-borrow-unique-constraint.xml"/>
+    <include file="db/changelog/v1/12-books-cover-image-to-file-resource.xml"/>
+    <include file="db/changelog/v1/13-redesign-digital-borrow.xml"/>
 
 </databaseChangeLog>

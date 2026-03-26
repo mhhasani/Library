@@ -57,7 +57,6 @@ class BookControllerTest extends BaseIntegrationTest {
                 .publisher("Prentice Hall")
                 .publicationYear(2008)
                 .description("A handbook of agile software craftsmanship")
-                .coverImageUrl("http://example.com/clean-code.jpg")
                 .autoDigitalBorrowEnabled(false)
                 .build();
 

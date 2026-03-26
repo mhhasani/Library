@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
+
+    <changeSet id="12" author="system">
+        <comment>Replace cover_image_url with FK to file_resources</comment>
+
+        <dropColumn tableName="books" columnName="cover_image_url"/>
+
+        <addColumn tableName="books">
+            <column name="cover_image_file_resource_id" type="BIGINT"/>
+        </addColumn>
+
+        <addForeignKeyConstraint
+                baseTableName="books"
+                baseColumnNames="cover_image_file_resource_id"
+                constraintName="fk_books_cover_image_file_resource"
+                referencedTableName="file_resources"
+                referencedColumnNames="id"
+                onDelete="SET NULL"/>
+    </changeSet>
+
+</databaseChangeLog>

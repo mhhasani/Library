@@ -70,7 +70,6 @@ public class BookService {
                 .publisher(request.getPublisher())
                 .publicationYear(request.getPublicationYear())
                 .description(request.getDescription())
-                .coverImageUrl(request.getCoverImageUrl())
                 .autoDigitalBorrowEnabled(request.getAutoDigitalBorrowEnabled() != null ? request.getAutoDigitalBorrowEnabled() : false)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -159,7 +158,6 @@ public class BookService {
         book.setPublisher(request.getPublisher());
         book.setPublicationYear(request.getPublicationYear());
         book.setDescription(request.getDescription());
-        book.setCoverImageUrl(request.getCoverImageUrl());
         book.setAutoDigitalBorrowEnabled(request.getAutoDigitalBorrowEnabled());
         book.setUpdatedAt(LocalDateTime.now());
 
@@ -231,10 +229,17 @@ public class BookService {
         log.info("Added {} copies for book {} in library {}", numberOfCopies, bookId, libraryId);
     }
 
-    private BookDTO mapToBookDTO(Book book) {
+    public BookDTO mapToBookDTO(Book book) {
         long totalCopies = bookCopyRepository.findByBookId(book.getId()).size();
         long availableCopies = bookCopyRepository.countByBookIdAndStatus(book.getId(), BookCopyStatus.AVAILABLE);
         boolean hasDigitalVersions = !digitalBookRepository.findByBookId(book.getId()).isEmpty();
+
+        String coverImageUrl = null;
+        Long coverImageFileResourceId = null;
+        if (book.getCoverImage() != null) {
+            coverImageFileResourceId = book.getCoverImage().getId();
+            coverImageUrl = "/api/v1/files/" + book.getCoverImage().getId();
+        }
 
         return BookDTO.builder()
                 .id(book.getId())
@@ -244,7 +249,8 @@ public class BookService {
                 .publisher(book.getPublisher())
                 .publicationYear(book.getPublicationYear())
                 .description(book.getDescription())
-                .coverImageUrl(book.getCoverImageUrl())
+                .coverImageUrl(coverImageUrl)
+                .coverImageFileResourceId(coverImageFileResourceId)
                 .autoDigitalBorrowEnabled(book.getAutoDigitalBorrowEnabled())
                 .availableCopiesCount(availableCopies)
                 .totalCopiesCount(totalCopies)

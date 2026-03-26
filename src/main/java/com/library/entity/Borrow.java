@@ -15,7 +15,6 @@ import java.time.LocalDateTime;
     @Index(name = "idx_user_id", columnList = "user_id"),
     @Index(name = "idx_book_id", columnList = "book_id"),
     @Index(name = "idx_book_copy_id", columnList = "book_copy_id"),
-    @Index(name = "idx_digital_book_id", columnList = "digital_book_id"),
     @Index(name = "idx_status", columnList = "status"),
     @Index(name = "idx_due_date", columnList = "due_date")
 })
@@ -48,10 +47,6 @@ public class Borrow {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "book_copy_id")
     private BookCopy bookCopy;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "digital_book_id")
-    private DigitalBook digitalBook;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

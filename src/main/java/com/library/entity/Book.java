@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
 
@@ -43,8 +44,9 @@ public class Book {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "cover_image_url", length = 500)
-    private String coverImageUrl;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cover_image_file_resource_id")
+    private FileResource coverImage;
 
     @Column(nullable = false)
     @Builder.Default

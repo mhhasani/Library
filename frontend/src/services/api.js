@@ -144,6 +144,40 @@ export const bookAPI = {
     api.post(`/v1/libraries/${libraryId}/books/${bookId}/copies`, {
       numberOfCopies,
     }),
+  uploadCoverImage: (libraryId, bookId, file, onProgress) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post(`/v1/libraries/${libraryId}/books/${bookId}/cover`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: (e) => {
+        if (onProgress && e.total) {
+          onProgress(Math.round((e.loaded * 100) / e.total));
+        }
+      },
+    });
+  },
+  // Digital book endpoints
+  listDigitalBooks: (libraryId, bookId) =>
+    api.get(`/v1/libraries/${libraryId}/books/${bookId}/digital`),
+  uploadDigitalBook: (libraryId, bookId, file, versionName, onProgress) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (versionName) formData.append("versionName", versionName);
+    return api.post(`/v1/libraries/${libraryId}/books/${bookId}/digital`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: (e) => {
+        if (onProgress && e.total) {
+          onProgress(Math.round((e.loaded * 100) / e.total));
+        }
+      },
+    });
+  },
+  deleteDigitalBook: (libraryId, bookId, digitalBookId) =>
+    api.delete(`/v1/libraries/${libraryId}/books/${bookId}/digital/${digitalBookId}`),
+  downloadDigitalBook: (libraryId, bookId, digitalBookId) =>
+    api.get(`/v1/libraries/${libraryId}/books/${bookId}/digital/${digitalBookId}/download`, {
+      responseType: "blob",
+    }),
 };
 
 // Borrow endpoints (require libraryId)
@@ -156,7 +190,6 @@ export const borrowAPI = {
     api.post(`/v1/libraries/${libraryId}/borrows/${borrowData.bookId}`, {
       borrowType: borrowData.borrowType,
       bookCopyId: borrowData.bookCopyId,
-      digitalBookId: borrowData.digitalBookId,
     }),
   approveBorrow: (libraryId, borrowId) =>
     api.post(`/v1/libraries/${libraryId}/borrows/${borrowId}/approve`),

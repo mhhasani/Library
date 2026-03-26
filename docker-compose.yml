@@ -30,8 +30,11 @@ services:
       DB_USER: libraryuser
       DB_PASSWORD: librarypass
       JWT_SECRET: your-secret-key-change-this-in-production-at-least-32-characters-long
+      STORAGE_PATH: /data/library-files
     ports:
       - "8080:8080"
+    volumes:
+      - library_files:/data/library-files
     depends_on:
       postgres:
         condition: service_healthy
@@ -39,3 +42,4 @@ services:
 
 volumes:
   postgres_data:
+  library_files:

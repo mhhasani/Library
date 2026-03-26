@@ -36,8 +36,11 @@ public class BookDTO {
     @Schema(description = "Book description")
     private String description;
 
-    @Schema(description = "Cover image URL")
+    @Schema(description = "Cover image URL (served by the API)")
     private String coverImageUrl;
+
+    @Schema(description = "Cover image file resource ID")
+    private Long coverImageFileResourceId;
 
     @Schema(description = "Auto-approve digital borrow requests")
     private Boolean autoDigitalBorrowEnabled;

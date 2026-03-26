@@ -98,7 +98,7 @@ public class BorrowService {
         }
 
         // Check user doesn't already have an active physical borrow of this book
-        List<Borrow> activeBorrows = borrowRepository.findActivePhysicalBorrowByUserAndBook(
+        List<Borrow> activeBorrows = borrowRepository.findActiveBorrowByUserAndBookAndType(
                 user.getId(), book.getId(), BorrowType.PHYSICAL);
         if (!activeBorrows.isEmpty()) {
             throw new BadRequestException("User already has an active physical borrow of this book");
@@ -122,26 +122,17 @@ public class BorrowService {
     }
 
     private BorrowDTO createDigitalBorrow(User user, Library library, Book book, BorrowRequest request) {
-        if (request.getDigitalBookId() == null) {
-            throw new BadRequestException("Digital book ID is required for digital borrow");
+        // Digital borrow is per-book: check the book has at least one digital version
+        boolean hasDigital = !digitalBookRepository.findByBookId(book.getId()).isEmpty();
+        if (!hasDigital) {
+            throw new BadRequestException("This book has no digital versions available");
         }
 
-        DigitalBook digitalBook = digitalBookRepository.findById(request.getDigitalBookId())
-                .orElseThrow(() -> new ResourceNotFoundException("Digital book not found"));
-
-        // Check digital book belongs to the book
-        if (!digitalBook.getBook().getId().equals(book.getId())) {
-            throw new BadRequestException("Digital book does not belong to this book");
-        }
-
-        // Check user doesn't already have this digital version
-        List<Borrow> existingBorrows = borrowRepository.findActivePhysicalBorrowByUserAndBook(
+        // Check user doesn't already have an active digital borrow for this book
+        List<Borrow> existingBorrows = borrowRepository.findActiveBorrowByUserAndBookAndType(
                 user.getId(), book.getId(), BorrowType.DIGITAL);
-        boolean alreadyHas = existingBorrows.stream()
-                .anyMatch(b -> b.getDigitalBook().getId().equals(digitalBook.getId()) 
-                        && b.getReturnDate() == null);
-        if (alreadyHas) {
-            throw new BadRequestException("User already has an active borrow of this digital version");
+        if (!existingBorrows.isEmpty()) {
+            throw new BadRequestException("User already has an active digital borrow for this book");
         }
 
         BorrowStatus initialStatus = book.getAutoDigitalBorrowEnabled() ? BorrowStatus.APPROVED : BorrowStatus.REQUESTED;
@@ -151,11 +142,10 @@ public class BorrowService {
                 .library(library)
                 .book(book)
                 .borrowType(BorrowType.DIGITAL)
-                .digitalBook(digitalBook)
                 .status(initialStatus)
                 .approvedBy(book.getAutoDigitalBorrowEnabled() ? library.getOwner() : null)
                 .borrowDate(book.getAutoDigitalBorrowEnabled() ? LocalDateTime.now() : null)
-                .dueDate(book.getAutoDigitalBorrowEnabled() ? 
+                .dueDate(book.getAutoDigitalBorrowEnabled() ?
                         LocalDateTime.now().plusDays(library.getDefaultBorrowDurationDays()) : null)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -207,9 +197,7 @@ public class BorrowService {
             long availableCopies = bookCopyRepository.countByBookIdAndStatus(borrow.getBook().getId(), BookCopyStatus.AVAILABLE);
             if (availableCopies == 0) {
                 Long bookId = borrow.getBook().getId();
-                List<Borrow> pendingBorrows = borrowRepository.findByStatus(BorrowStatus.REQUESTED).stream()
-                        .filter(b -> b.getBook().getId().equals(bookId) && !b.getId().equals(borrowId))
-                        .collect(Collectors.toList());
+                List<Borrow> pendingBorrows = borrowRepository.findRequestedBorrowsByBookExcluding(bookId, borrowId);
                 for (Borrow pending : pendingBorrows) {
                     pending.setStatus(BorrowStatus.REJECTED);
                     pending.setRejectionReason("رد خودکار: موجودی کتاب به پایان رسید");
@@ -368,8 +356,6 @@ public class BorrowService {
                 .borrowType(borrow.getBorrowType())
                 .bookCopyId(borrow.getBookCopy() != null ? borrow.getBookCopy().getId() : null)
                 .copyNumber(borrow.getBookCopy() != null ? borrow.getBookCopy().getCopyNumber() : null)
-                .digitalBookId(borrow.getDigitalBook() != null ? borrow.getDigitalBook().getId() : null)
-                .fileFormat(borrow.getDigitalBook() != null ? borrow.getDigitalBook().getFileFormat() : null)
                 .status(borrow.getStatus())
                 .approvedById(borrow.getApprovedBy() != null ? borrow.getApprovedBy().getId() : null)
                 .rejectionReason(borrow.getRejectionReason())

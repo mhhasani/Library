@@ -44,12 +44,6 @@ public class BorrowDTO {
     @Schema(description = "Copy number (for physical borrow)")
     private Integer copyNumber;
 
-    @Schema(description = "Digital book ID (for digital borrow)")
-    private Long digitalBookId;
-
-    @Schema(description = "File format (for digital borrow)", example = "PDF")
-    private String fileFormat;
-
     @Schema(description = "Borrow status", example = "REQUESTED")
     private BorrowStatus status;
 
