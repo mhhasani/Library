@@ -19,6 +19,11 @@ const SystemLibrariesPage = () => {
   });
   const [creating, setCreating] = useState(false);
 
+  // Edit library
+  const [editTarget, setEditTarget] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [editSaving, setEditSaving] = useState(false);
+
   const showSuccess = (msg) => {
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(""), 3500);
@@ -65,6 +70,39 @@ const SystemLibrariesPage = () => {
   const handleFormChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm((p) => ({ ...p, [name]: type === "checkbox" ? checked : value }));
+  };
+
+  const openEditModal = (lib) => {
+    setEditTarget(lib);
+    setEditForm({
+      name: lib.name,
+      description: lib.description || "",
+      autoMembershipApproval: lib.autoMembershipApproval,
+      defaultBorrowDurationDays: lib.defaultBorrowDurationDays,
+    });
+  };
+
+  const handleEditFormChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setEditForm((p) => ({ ...p, [name]: type === "checkbox" ? checked : value }));
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    try {
+      setEditSaving(true);
+      await libraryAPI.updateLibrary(editTarget.id, {
+        ...editForm,
+        defaultBorrowDurationDays: Number(editForm.defaultBorrowDurationDays),
+      });
+      showSuccess(`کتابخانه «${editForm.name}» ویرایش شد`);
+      setEditTarget(null);
+      fetchLibraries();
+    } catch (err) {
+      setError(err.response?.data?.message || "خطا در ویرایش کتابخانه");
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   const handleCreate = async (e) => {
@@ -186,21 +224,79 @@ const SystemLibrariesPage = () => {
                     </span>
                   </td>
                   <td>
-                    {lib.isActive && (
+                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                       <button
                         className="btn btn-sm btn-outline"
-                        style={{ color: "#dc2626", borderColor: "#dc2626", fontSize: "0.78rem" }}
-                        onClick={() => handleToggleActive(lib)}
-                        disabled={actionLoading[lib.id]}
+                        style={{ fontSize: "0.78rem" }}
+                        onClick={() => openEditModal(lib)}
                       >
-                        {actionLoading[lib.id] ? "..." : "غیرفعال‌کردن"}
+                        ✏️ ویرایش
                       </button>
-                    )}
+                      {lib.isActive && (
+                        <button
+                          className="btn btn-sm btn-outline"
+                          style={{ color: "#dc2626", borderColor: "#dc2626", fontSize: "0.78rem" }}
+                          onClick={() => handleToggleActive(lib)}
+                          disabled={actionLoading[lib.id]}
+                        >
+                          {actionLoading[lib.id] ? "..." : "غیرفعال‌کردن"}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      {/* Edit Library Modal */}
+      {editTarget && (
+        <div className="ap-modal-overlay" onClick={() => setEditTarget(null)}>
+          <div className="ap-modal" onClick={(e) => e.stopPropagation()}>
+            <h2 className="ap-modal-title">ویرایش کتابخانه</h2>
+            <form onSubmit={handleSaveEdit}>
+              <div className="ap-form-grid">
+                <div className="ap-form-group" style={{ gridColumn: "1 / -1" }}>
+                  <label>نام کتابخانه *</label>
+                  <input name="name" value={editForm.name} onChange={handleEditFormChange} required />
+                </div>
+                <div className="ap-form-group" style={{ gridColumn: "1 / -1" }}>
+                  <label>توضیحات</label>
+                  <textarea name="description" value={editForm.description} onChange={handleEditFormChange} rows={2} />
+                </div>
+                <div className="ap-form-group">
+                  <label>مدت امانت پیش‌فرض (روز)</label>
+                  <input
+                    name="defaultBorrowDurationDays"
+                    type="number"
+                    min="1"
+                    value={editForm.defaultBorrowDurationDays}
+                    onChange={handleEditFormChange}
+                  />
+                </div>
+                <div className="ap-form-group" style={{ justifyContent: "center" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      name="autoMembershipApproval"
+                      checked={editForm.autoMembershipApproval}
+                      onChange={handleEditFormChange}
+                    />
+                    تأیید خودکار عضویت
+                  </label>
+                </div>
+              </div>
+              <div className="ap-modal-actions">
+                <button className="btn btn-primary" type="submit" disabled={editSaving}>
+                  {editSaving ? "در حال ذخیره..." : "ذخیره تغییرات"}
+                </button>
+                <button className="btn btn-outline" type="button" onClick={() => setEditTarget(null)}>
+                  انصراف
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

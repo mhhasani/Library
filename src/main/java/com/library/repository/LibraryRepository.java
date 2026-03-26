@@ -10,4 +10,5 @@ import java.util.List;
 public interface LibraryRepository extends JpaRepository<Library, Long> {
     List<Library> findByOwnerId(Long ownerId);
     List<Library> findByIsActive(Boolean isActive);
+    long countByIsActive(Boolean isActive);
 }

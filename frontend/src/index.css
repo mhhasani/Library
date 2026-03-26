@@ -1,5 +1,6 @@
 :root {
-  --font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* TODO: install @fontsource/vazirmatn locally (npm install @fontsource/vazirmatn) and import in index.js */
+  --font-family: 'Vazirmatn', Tahoma, 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
 
   /* Color palette */
   --color-primary: #1B3560;

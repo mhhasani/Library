@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import PasswordInput from "../components/PasswordInput";
 import "./AuthPages.css";
 
 const LoginPage = () => {
@@ -55,14 +56,14 @@ const LoginPage = () => {
           </div>
           <div className="form-group">
             <label htmlFor="password">رمز عبور</label>
-            <input
-              type="password"
+            <PasswordInput
               id="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
               required
               placeholder="••••••••"
+              autoComplete="current-password"
             />
           </div>
           <button type="submit" disabled={loading} className="auth-submit-btn">

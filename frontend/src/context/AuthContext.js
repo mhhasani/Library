@@ -68,6 +68,15 @@ export const AuthProvider = ({ children }) => {
       }
     }
     setLoading(false);
+
+    // Sync logout across tabs and when interceptor clears tokens
+    const handleStorageChange = (e) => {
+      if (e.key === "token" && !e.newValue) {
+        setUser(null);
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
   const login = async (credentials) => {

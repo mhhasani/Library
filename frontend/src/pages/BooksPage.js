@@ -7,7 +7,7 @@ import "./BooksPage.css";
 
 const BooksPage = () => {
   const { libraryId } = useParams();
-  const { libraryName } = useLibrary() || {};
+  const { libraryName, borrowDuration } = useLibrary() || {};
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -152,6 +152,7 @@ const BooksPage = () => {
       <BorrowModal
         isOpen={isModalOpen}
         book={selectedBook}
+        borrowDuration={borrowDuration}
         onClose={() => { setIsModalOpen(false); setSelectedBook(null); setBorrowingError(""); }}
         onBorrow={handleBorrow}
       />

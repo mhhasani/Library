@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import "./BorrowModal.css";
 
-const BorrowModal = ({ isOpen, book, onClose, onBorrow }) => {
+const BorrowModal = ({ isOpen, book, onClose, onBorrow, borrowDuration = 14 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -52,7 +52,7 @@ const BorrowModal = ({ isOpen, book, onClose, onBorrow }) => {
             <div>
               <p className="notice-title">آیا می‌خواهید این کتاب را امانت بگیرید؟</p>
               <p className="notice-detail">
-                مدت امانت <strong>۱۴ روز</strong> می‌باشد.
+                مدت امانت <strong>{borrowDuration} روز</strong> می‌باشد.
               </p>
             </div>
           </div>

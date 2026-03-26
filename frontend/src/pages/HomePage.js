@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { statsAPI } from "../services/api";
 import "./HomePage.css";
 
 const features = [
@@ -28,6 +29,13 @@ const features = [
 
 const HomePage = () => {
   const { isAuthenticated } = useAuth();
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    statsAPI.getStats()
+      .then((res) => setStats(res.data?.data || null))
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="home-page">
@@ -58,22 +66,24 @@ const HomePage = () => {
               </Link>
             )}
           </div>
-          <div className="hero-stats">
-            <div className="stat">
-              <span className="stat-num">۱۰۰+</span>
-              <span className="stat-label">کتابخانه عضو</span>
+          {stats && (
+            <div className="hero-stats">
+              <div className="stat">
+                <span className="stat-num">{stats.totalLibraries}</span>
+                <span className="stat-label">کتابخانه فعال</span>
+              </div>
+              <div className="stat-divider" />
+              <div className="stat">
+                <span className="stat-num">{stats.totalBooks}</span>
+                <span className="stat-label">عنوان کتاب</span>
+              </div>
+              <div className="stat-divider" />
+              <div className="stat">
+                <span className="stat-num">{stats.totalUsers}</span>
+                <span className="stat-label">کاربر ثبت‌نام‌کرده</span>
+              </div>
             </div>
-            <div className="stat-divider" />
-            <div className="stat">
-              <span className="stat-num">۵۰۰۰+</span>
-              <span className="stat-label">عنوان کتاب</span>
-            </div>
-            <div className="stat-divider" />
-            <div className="stat">
-              <span className="stat-num">۲۰۰۰+</span>
-              <span className="stat-label">کاربر فعال</span>
-            </div>
-          </div>
+          )}
         </div>
         <div className="hero-illustration">
           <div className="books-stack">

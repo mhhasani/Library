@@ -9,6 +9,7 @@ const LibraryLayout = () => {
   const { libraryId } = useParams();
   const { isAuthenticated } = useAuth();
   const [libraryName, setLibraryName] = useState("");
+  const [borrowDuration, setBorrowDuration] = useState(14);
   const [userRole, setUserRole] = useState(null);
   const [membershipStatus, setMembershipStatus] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -29,6 +30,7 @@ const LibraryLayout = () => {
 
         if (!cancelled) {
           setLibraryName(lib?.name || "");
+          setBorrowDuration(lib?.defaultBorrowDurationDays || 14);
           setUserRole(myLib?.userRole || null);
           setMembershipStatus(myLib?.userStatus || null);
         }
@@ -43,7 +45,7 @@ const LibraryLayout = () => {
 
   if (!loading && isAuthenticated && membershipStatus !== "APPROVED") {
     return (
-      <LibraryContext.Provider value={{ libraryId, libraryName, userRole, membershipStatus, loading }}>
+      <LibraryContext.Provider value={{ libraryId, libraryName, borrowDuration, userRole, membershipStatus, loading }}>
         <div style={{ padding: "3rem", textAlign: "center", color: "var(--color-text-secondary)" }}>
           <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🔒</div>
           {membershipStatus === "PENDING" ? (

@@ -31,4 +31,5 @@ public interface BorrowRepository extends JpaRepository<Borrow, Long> {
 
     List<Borrow> findByLibraryId(Long libraryId);
     List<Borrow> findByLibraryIdAndStatus(Long libraryId, BorrowStatus status);
+    long countByStatus(BorrowStatus status);
 }
