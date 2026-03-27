@@ -132,6 +132,8 @@ export const bookAPI = {
     api.get(`/v1/libraries/${libraryId}/books`, { params }),
   searchBooks: (libraryId, params) =>
     api.get(`/v1/libraries/${libraryId}/books/search`, { params }),
+  // Subjects are now managed via /v1/libraries/{id}/subjects
+
   getBook: (libraryId, bookId) =>
     api.get(`/v1/libraries/${libraryId}/books/${bookId}`),
   createBook: (libraryId, bookData) =>
@@ -199,6 +201,8 @@ export const borrowAPI = {
     }),
   returnBorrow: (libraryId, borrowId) =>
     api.post(`/v1/libraries/${libraryId}/borrows/${borrowId}/return`),
+  reserveBook: (libraryId, bookId) =>
+    api.post(`/v1/libraries/${libraryId}/borrows/${bookId}/reserve`),
 };
 
 // Library endpoints
@@ -231,6 +235,16 @@ export const adminAPI = {
   getLibraries: () => api.get("/v1/admin/libraries"),
 };
 
+// Library stats endpoints (admin)
+export const libraryStatsAPI = {
+  getMostBorrowed: (libraryId, limit = 10) =>
+    api.get(`/v1/libraries/${libraryId}/stats/most-borrowed`, { params: { limit } }),
+  getUnderused: (libraryId) =>
+    api.get(`/v1/libraries/${libraryId}/stats/underused`),
+  getUserActivity: (libraryId, limit = 10) =>
+    api.get(`/v1/libraries/${libraryId}/stats/user-activity`, { params: { limit } }),
+};
+
 // Library admin endpoints
 export const libraryAdminAPI = {
   getMembers: (libraryId) =>
@@ -252,6 +266,13 @@ export const userAPI = {
   getProfile: () => api.get("/v1/users/me"),
   updateProfile: (data) => api.put("/v1/users/me", data),
   changePassword: (data) => api.put("/v1/users/me/password", data),
+};
+
+// Subject endpoints (per library)
+export const subjectAPI = {
+  getSubjects: (libraryId) => api.get(`/v1/libraries/${libraryId}/subjects`),
+  createSubject: (libraryId, name) => api.post(`/v1/libraries/${libraryId}/subjects`, { name }),
+  deleteSubject: (libraryId, subjectId) => api.delete(`/v1/libraries/${libraryId}/subjects/${subjectId}`),
 };
 
 // Public stats endpoint

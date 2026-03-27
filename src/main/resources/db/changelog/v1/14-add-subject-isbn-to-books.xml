@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
+
+    <!-- Library-scoped subject/category list manageable by admins -->
+    <changeSet id="14" author="system">
+        <createTable tableName="library_subjects">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="library_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_subject_library"
+                             references="libraries(id)" deleteCascade="true"/>
+            </column>
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex tableName="library_subjects" indexName="idx_library_subjects_library">
+            <column name="library_id"/>
+        </createIndex>
+
+        <addUniqueConstraint tableName="library_subjects"
+                             columnNames="library_id, name"
+                             constraintName="uq_library_subject_name"/>
+
+        <!-- FK from books to library_subjects (nullable) -->
+        <addColumn tableName="books">
+            <column name="subject_id" type="bigint">
+                <constraints nullable="true" foreignKeyName="fk_book_subject"
+                             references="library_subjects(id)"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

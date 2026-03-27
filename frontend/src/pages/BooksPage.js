@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { bookAPI, borrowAPI } from "../services/api";
+import { bookAPI, borrowAPI, subjectAPI } from "../services/api";
 import { useLibrary } from "../context/LibraryContext";
 import BorrowModal from "../components/BorrowModal";
 import "./BooksPage.css";
@@ -13,6 +13,20 @@ const BooksPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const [searching, setSearching] = useState(false);
+  const debounceTimer = useRef(null);
+  const yearFromTimer = useRef(null);
+  const yearToTimer = useRef(null);
+  const isFirstLoad = useRef(true);
+
+  // Advanced filters
+  const [filterSubjectId, setFilterSubjectId] = useState("");
+  const [filterYearFrom, setFilterYearFrom] = useState("");
+  const [filterYearTo, setFilterYearTo] = useState("");
+  const [debouncedYearFrom, setDebouncedYearFrom] = useState("");
+  const [debouncedYearTo, setDebouncedYearTo] = useState("");
+  const [availableSubjects, setAvailableSubjects] = useState([]);
 
   // Physical borrow modal
   const [selectedBook, setSelectedBook] = useState(null);
@@ -27,11 +41,47 @@ const BooksPage = () => {
   const [downloadFormatsLoading, setDownloadFormatsLoading] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
 
+  // Load available subjects on mount
+  useEffect(() => {
+    subjectAPI.getSubjects(libraryId)
+      .then((res) => setAvailableSubjects(res.data?.data || []))
+      .catch(() => {});
+  }, [libraryId]);
+
+  // Debounce text inputs — wait 1.5s after last keystroke
+  useEffect(() => {
+    clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => setDebouncedSearchTerm(searchTerm), 1500);
+    return () => clearTimeout(debounceTimer.current);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    clearTimeout(yearFromTimer.current);
+    yearFromTimer.current = setTimeout(() => setDebouncedYearFrom(filterYearFrom), 1500);
+    return () => clearTimeout(yearFromTimer.current);
+  }, [filterYearFrom]);
+
+  useEffect(() => {
+    clearTimeout(yearToTimer.current);
+    yearToTimer.current = setTimeout(() => setDebouncedYearTo(filterYearTo), 1500);
+    return () => clearTimeout(yearToTimer.current);
+  }, [filterYearTo]);
+
+  const hasActiveFilters = searchTerm || filterSubjectId || filterYearFrom || filterYearTo;
+
   const fetchBooks = useCallback(async () => {
     try {
-      setLoading(true);
+      if (isFirstLoad.current) setLoading(true);
+      else setSearching(true);
+
+      const params = { page: 0, size: 200 };
+      if (debouncedSearchTerm.trim()) params.query = debouncedSearchTerm.trim();
+      if (filterSubjectId) params.subjectId = filterSubjectId;
+      if (debouncedYearFrom) params.yearFrom = parseInt(debouncedYearFrom);
+      if (debouncedYearTo) params.yearTo = parseInt(debouncedYearTo);
+
       const [booksRes, borrowsRes] = await Promise.all([
-        bookAPI.getBooks(libraryId, { search: searchTerm }),
+        bookAPI.searchBooks(libraryId, params),
         borrowAPI.getBorrows(libraryId).catch(() => ({ data: { data: [] } })),
       ]);
 
@@ -57,20 +107,46 @@ const BooksPage = () => {
       setError(err.response?.data?.message || "خطا در بارگذاری کتاب‌ها");
     } finally {
       setLoading(false);
+      setSearching(false);
+      isFirstLoad.current = false;
     }
-  }, [searchTerm, libraryId]);
+  }, [debouncedSearchTerm, filterSubjectId, debouncedYearFrom, debouncedYearTo, libraryId]);
 
   useEffect(() => { fetchBooks(); }, [fetchBooks]);
 
-  // Physical borrow
-  const handleBorrow = async (bookId) => {
-    await borrowAPI.createBorrow(libraryId, { bookId, borrowType: "PHYSICAL" });
-    setIsModalOpen(false);
-    setSelectedBook(null);
-    fetchBooks();
+  const clearFilters = () => {
+    setSearchTerm("");
+    setDebouncedSearchTerm("");
+    setFilterSubjectId("");
+    setFilterYearFrom("");
+    setDebouncedYearFrom("");
+    setFilterYearTo("");
+    setDebouncedYearTo("");
   };
 
-  // Digital borrow request — یه کلیک، بدون انتخاب فرمت
+  // Physical borrow
+  const handleBorrow = async (bookId) => {
+    try {
+      await borrowAPI.createBorrow(libraryId, { bookId, borrowType: "PHYSICAL" });
+      setIsModalOpen(false);
+      setSelectedBook(null);
+      fetchBooks();
+    } catch (err) {
+      setError(err.response?.data?.error || err.response?.data?.message || "خطا در ثبت امانت");
+    }
+  };
+
+  // Reserve when no copy available
+  const handleReserve = async (book) => {
+    try {
+      await borrowAPI.reserveBook(libraryId, book.id);
+      fetchBooks();
+    } catch (err) {
+      setError(err.response?.data?.error || err.response?.data?.message || "خطا در ثبت رزرو");
+    }
+  };
+
+  // Digital borrow request
   const handleRequestDigital = async (book) => {
     try {
       await borrowAPI.createBorrow(libraryId, { bookId: book.id, borrowType: "DIGITAL" });
@@ -116,6 +192,7 @@ const BooksPage = () => {
 
   if (loading) return <div className="loading">در حال بارگذاری کتاب‌ها...</div>;
 
+
   return (
     <div className="books-page">
       <div className="books-header">
@@ -129,25 +206,66 @@ const BooksPage = () => {
       </div>
 
       <div className="books-body">
-        <div className="search-container">
+        {/* Search & Filters — single inline bar */}
+        <div className="search-filter-bar">
           <div className="search-box">
             <span className="search-icon">🔍</span>
             <input
               type="text"
-              placeholder="جستجو بر اساس عنوان یا نام نویسنده..."
+              placeholder="جستجو بر اساس عنوان، نویسنده یا ناشر..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="search-input"
             />
+            {searching && <span className="search-spinner" />}
             {searchTerm && (
-              <button className="search-clear" onClick={() => setSearchTerm("")}>✕</button>
+              <button className="search-clear" onClick={() => { setSearchTerm(""); setDebouncedSearchTerm(""); }}>✕</button>
             )}
           </div>
+
+          {availableSubjects.length > 0 && (
+            <select
+              className="filter-select"
+              value={filterSubjectId}
+              onChange={(e) => setFilterSubjectId(e.target.value)}
+            >
+              <option value="">همه موضوعات</option>
+              {availableSubjects.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          )}
+
+          <input
+            type="number"
+            className="filter-input filter-input-year"
+            placeholder="از سال"
+            value={filterYearFrom}
+            onChange={(e) => setFilterYearFrom(e.target.value)}
+            min="1000" max="2100"
+          />
+          <input
+            type="number"
+            className="filter-input filter-input-year"
+            placeholder="تا سال"
+            value={filterYearTo}
+            onChange={(e) => setFilterYearTo(e.target.value)}
+            min="1000" max="2100"
+          />
+
+          {hasActiveFilters && (
+            <button className="btn btn-ghost btn-sm sfb-clear-btn" onClick={clearFilters}>پاک</button>
+          )}
         </div>
 
         {error && <div className="error-message">{error}</div>}
 
-        {books.length === 0 && !error ? (
+        {searching ? (
+          <div className="books-searching">
+            <div className="books-searching-spinner" />
+            <span>در حال جستجو...</span>
+          </div>
+        ) : books.length === 0 && !error ? (
           <div className="empty-state">
             <span className="empty-icon">📚</span>
             <p>کتابی یافت نشد</p>
@@ -172,6 +290,8 @@ const BooksPage = () => {
                       <h3 className="book-title">{book.title}</h3>
                       <p className="book-author">✍️ {book.author}</p>
                       {book.publisher && <p className="book-publisher">🏢 {book.publisher}</p>}
+                      {book.subjectName && <p className="book-subject">🏷️ {book.subjectName}</p>}
+                      {book.publicationYear && <p className="book-year">📅 {book.publicationYear}</p>}
                     </div>
 
                     <div className="book-card-footer">
@@ -186,7 +306,6 @@ const BooksPage = () => {
                       </div>
 
                       <div className="book-card-actions">
-                        {/* Physical borrow — only shown when book has physical copies */}
                         {book.totalCopiesCount > 0 && (
                           borrow.hasActivePhysical ? (
                             <button className="btn btn-ghost btn-sm" disabled>✓ امانت فیزیکی</button>
@@ -195,11 +314,13 @@ const BooksPage = () => {
                               📚 امانت فیزیکی
                             </button>
                           ) : (
-                            <button className="btn btn-ghost btn-sm" disabled>ناموجود</button>
+                            <button className="btn btn-outline btn-sm" onClick={() => handleReserve(book)}
+                              title="کتاب در حال حاضر موجود نیست. با کلیک رزرو می‌کنید.">
+                              🔖 رزرو
+                            </button>
                           )
                         )}
 
-                        {/* Digital borrow / download */}
                         {book.hasDigitalVersions && (
                           borrow.hasApprovedDigital ? (
                             <button className="btn btn-info btn-sm" onClick={() => openDownloadPicker(book)}>
@@ -223,7 +344,6 @@ const BooksPage = () => {
         )}
       </div>
 
-      {/* Physical Borrow Modal */}
       <BorrowModal
         isOpen={isModalOpen}
         book={selectedBook}
@@ -232,7 +352,6 @@ const BooksPage = () => {
         onBorrow={handleBorrow}
       />
 
-      {/* Download Format Picker */}
       {downloadBook && (
         <div className="modal-overlay" onClick={() => setDownloadBook(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>

@@ -79,13 +79,16 @@ public class BookController {
     }
 
     @GetMapping("/search")
-    @Operation(summary = "Search books", description = "Search books by title or author")
+    @Operation(summary = "Search books", description = "Advanced search: query (title/author/publisher), subjectId, yearFrom, yearTo")
     public ResponseEntity<ApiResponse<Page<BookDTO>>> searchBooks(
             @PathVariable Long libraryId,
-            @RequestParam String query,
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) Long subjectId,
+            @RequestParam(required = false) Integer yearFrom,
+            @RequestParam(required = false) Integer yearTo,
             Pageable pageable) {
-        log.info("Searching books in library: {} with query: {}", libraryId, query);
-        Page<BookDTO> books = bookService.searchBooks(libraryId, query, pageable);
+        log.info("Searching books in library: {} query={} subjectId={} year={}-{}", libraryId, query, subjectId, yearFrom, yearTo);
+        Page<BookDTO> books = bookService.advancedSearchBooks(libraryId, query, subjectId, yearFrom, yearTo, pageable);
         return ResponseEntity.ok(ApiResponse.success("Search results retrieved successfully", books));
     }
 

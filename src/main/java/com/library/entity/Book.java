@@ -41,6 +41,10 @@ public class Book {
     @Column(name = "publication_year")
     private Integer publicationYear;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subject_id")
+    private LibrarySubject subject;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 

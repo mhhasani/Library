@@ -60,6 +60,19 @@ public class BorrowController {
         );
     }
 
+    @PostMapping("/{bookId}/reserve")
+    @Operation(summary = "Reserve a book", description = "Reserve a book when no copies are available; placed in queue")
+    public ResponseEntity<ApiResponse<BorrowDTO>> reserveBook(
+            @PathVariable Long libraryId,
+            @PathVariable Long bookId) {
+        log.info("Reserving book {} in library {}", bookId, libraryId);
+        BorrowDTO borrow = borrowService.reserveBook(libraryId, bookId);
+        return new ResponseEntity<>(
+                ApiResponse.success("Book reserved successfully", borrow),
+                HttpStatus.CREATED
+        );
+    }
+
     @PostMapping("/{borrowId}/approve")
     @Operation(summary = "Approve borrow request", description = "Approve a pending borrow request (admin only)")
     public ResponseEntity<ApiResponse<BorrowDTO>> approveBorrow(

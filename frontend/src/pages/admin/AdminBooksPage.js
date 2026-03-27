@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { bookAPI } from "../../services/api";
+import { bookAPI, subjectAPI } from "../../services/api";
 import "./AdminBooksPage.css";
 
 const EMPTY_FORM = {
@@ -8,6 +8,7 @@ const EMPTY_FORM = {
   author: "",
   publisher: "",
   publicationYear: "",
+  subjectId: "",
   description: "",
   autoDigitalBorrowEnabled: false,
   initialCopies: "",
@@ -57,6 +58,12 @@ const AdminBooksPage = () => {
   const [createPdfUploading, setCreatePdfUploading] = useState(false);
   const createPdfInputRef = useRef(null);
 
+  // Subjects
+  const [subjects, setSubjects] = useState([]);
+  const [showSubjectModal, setShowSubjectModal] = useState(false);
+  const [newSubjectName, setNewSubjectName] = useState("");
+  const [savingSubject, setSavingSubject] = useState(false);
+
   // Digital book management
   const [digitalTarget, setDigitalTarget] = useState(null);
   const [digitalBooks, setDigitalBooks] = useState([]);
@@ -98,6 +105,16 @@ const AdminBooksPage = () => {
     return () => clearTimeout(timer);
   }, [fetchBooks, searchQuery]);
 
+  const fetchSubjects = useCallback(async () => {
+    if (!libraryId) return;
+    try {
+      const res = await subjectAPI.getSubjects(libraryId);
+      setSubjects(res.data?.data || []);
+    } catch { /* ignore */ }
+  }, [libraryId]);
+
+  useEffect(() => { fetchSubjects(); }, [fetchSubjects]);
+
   const openAddModal = () => {
     setEditingBook(null);
     setForm(EMPTY_FORM);
@@ -115,8 +132,10 @@ const AdminBooksPage = () => {
       author: book.author || "",
       publisher: book.publisher || "",
       publicationYear: book.publicationYear || "",
+      subjectId: book.subjectId || "",
       description: book.description || "",
       autoDigitalBorrowEnabled: book.autoDigitalBorrowEnabled || false,
+      initialCopies: "",
     });
     setCoverFile(null);
     setCoverPreview(book.coverImageUrl || null);
@@ -143,10 +162,13 @@ const AdminBooksPage = () => {
       setSaving(true);
       setError("");
       const payload = {
-        ...form,
-        publicationYear: form.publicationYear ? Number(form.publicationYear) : undefined,
+        title: form.title,
+        author: form.author,
         publisher: form.publisher || undefined,
+        publicationYear: form.publicationYear ? Number(form.publicationYear) : undefined,
+        subjectId: form.subjectId ? Number(form.subjectId) : undefined,
         description: form.description || undefined,
+        autoDigitalBorrowEnabled: form.autoDigitalBorrowEnabled,
       };
 
       let savedBook;
@@ -297,6 +319,29 @@ const AdminBooksPage = () => {
     }
   };
 
+  const handleAddSubject = async () => {
+    if (!newSubjectName.trim()) return;
+    try {
+      setSavingSubject(true);
+      await subjectAPI.createSubject(libraryId, newSubjectName.trim());
+      setNewSubjectName("");
+      await fetchSubjects();
+    } catch (err) {
+      setError(err.response?.data?.error || err.response?.data?.message || "خطا در افزودن موضوع");
+    } finally {
+      setSavingSubject(false);
+    }
+  };
+
+  const handleDeleteSubject = async (subjectId) => {
+    try {
+      await subjectAPI.deleteSubject(libraryId, subjectId);
+      await fetchSubjects();
+    } catch (err) {
+      setError(err.response?.data?.message || "خطا در حذف موضوع");
+    }
+  };
+
   const formatFileSize = (bytes) => {
     if (!bytes) return "";
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
@@ -321,6 +366,9 @@ const AdminBooksPage = () => {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
+        <button className="btn btn-ghost btn-sm" onClick={() => setShowSubjectModal(true)}>
+          🏷️ مدیریت موضوعات
+        </button>
         <button className="btn btn-accent" onClick={openAddModal}>
           + افزودن کتاب
         </button>
@@ -412,6 +460,20 @@ const AdminBooksPage = () => {
                 <div className="ap-form-group">
                   <label>سال انتشار</label>
                   <input name="publicationYear" type="number" value={form.publicationYear} onChange={handleFormChange} placeholder="مثلاً ۱۴۰۲" min="1000" max="2100" />
+                </div>
+                <div className="ap-form-group">
+                  <label>موضوع</label>
+                  <select name="subjectId" value={form.subjectId} onChange={handleFormChange}>
+                    <option value="">— بدون موضوع —</option>
+                    {subjects.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                  {subjects.length === 0 && (
+                    <small style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>
+                      ابتدا از «مدیریت موضوعات» موضوع تعریف کنید
+                    </small>
+                  )}
                 </div>
                 <div className="ap-form-group" style={{ gridColumn: "1 / -1" }}>
                   <label>توضیحات</label>
@@ -620,6 +682,49 @@ const AdminBooksPage = () => {
                 <button className="btn btn-outline" type="button" onClick={() => setDigitalTarget(null)}>بستن</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Subject Management Modal */}
+      {showSubjectModal && (
+        <div className="ap-modal-overlay" onClick={() => setShowSubjectModal(false)}>
+          <div className="ap-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <h2 className="ap-modal-title">🏷️ مدیریت موضوعات</h2>
+            <p style={{ fontSize: "0.85rem", color: "var(--color-text-muted)", marginBottom: "1rem" }}>
+              موضوعات تعریف‌شده در این کتابخانه:
+            </p>
+
+            {subjects.length === 0 ? (
+              <p style={{ color: "var(--color-text-muted)", fontSize: "0.85rem" }}>هنوز موضوعی تعریف نشده</p>
+            ) : (
+              <ul style={{ listStyle: "none", padding: 0, margin: "0 0 1rem", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                {subjects.map((s) => (
+                  <li key={s.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "var(--color-bg)", borderRadius: "6px", padding: "0.4rem 0.75rem" }}>
+                    <span style={{ flex: 1, fontSize: "0.88rem" }}>{s.name}</span>
+                    <button className="btn-icon btn-icon--delete" title="حذف" onClick={() => handleDeleteSubject(s.id)}>🗑️</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+              <input
+                className="ap-form-group input"
+                style={{ flex: 1, padding: "0.5rem 0.75rem", border: "1.5px solid var(--color-border)", borderRadius: "6px", fontSize: "0.88rem" }}
+                placeholder="نام موضوع جدید..."
+                value={newSubjectName}
+                onChange={(e) => setNewSubjectName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddSubject()}
+              />
+              <button className="btn btn-primary btn-sm" onClick={handleAddSubject} disabled={savingSubject || !newSubjectName.trim()}>
+                افزودن
+              </button>
+            </div>
+
+            <div className="ap-modal-actions" style={{ marginTop: "1rem" }}>
+              <button className="btn btn-outline" onClick={() => setShowSubjectModal(false)}>بستن</button>
+            </div>
           </div>
         </div>
       )}

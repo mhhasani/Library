@@ -180,6 +180,15 @@ public class BorrowService {
         }
 
         User admin = userRepository.findById(currentUserId).orElseThrow();
+        // For reservations (no bookCopy yet), auto-assign the first available copy
+        if (borrow.getBorrowType() == BorrowType.PHYSICAL && borrow.getBookCopy() == null) {
+            BookCopy availableCopy = bookCopyRepository.findByBookIdAndStatus(
+                    borrow.getBook().getId(), BookCopyStatus.AVAILABLE)
+                    .stream().findFirst()
+                    .orElseThrow(() -> new BadRequestException("هنوز هیچ نسخه‌ای از این کتاب موجود نیست."));
+            borrow.setBookCopy(availableCopy);
+        }
+
         borrow.setStatus(BorrowStatus.APPROVED);
         borrow.setApprovedBy(admin);
         borrow.setBorrowDate(LocalDateTime.now());
@@ -211,6 +220,54 @@ public class BorrowService {
         borrow = borrowRepository.save(borrow);
         log.info("Borrow request approved: {} by admin: {}", borrowId, admin.getEmail());
 
+        return mapToBorrowDTO(borrow);
+    }
+
+    public BorrowDTO reserveBook(Long libraryId, Long bookId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        User user = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new UnauthorizedException("Current user not found"));
+
+        Library library = libraryRepository.findById(libraryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Library not found"));
+
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new ResourceNotFoundException("Book not found"));
+
+        if (!book.getLibrary().getId().equals(libraryId)) {
+            throw new BadRequestException("Book does not belong to this library");
+        }
+
+        LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
+                .orElseThrow(() -> new UnauthorizedException("User is not a member of this library"));
+        if (!membership.getStatus().equals(MembershipStatus.APPROVED)) {
+            throw new UnauthorizedException("User membership is not approved");
+        }
+
+        long availableCopies = bookCopyRepository.countByBookIdAndStatus(bookId, BookCopyStatus.AVAILABLE);
+        if (availableCopies > 0) {
+            throw new BadRequestException("کتاب موجود است. از گزینه امانت فیزیکی استفاده کنید.");
+        }
+
+        List<Borrow> existing = borrowRepository.findActiveBorrowByUserAndBookAndType(
+                currentUserId, bookId, BorrowType.PHYSICAL);
+        if (!existing.isEmpty()) {
+            throw new BadRequestException("شما قبلاً برای این کتاب درخواست فعال دارید.");
+        }
+
+        Borrow borrow = Borrow.builder()
+                .user(user)
+                .library(library)
+                .book(book)
+                .borrowType(BorrowType.PHYSICAL)
+                .bookCopy(null) // no copy assigned yet
+                .status(BorrowStatus.REQUESTED)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        borrow = borrowRepository.save(borrow);
+        log.info("Book {} reserved by user {} in library {}", bookId, currentUserId, libraryId);
         return mapToBorrowDTO(borrow);
     }
 
@@ -346,6 +403,10 @@ public class BorrowService {
             isOverdue = LocalDateTime.now().isAfter(borrow.getDueDate());
         }
 
+        boolean isReservation = borrow.getBorrowType() == BorrowType.PHYSICAL
+                && borrow.getBookCopy() == null
+                && borrow.getStatus() == BorrowStatus.REQUESTED;
+
         return BorrowDTO.builder()
                 .id(borrow.getId())
                 .userId(borrow.getUser().getId())
@@ -363,6 +424,7 @@ public class BorrowService {
                 .dueDate(borrow.getDueDate())
                 .returnDate(borrow.getReturnDate())
                 .isOverdue(isOverdue)
+                .isReservation(isReservation)
                 .createdAt(borrow.getCreatedAt())
                 .updatedAt(borrow.getUpdatedAt())
                 .build();

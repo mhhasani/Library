@@ -3,6 +3,7 @@ package com.library.repository;
 import com.library.entity.Borrow;
 import com.library.entity.enums.BorrowStatus;
 import com.library.entity.enums.BorrowType;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -34,4 +35,24 @@ public interface BorrowRepository extends JpaRepository<Borrow, Long> {
     List<Borrow> findByLibraryId(Long libraryId);
     List<Borrow> findByLibraryIdAndStatus(Long libraryId, BorrowStatus status);
     long countByStatus(BorrowStatus status);
+
+    /** Most borrowed books in a library: [bookId, bookTitle, borrowCount] */
+    @Query("SELECT b.book.id, b.book.title, COUNT(b) AS cnt " +
+           "FROM Borrow b WHERE b.library.id = :libraryId " +
+           "AND b.status IN ('APPROVED', 'RETURNED') " +
+           "GROUP BY b.book.id, b.book.title ORDER BY cnt DESC")
+    List<Object[]> findMostBorrowedBooks(@Param("libraryId") Long libraryId, Pageable pageable);
+
+    /** Books never borrowed in a library */
+    @Query("SELECT b FROM Book b WHERE b.library.id = :libraryId " +
+           "AND NOT EXISTS (SELECT br FROM Borrow br WHERE br.book.id = b.id " +
+           "               AND br.status IN ('APPROVED', 'RETURNED'))")
+    List<com.library.entity.Book> findNeverBorrowedBooks(@Param("libraryId") Long libraryId);
+
+    /** Borrow count per user in a library: [userId, userEmail, borrowCount] */
+    @Query("SELECT b.user.id, b.user.email, COUNT(b) AS cnt " +
+           "FROM Borrow b WHERE b.library.id = :libraryId " +
+           "AND b.status IN ('APPROVED', 'RETURNED') " +
+           "GROUP BY b.user.id, b.user.email ORDER BY cnt DESC")
+    List<Object[]> findBorrowCountByUser(@Param("libraryId") Long libraryId, Pageable pageable);
 }

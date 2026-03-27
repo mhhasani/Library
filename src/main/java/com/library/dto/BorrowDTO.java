@@ -65,6 +65,9 @@ public class BorrowDTO {
     @Schema(description = "Is overdue")
     private Boolean isOverdue;
 
+    @Schema(description = "Is a reservation (physical borrow with no copy assigned yet)")
+    private Boolean isReservation;
+
     @Schema(description = "Borrow creation timestamp")
     private LocalDateTime createdAt;
 

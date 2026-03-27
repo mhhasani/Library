@@ -16,5 +16,7 @@
     <include file="db/changelog/v1/11-add-borrow-unique-constraint.xml"/>
     <include file="db/changelog/v1/12-books-cover-image-to-file-resource.xml"/>
     <include file="db/changelog/v1/13-redesign-digital-borrow.xml"/>
+    <include file="db/changelog/v1/14-add-subject-isbn-to-books.xml"/>
+    <include file="db/changelog/v1/15-add-subject-index.xml"/>
 
 </databaseChangeLog>

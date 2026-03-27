@@ -33,6 +33,12 @@ public class BookDTO {
     @Schema(description = "Year of publication", example = "2008")
     private Integer publicationYear;
 
+    @Schema(description = "Subject ID")
+    private Long subjectId;
+
+    @Schema(description = "Subject name")
+    private String subjectName;
+
     @Schema(description = "Book description")
     private String description;
 
