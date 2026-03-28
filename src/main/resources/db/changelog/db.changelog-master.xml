@@ -18,5 +18,6 @@
     <include file="db/changelog/v1/13-redesign-digital-borrow.xml"/>
     <include file="db/changelog/v1/14-add-subject-isbn-to-books.xml"/>
     <include file="db/changelog/v1/15-add-subject-index.xml"/>
+    <include file="db/changelog/v1/16-book-subjects-many-to-many.xml"/>
 
 </databaseChangeLog>

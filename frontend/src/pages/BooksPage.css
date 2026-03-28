@@ -235,11 +235,25 @@
 
 .book-author,
 .book-publisher,
-.book-subject,
 .book-year {
   font-size: 0.85rem;
   color: var(--color-text-secondary);
   margin: 0;
+}
+
+.book-subjects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.15rem 0;
+}
+
+.book-subject-tag {
+  font-size: 0.78rem;
+  background: var(--color-accent-soft, #ede9fe);
+  color: var(--color-accent, #7c3aed);
+  border-radius: 20px;
+  padding: 0.1rem 0.5rem;
 }
 
 .book-card-footer {

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
+
+    <changeSet id="16" author="system">
+        <!-- Migrate existing single-subject data into the new join table (before dropping column) -->
+        <createTable tableName="book_subjects">
+            <column name="book_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_book_subjects_book"
+                             references="books(id)" deleteCascade="true"/>
+            </column>
+            <column name="subject_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_book_subjects_subject"
+                             references="library_subjects(id)" deleteCascade="true"/>
+            </column>
+        </createTable>
+
+        <addPrimaryKey tableName="book_subjects" columnNames="book_id,subject_id"
+                       constraintName="pk_book_subjects"/>
+
+        <createIndex tableName="book_subjects" indexName="idx_book_subjects_subject">
+            <column name="subject_id"/>
+        </createIndex>
+
+        <!-- Copy existing subject assignments into the join table -->
+        <sql>
+            INSERT INTO book_subjects (book_id, subject_id)
+            SELECT id, subject_id FROM books WHERE subject_id IS NOT NULL;
+        </sql>
+
+        <!-- Drop old single-subject FK and column -->
+        <dropIndex tableName="books" indexName="idx_books_subject_id"/>
+        <dropForeignKeyConstraint baseTableName="books" constraintName="fk_book_subject"/>
+        <dropColumn tableName="books" columnName="subject_id"/>
+    </changeSet>
+
+</databaseChangeLog>

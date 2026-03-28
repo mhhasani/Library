@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -33,11 +34,11 @@ public class BookDTO {
     @Schema(description = "Year of publication", example = "2008")
     private Integer publicationYear;
 
-    @Schema(description = "Subject ID")
-    private Long subjectId;
+    @Schema(description = "Subject IDs")
+    private List<Long> subjectIds;
 
-    @Schema(description = "Subject name")
-    private String subjectName;
+    @Schema(description = "Subject names")
+    private List<String> subjectNames;
 
     @Schema(description = "Book description")
     private String description;

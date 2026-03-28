@@ -20,6 +20,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -66,15 +67,15 @@ class AdvancedSearchTest extends BaseIntegrationTest {
         // Create test books
         bookService.createBook(library.getId(), BookRequest.builder()
                 .title("مبانی فیزیک").author("هالیدی").publicationYear(2010)
-                .subjectId(scienceSubject.getId()).autoDigitalBorrowEnabled(false).build());
+                .subjectIds(List.of(scienceSubject.getId())).autoDigitalBorrowEnabled(false).build());
 
         bookService.createBook(library.getId(), BookRequest.builder()
                 .title("تاریخ ایران باستان").author("پیرنیا").publicationYear(1990)
-                .subjectId(historySubject.getId()).autoDigitalBorrowEnabled(false).build());
+                .subjectIds(List.of(historySubject.getId())).autoDigitalBorrowEnabled(false).build());
 
         bookService.createBook(library.getId(), BookRequest.builder()
                 .title("شیمی آلی").author("موریسون").publicationYear(2015)
-                .subjectId(scienceSubject.getId()).autoDigitalBorrowEnabled(false).build());
+                .subjectIds(List.of(scienceSubject.getId())).autoDigitalBorrowEnabled(false).build());
     }
 
     @AfterEach
@@ -99,7 +100,7 @@ class AdvancedSearchTest extends BaseIntegrationTest {
                 library.getId(), null, scienceSubject.getId(), null, null, PageRequest.of(0, 10));
 
         assertThat(results.getContent()).hasSize(2);
-        assertThat(results.getContent()).allMatch(b -> b.getSubjectId().equals(scienceSubject.getId()));
+        assertThat(results.getContent()).allMatch(b -> b.getSubjectIds().contains(scienceSubject.getId()));
     }
 
     @Test
@@ -132,13 +133,92 @@ class AdvancedSearchTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("Book DTO includes subject name")
-    void bookDTO_includesSubjectName() {
+    @DisplayName("Book DTO includes subject names list")
+    void bookDTO_includesSubjectNames() {
         Page<BookDTO> results = bookService.advancedSearchBooks(
                 library.getId(), "فیزیک", null, null, null, PageRequest.of(0, 10));
 
         BookDTO book = results.getContent().get(0);
-        assertThat(book.getSubjectName()).isEqualTo("علوم");
-        assertThat(book.getSubjectId()).isEqualTo(scienceSubject.getId());
+        assertThat(book.getSubjectNames()).containsExactly("علوم");
+        assertThat(book.getSubjectIds()).containsExactly(scienceSubject.getId());
+    }
+
+    @Test
+    @DisplayName("Book can have multiple subjects (many-to-many)")
+    void bookWithMultipleSubjects_returnsBothSubjectIds() {
+        bookService.createBook(library.getId(), BookRequest.builder()
+                .title("تاریخ علم").author("نویسنده").publicationYear(2000)
+                .subjectIds(List.of(scienceSubject.getId(), historySubject.getId()))
+                .autoDigitalBorrowEnabled(false).build());
+
+        Page<BookDTO> results = bookService.advancedSearchBooks(
+                library.getId(), "تاریخ علم", null, null, null, PageRequest.of(0, 10));
+
+        assertThat(results.getContent()).hasSize(1);
+        BookDTO book = results.getContent().get(0);
+        assertThat(book.getSubjectIds()).containsExactlyInAnyOrder(scienceSubject.getId(), historySubject.getId());
+        assertThat(book.getSubjectNames()).containsExactlyInAnyOrder("علوم", "تاریخ");
+    }
+
+    @Test
+    @DisplayName("Filtering by subject also returns multi-subject books that include that subject")
+    void filterBySubject_includesMultiSubjectBooks() {
+        // Book with both subjects
+        bookService.createBook(library.getId(), BookRequest.builder()
+                .title("تاریخ علم").author("نویسنده").publicationYear(2000)
+                .subjectIds(List.of(scienceSubject.getId(), historySubject.getId()))
+                .autoDigitalBorrowEnabled(false).build());
+
+        Page<BookDTO> scienceResults = bookService.advancedSearchBooks(
+                library.getId(), null, scienceSubject.getId(), null, null, PageRequest.of(0, 10));
+
+        // Should return: مبانی فیزیک, شیمی آلی, تاریخ علم (3 books)
+        assertThat(scienceResults.getContent()).hasSize(3);
+        assertThat(scienceResults.getContent()).allMatch(b -> b.getSubjectIds().contains(scienceSubject.getId()));
+    }
+
+    @Test
+    @DisplayName("Deleting a subject removes it from all associated books")
+    void deleteSubject_removesFromBooks() {
+        // Verify subject is assigned
+        Page<BookDTO> before = bookService.advancedSearchBooks(
+                library.getId(), null, scienceSubject.getId(), null, null, PageRequest.of(0, 10));
+        assertThat(before.getContent()).hasSize(2);
+
+        // Delete subject
+        subjectService.deleteSubject(library.getId(), scienceSubject.getId());
+
+        // Now books should have no scienceSubject
+        Page<BookDTO> after = bookService.advancedSearchBooks(
+                library.getId(), null, null, null, null, PageRequest.of(0, 10));
+        assertThat(after.getContent()).allMatch(b -> !b.getSubjectIds().contains(scienceSubject.getId()));
+    }
+
+    @Test
+    @DisplayName("bookCount in subject DTO reflects number of books using it")
+    void subjectDTO_bookCount_isAccurate() {
+        // scienceSubject should have 2 books (مبانی فیزیک + شیمی آلی)
+        var subjects = subjectService.getSubjects(library.getId());
+        var science = subjects.stream().filter(s -> s.getId().equals(scienceSubject.getId())).findFirst().orElseThrow();
+        assertThat(science.getBookCount()).isEqualTo(2L);
+
+        var history = subjects.stream().filter(s -> s.getId().equals(historySubject.getId())).findFirst().orElseThrow();
+        assertThat(history.getBookCount()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("Book with no subjects has empty subject lists in DTO")
+    void bookWithNoSubject_hasEmptySubjectLists() {
+        bookService.createBook(library.getId(), BookRequest.builder()
+                .title("کتاب بدون موضوع").author("نویسنده")
+                .autoDigitalBorrowEnabled(false).build());
+
+        Page<BookDTO> results = bookService.advancedSearchBooks(
+                library.getId(), "بدون موضوع", null, null, null, PageRequest.of(0, 10));
+
+        assertThat(results.getContent()).hasSize(1);
+        BookDTO book = results.getContent().get(0);
+        assertThat(book.getSubjectIds()).isEmpty();
+        assertThat(book.getSubjectNames()).isEmpty();
     }
 }

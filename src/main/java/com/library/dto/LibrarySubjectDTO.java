@@ -12,5 +12,6 @@ public class LibrarySubjectDTO {
     private Long id;
     private Long libraryId;
     private String name;
+    private Long bookCount;
     private LocalDateTime createdAt;
 }

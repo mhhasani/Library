@@ -8,6 +8,7 @@ import com.library.entity.enums.LibraryMembershipRole;
 import com.library.exception.BadRequestException;
 import com.library.exception.ResourceNotFoundException;
 import com.library.exception.UnauthorizedException;
+import com.library.repository.BookRepository;
 import com.library.repository.LibraryMembershipRepository;
 import com.library.repository.LibraryRepository;
 import com.library.repository.LibrarySubjectRepository;
@@ -33,6 +34,9 @@ public class LibrarySubjectService {
 
     @Autowired
     private LibraryMembershipRepository membershipRepository;
+
+    @Autowired
+    private BookRepository bookRepository;
 
     public List<LibrarySubjectDTO> getSubjects(Long libraryId) {
         libraryRepository.findById(libraryId)
@@ -71,8 +75,10 @@ public class LibrarySubjectService {
         if (!subject.getLibrary().getId().equals(libraryId)) {
             throw new BadRequestException("Subject does not belong to this library");
         }
+        // Remove from book_subjects join table first (clears Hibernate L1 cache via clearAutomatically)
+        bookRepository.removeSubjectFromAllBooks(subjectId);
         subjectRepository.delete(subject);
-        log.info("Subject {} deleted from library {}", subjectId, libraryId);
+        log.info("Subject {} deleted from library {}, removed from all associated books", subjectId, libraryId);
     }
 
     private void requireAdmin(Long libraryId) {
@@ -89,6 +95,7 @@ public class LibrarySubjectService {
                 .id(s.getId())
                 .libraryId(s.getLibrary().getId())
                 .name(s.getName())
+                .bookCount(bookRepository.countBySubjectId(s.getId()))
                 .createdAt(s.getCreatedAt())
                 .build();
     }

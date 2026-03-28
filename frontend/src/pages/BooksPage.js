@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { bookAPI, borrowAPI, subjectAPI } from "../services/api";
 import { useLibrary } from "../context/LibraryContext";
+import { useDebounce } from "../hooks/useDebounce";
 import BorrowModal from "../components/BorrowModal";
 import "./BooksPage.css";
 
@@ -13,20 +14,19 @@ const BooksPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [searching, setSearching] = useState(false);
-  const debounceTimer = useRef(null);
-  const yearFromTimer = useRef(null);
-  const yearToTimer = useRef(null);
   const isFirstLoad = useRef(true);
 
   // Advanced filters
   const [filterSubjectId, setFilterSubjectId] = useState("");
   const [filterYearFrom, setFilterYearFrom] = useState("");
   const [filterYearTo, setFilterYearTo] = useState("");
-  const [debouncedYearFrom, setDebouncedYearFrom] = useState("");
-  const [debouncedYearTo, setDebouncedYearTo] = useState("");
   const [availableSubjects, setAvailableSubjects] = useState([]);
+
+  // Debounce text-based filters — any new text filter added here is automatically debounced
+  const debouncedSearchTerm = useDebounce(searchTerm, 1500);
+  const debouncedYearFrom = useDebounce(filterYearFrom, 1500);
+  const debouncedYearTo = useDebounce(filterYearTo, 1500);
 
   // Physical borrow modal
   const [selectedBook, setSelectedBook] = useState(null);
@@ -47,25 +47,6 @@ const BooksPage = () => {
       .then((res) => setAvailableSubjects(res.data?.data || []))
       .catch(() => {});
   }, [libraryId]);
-
-  // Debounce text inputs — wait 1.5s after last keystroke
-  useEffect(() => {
-    clearTimeout(debounceTimer.current);
-    debounceTimer.current = setTimeout(() => setDebouncedSearchTerm(searchTerm), 1500);
-    return () => clearTimeout(debounceTimer.current);
-  }, [searchTerm]);
-
-  useEffect(() => {
-    clearTimeout(yearFromTimer.current);
-    yearFromTimer.current = setTimeout(() => setDebouncedYearFrom(filterYearFrom), 1500);
-    return () => clearTimeout(yearFromTimer.current);
-  }, [filterYearFrom]);
-
-  useEffect(() => {
-    clearTimeout(yearToTimer.current);
-    yearToTimer.current = setTimeout(() => setDebouncedYearTo(filterYearTo), 1500);
-    return () => clearTimeout(yearToTimer.current);
-  }, [filterYearTo]);
 
   const hasActiveFilters = searchTerm || filterSubjectId || filterYearFrom || filterYearTo;
 
@@ -116,12 +97,9 @@ const BooksPage = () => {
 
   const clearFilters = () => {
     setSearchTerm("");
-    setDebouncedSearchTerm("");
     setFilterSubjectId("");
     setFilterYearFrom("");
-    setDebouncedYearFrom("");
     setFilterYearTo("");
-    setDebouncedYearTo("");
   };
 
   // Physical borrow
@@ -219,7 +197,7 @@ const BooksPage = () => {
             />
             {searching && <span className="search-spinner" />}
             {searchTerm && (
-              <button className="search-clear" onClick={() => { setSearchTerm(""); setDebouncedSearchTerm(""); }}>✕</button>
+              <button className="search-clear" onClick={() => setSearchTerm("")}>✕</button>
             )}
           </div>
 
@@ -290,7 +268,13 @@ const BooksPage = () => {
                       <h3 className="book-title">{book.title}</h3>
                       <p className="book-author">✍️ {book.author}</p>
                       {book.publisher && <p className="book-publisher">🏢 {book.publisher}</p>}
-                      {book.subjectName && <p className="book-subject">🏷️ {book.subjectName}</p>}
+                      {book.subjectNames?.length > 0 && (
+                        <div className="book-subjects">
+                          {book.subjectNames.map((name, i) => (
+                            <span key={i} className="book-subject-tag">🏷️ {name}</span>
+                          ))}
+                        </div>
+                      )}
                       {book.publicationYear && <p className="book-year">📅 {book.publicationYear}</p>}
                     </div>
 

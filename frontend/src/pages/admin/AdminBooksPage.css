@@ -210,3 +210,35 @@
 }
 .btn-danger:hover { background: #b91c1c; }
 .btn-danger:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Subject chip multi-select */
+.subject-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.5rem 0;
+}
+
+.subject-chip {
+  padding: 0.3rem 0.75rem;
+  border-radius: 20px;
+  border: 1.5px solid var(--color-border, #e5e7eb);
+  background: var(--color-bg, #fff);
+  color: var(--color-text-secondary, #6b7280);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.subject-chip:hover {
+  border-color: var(--color-accent, #7c3aed);
+  color: var(--color-accent, #7c3aed);
+}
+
+.subject-chip--selected {
+  background: var(--color-accent-soft, #ede9fe);
+  border-color: var(--color-accent, #7c3aed);
+  color: var(--color-accent, #7c3aed);
+  font-weight: 600;
+}

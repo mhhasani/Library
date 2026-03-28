@@ -8,7 +8,7 @@ const EMPTY_FORM = {
   author: "",
   publisher: "",
   publicationYear: "",
-  subjectId: "",
+  subjectIds: [],
   description: "",
   autoDigitalBorrowEnabled: false,
   initialCopies: "",
@@ -63,6 +63,7 @@ const AdminBooksPage = () => {
   const [showSubjectModal, setShowSubjectModal] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState("");
   const [savingSubject, setSavingSubject] = useState(false);
+  const [deleteSubjectTarget, setDeleteSubjectTarget] = useState(null); // {id, name, bookCount}
 
   // Digital book management
   const [digitalTarget, setDigitalTarget] = useState(null);
@@ -132,7 +133,7 @@ const AdminBooksPage = () => {
       author: book.author || "",
       publisher: book.publisher || "",
       publicationYear: book.publicationYear || "",
-      subjectId: book.subjectId || "",
+      subjectIds: book.subjectIds || [],
       description: book.description || "",
       autoDigitalBorrowEnabled: book.autoDigitalBorrowEnabled || false,
       initialCopies: "",
@@ -146,6 +147,15 @@ const AdminBooksPage = () => {
   const handleFormChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
+  };
+
+  const toggleSubjectId = (id) => {
+    setForm((prev) => ({
+      ...prev,
+      subjectIds: prev.subjectIds.includes(id)
+        ? prev.subjectIds.filter((s) => s !== id)
+        : [...prev.subjectIds, id],
+    }));
   };
 
   const handleCoverFileChange = (e) => {
@@ -166,7 +176,7 @@ const AdminBooksPage = () => {
         author: form.author,
         publisher: form.publisher || undefined,
         publicationYear: form.publicationYear ? Number(form.publicationYear) : undefined,
-        subjectId: form.subjectId ? Number(form.subjectId) : undefined,
+        subjectIds: form.subjectIds.length > 0 ? form.subjectIds : undefined,
         description: form.description || undefined,
         autoDigitalBorrowEnabled: form.autoDigitalBorrowEnabled,
       };
@@ -333,12 +343,19 @@ const AdminBooksPage = () => {
     }
   };
 
-  const handleDeleteSubject = async (subjectId) => {
+  const handleDeleteSubject = (subject) => {
+    setDeleteSubjectTarget(subject);
+  };
+
+  const confirmDeleteSubject = async () => {
+    if (!deleteSubjectTarget) return;
     try {
-      await subjectAPI.deleteSubject(libraryId, subjectId);
+      await subjectAPI.deleteSubject(libraryId, deleteSubjectTarget.id);
+      setDeleteSubjectTarget(null);
       await fetchSubjects();
     } catch (err) {
       setError(err.response?.data?.message || "خطا در حذف موضوع");
+      setDeleteSubjectTarget(null);
     }
   };
 
@@ -461,18 +478,25 @@ const AdminBooksPage = () => {
                   <label>سال انتشار</label>
                   <input name="publicationYear" type="number" value={form.publicationYear} onChange={handleFormChange} placeholder="مثلاً ۱۴۰۲" min="1000" max="2100" />
                 </div>
-                <div className="ap-form-group">
-                  <label>موضوع</label>
-                  <select name="subjectId" value={form.subjectId} onChange={handleFormChange}>
-                    <option value="">— بدون موضوع —</option>
-                    {subjects.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                  {subjects.length === 0 && (
+                <div className="ap-form-group" style={{ gridColumn: "1 / -1" }}>
+                  <label>موضوعات (می‌توانید چند موضوع انتخاب کنید)</label>
+                  {subjects.length === 0 ? (
                     <small style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>
                       ابتدا از «مدیریت موضوعات» موضوع تعریف کنید
                     </small>
+                  ) : (
+                    <div className="subject-chip-list">
+                      {subjects.map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          className={`subject-chip ${form.subjectIds.includes(s.id) ? "subject-chip--selected" : ""}`}
+                          onClick={() => toggleSubjectId(s.id)}
+                        >
+                          {s.name}
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
                 <div className="ap-form-group" style={{ gridColumn: "1 / -1" }}>
@@ -702,7 +726,7 @@ const AdminBooksPage = () => {
                 {subjects.map((s) => (
                   <li key={s.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "var(--color-bg)", borderRadius: "6px", padding: "0.4rem 0.75rem" }}>
                     <span style={{ flex: 1, fontSize: "0.88rem" }}>{s.name}</span>
-                    <button className="btn-icon btn-icon--delete" title="حذف" onClick={() => handleDeleteSubject(s.id)}>🗑️</button>
+                    <button className="btn-icon btn-icon--delete" title="حذف" onClick={() => handleDeleteSubject(s)}>🗑️</button>
                   </li>
                 ))}
               </ul>
@@ -724,6 +748,34 @@ const AdminBooksPage = () => {
 
             <div className="ap-modal-actions" style={{ marginTop: "1rem" }}>
               <button className="btn btn-outline" onClick={() => setShowSubjectModal(false)}>بستن</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Subject Delete Confirmation */}
+      {deleteSubjectTarget && (
+        <div className="ap-confirm-overlay">
+          <div className="ap-confirm-box">
+            <div className="ap-confirm-icon">🏷️</div>
+            <div className="ap-confirm-title">حذف موضوع</div>
+            {deleteSubjectTarget.bookCount > 0 ? (
+              <p className="ap-confirm-msg">
+                موضوع «{deleteSubjectTarget.name}» در{" "}
+                <strong>{deleteSubjectTarget.bookCount} کتاب</strong> استفاده شده است.
+                <br />
+                با حذف این موضوع، از همه آن کتاب‌ها نیز حذف می‌شود. ادامه می‌دهید؟
+              </p>
+            ) : (
+              <p className="ap-confirm-msg">
+                آیا از حذف موضوع «{deleteSubjectTarget.name}» اطمینان دارید؟
+              </p>
+            )}
+            <div className="ap-confirm-actions">
+              <button className="btn btn-danger" onClick={confirmDeleteSubject}>
+                بله، حذف کن
+              </button>
+              <button className="btn btn-outline" onClick={() => setDeleteSubjectTarget(null)}>انصراف</button>
             </div>
           </div>
         </div>

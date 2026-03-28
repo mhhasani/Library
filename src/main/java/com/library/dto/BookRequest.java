@@ -8,6 +8,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -30,8 +32,8 @@ public class BookRequest {
     @Schema(description = "Year of publication", example = "2008")
     private Integer publicationYear;
 
-    @Schema(description = "Subject ID (from library's predefined subjects list)")
-    private Long subjectId;
+    @Schema(description = "Subject IDs (from library's predefined subjects list)")
+    private List<Long> subjectIds;
 
     @Schema(description = "Book description")
     private String description;

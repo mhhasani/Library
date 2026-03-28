@@ -20,6 +20,7 @@ import com.library.repository.LibraryMembershipRepository;
 import com.library.repository.LibraryRepository;
 import com.library.repository.LibrarySubjectRepository;
 import com.library.util.SecurityUtils;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -71,7 +73,7 @@ public class BookService {
             throw new UnauthorizedException("Only library admins can create books");
         }
 
-        LibrarySubject subject = resolveSubject(libraryId, request.getSubjectId());
+        List<LibrarySubject> subjects = resolveSubjects(libraryId, request.getSubjectIds());
 
         Book book = Book.builder()
                 .library(library)
@@ -79,7 +81,7 @@ public class BookService {
                 .author(request.getAuthor())
                 .publisher(request.getPublisher())
                 .publicationYear(request.getPublicationYear())
-                .subject(subject)
+                .subjects(subjects)
                 .description(request.getDescription())
                 .autoDigitalBorrowEnabled(request.getAutoDigitalBorrowEnabled() != null ? request.getAutoDigitalBorrowEnabled() : false)
                 .createdAt(LocalDateTime.now())
@@ -151,7 +153,9 @@ public class BookService {
                 ));
             }
             if (subjectId != null) {
-                predicates.add(cb.equal(root.get("subject").get("id"), subjectId));
+                var subjectsJoin = root.join("subjects", JoinType.INNER);
+                predicates.add(cb.equal(subjectsJoin.get("id"), subjectId));
+                cq.distinct(true);
             }
             if (yearFrom != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("publicationYear"), yearFrom));
@@ -165,14 +169,16 @@ public class BookService {
         return bookRepository.findAll(spec, pageable).map(this::mapToBookDTO);
     }
 
-    private LibrarySubject resolveSubject(Long libraryId, Long subjectId) {
-        if (subjectId == null) return null;
-        LibrarySubject subject = subjectRepository.findById(subjectId)
-                .orElseThrow(() -> new ResourceNotFoundException("Subject not found with id: " + subjectId));
-        if (!subject.getLibrary().getId().equals(libraryId)) {
-            throw new BadRequestException("Subject does not belong to this library");
-        }
-        return subject;
+    private List<LibrarySubject> resolveSubjects(Long libraryId, List<Long> subjectIds) {
+        if (subjectIds == null || subjectIds.isEmpty()) return Collections.emptyList();
+        return subjectIds.stream().map(id -> {
+            LibrarySubject subject = subjectRepository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Subject not found with id: " + id));
+            if (!subject.getLibrary().getId().equals(libraryId)) {
+                throw new BadRequestException("Subject does not belong to this library");
+            }
+            return subject;
+        }).collect(Collectors.toList());
     }
 
     public BookDTO updateBook(Long libraryId, Long bookId, BookRequest request) {
@@ -199,7 +205,7 @@ public class BookService {
         book.setAuthor(request.getAuthor());
         book.setPublisher(request.getPublisher());
         book.setPublicationYear(request.getPublicationYear());
-        book.setSubject(resolveSubject(libraryId, request.getSubjectId()));
+        book.setSubjects(resolveSubjects(libraryId, request.getSubjectIds()));
         book.setDescription(request.getDescription());
         book.setAutoDigitalBorrowEnabled(request.getAutoDigitalBorrowEnabled());
         book.setUpdatedAt(LocalDateTime.now());
@@ -284,6 +290,13 @@ public class BookService {
             coverImageUrl = "/api/v1/files/" + book.getCoverImage().getId();
         }
 
+        List<Long> subjectIds = book.getSubjects() != null
+                ? book.getSubjects().stream().map(LibrarySubject::getId).collect(Collectors.toList())
+                : Collections.emptyList();
+        List<String> subjectNames = book.getSubjects() != null
+                ? book.getSubjects().stream().map(LibrarySubject::getName).collect(Collectors.toList())
+                : Collections.emptyList();
+
         return BookDTO.builder()
                 .id(book.getId())
                 .libraryId(book.getLibrary().getId())
@@ -291,8 +304,8 @@ public class BookService {
                 .author(book.getAuthor())
                 .publisher(book.getPublisher())
                 .publicationYear(book.getPublicationYear())
-                .subjectId(book.getSubject() != null ? book.getSubject().getId() : null)
-                .subjectName(book.getSubject() != null ? book.getSubject().getName() : null)
+                .subjectIds(subjectIds)
+                .subjectNames(subjectNames)
                 .description(book.getDescription())
                 .coverImageUrl(coverImageUrl)
                 .coverImageFileResourceId(coverImageFileResourceId)
