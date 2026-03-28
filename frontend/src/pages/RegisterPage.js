@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import PasswordInput from "../components/PasswordInput";
+import AjaLogo from "../components/AjaLogo";
 import "./AuthPages.css";
 
 const RegisterPage = () => {
@@ -50,8 +51,8 @@ const RegisterPage = () => {
     <div className="auth-page auth-page-register">
       <div className="auth-panel auth-panel-wide">
         <div className="auth-brand">
-          <span className="auth-brand-icon">📚</span>
-          <span className="auth-brand-name">سامانه کتابخانه</span>
+          <AjaLogo size={32} />
+          <span className="auth-brand-name">کتابخانه هوشمند آجا</span>
         </div>
         <h2 className="auth-title">ایجاد حساب کاربری</h2>
         <p className="auth-subtitle">ثبت‌نام رایگان و دسترسی فوری به کتابخانه‌ها</p>

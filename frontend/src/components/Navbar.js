@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import AjaLogo from "./AjaLogo";
 import "./Navbar.css";
 
 const Navbar = () => {
@@ -21,8 +22,11 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="navbar-inner">
         <Link to="/" className="navbar-logo">
-          <span className="logo-icon">📚</span>
-          <span className="logo-text">سامانه کتابخانه</span>
+          <AjaLogo size={46} className="logo-shield-svg" />
+          <div className="logo-text-group">
+            <span className="logo-text-main">کتابخانه هوشمند آجا</span>
+            <span className="logo-text-sub">ارتش جمهوری اسلامی ایران</span>
+          </div>
         </Link>
 
         <button
@@ -30,9 +34,9 @@ const Navbar = () => {
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label="منو"
         >
-          <span />
-          <span />
-          <span />
+          <span className={menuOpen ? "open" : ""} />
+          <span className={menuOpen ? "open" : ""} />
+          <span className={menuOpen ? "open" : ""} />
         </button>
 
         <div className={`navbar-links ${menuOpen ? "open" : ""}`}>
@@ -44,18 +48,14 @@ const Navbar = () => {
             کتابخانه‌ها
           </Link>
 
-          {isAuthenticated && (
-            <>
-              {user?.systemRole === "SYSTEM_ADMIN" && (
-                <Link
-                  to="/system"
-                  className={`nav-link nav-link--system ${location.pathname.startsWith("/system") ? "active" : ""}`}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  ⚙️ پنل سیستم
-                </Link>
-              )}
-            </>
+          {isAuthenticated && user?.systemRole === "SYSTEM_ADMIN" && (
+            <Link
+              to="/system"
+              className={`nav-link nav-link--system ${location.pathname.startsWith("/system") ? "active" : ""}`}
+              onClick={() => setMenuOpen(false)}
+            >
+              پنل سیستم
+            </Link>
           )}
 
           <div className="navbar-actions">

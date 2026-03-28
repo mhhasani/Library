@@ -1,17 +1,44 @@
 .libraries-page {
-  min-height: calc(100vh - 64px);
+  min-height: calc(100vh - 68px);
 }
 
 /* ── Header ──────────────────────────────────── */
 .libraries-header {
-  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
-  padding: 2.5rem 1.5rem;
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='400' height='160' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M-20 40 C60 22 140 58 220 38 C300 18 380 54 420 40' stroke='white' stroke-width='0.8' fill='none' opacity='0.05'/%3E%3Cpath d='M-20 80 C60 62 140 98 220 78 C300 58 380 94 420 80' stroke='white' stroke-width='0.8' fill='none' opacity='0.03'/%3E%3Cpath d='M-20 120 C60 102 140 138 220 118 C300 98 380 134 420 120' stroke='white' stroke-width='0.8' fill='none' opacity='0.05'/%3E%3Cpath d='M-20 160 C60 142 140 178 220 158 C300 138 380 174 420 160' stroke='white' stroke-width='0.8' fill='none' opacity='0.03'/%3E%3C/svg%3E"),
+    var(--gradient-hero);
+  background-size: 400px 160px, cover;
+  background-position: 0 0, center;
+  padding: 3rem 1.5rem;
   color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.libraries-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.libraries-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(200,160,76,0.6) 30%, var(--color-accent) 50%, rgba(200,160,76,0.6) 70%, transparent);
 }
 
 .libraries-header-inner {
-  max-width: 1100px;
+  max-width: var(--content-max);
   margin: 0 auto;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -19,41 +46,43 @@
 }
 
 .libraries-main-title {
-  font-size: 1.8rem;
-  font-weight: 800;
+  font-size: 2rem;
+  font-weight: 900;
   color: white;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
+  letter-spacing: -0.02em;
 }
 
 .libraries-main-sub {
-  color: rgba(255,255,255,0.7);
-  font-size: 0.9rem;
+  color: rgba(255,255,255,0.62);
+  font-size: 0.92rem;
 }
 
 /* ── Body ──────────────────────────────────── */
 .libraries-body {
-  max-width: 1100px;
+  max-width: var(--content-max);
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 2.5rem 1.5rem;
 }
 
 /* ── Create Library Card ─────────────────── */
 .create-library-card {
   background: var(--color-surface);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
   border: 1px solid var(--color-border-light);
-  padding: 1.75rem;
-  margin-bottom: 2rem;
+  border-top: 3px solid var(--color-accent);
+  padding: 2rem;
+  margin-bottom: 2.5rem;
 }
 
 .create-library-title {
   font-size: 1.1rem;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--color-text);
   margin-bottom: 1.5rem;
   padding-bottom: 0.75rem;
-  border-bottom: 2px solid var(--color-border-light);
+  border-bottom: 1.5px solid var(--color-border-light);
 }
 
 .form-row-2 {
@@ -93,34 +122,49 @@
 
 /* ── Section ──────────────────────────────── */
 .lib-section {
-  margin-bottom: 2.5rem;
+  margin-bottom: 3rem;
 }
 
 .lib-section-title {
   font-size: 1.15rem;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--color-text);
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--color-border-light);
+  position: relative;
+}
+
+.lib-section-title::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  right: 0;
+  width: 48px;
+  height: 2px;
+  background: var(--gradient-accent);
+  border-radius: 2px;
 }
 
 /* ── Grid ──────────────────────────────────── */
 .libraries-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 1.5rem;
 }
 
 /* ── Library Card ──────────────────────────── */
 .library-card {
   background: var(--color-surface);
-  border: 1.5px solid var(--color-border-light);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
+  border-top: 4px solid var(--color-primary);
+  border-radius: var(--radius-lg);
   padding: 1.5rem;
   box-shadow: var(--shadow-sm);
-  transition: var(--transition);
+  transition: var(--transition-slow);
   position: relative;
   overflow: hidden;
   display: flex;
@@ -129,26 +173,27 @@
 }
 
 .library-card:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
-  border-color: var(--color-border);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-4px);
+  border-top-color: var(--color-accent);
 }
 
 .library-card-active {
-  border-color: var(--color-primary-light);
-  box-shadow: 0 0 0 3px rgba(27,53,96,0.1), var(--shadow-sm);
+  border-top-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(200,160,76,0.18), var(--shadow-sm);
 }
 
 .active-indicator {
   position: absolute;
   top: 0;
   left: 0;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
-  color: white;
-  font-size: 0.7rem;
+  background: rgba(200,160,76,0.15);
+  color: var(--color-accent-dark);
+  font-size: 0.68rem;
   font-weight: 700;
-  padding: 0.2rem 0.75rem;
-  border-radius: 0 0 var(--radius-sm) 0;
+  padding: 0.15rem 0.65rem;
+  border-radius: 0 0 var(--radius-xs) 0;
+  letter-spacing: 0.04em;
 }
 
 .library-card-icon {
@@ -157,16 +202,17 @@
 }
 
 .library-card-name {
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 1.05rem;
+  font-weight: 800;
   color: var(--color-text);
   margin: 0;
+  line-height: 1.35;
 }
 
 .library-card-desc {
-  font-size: 0.83rem;
+  font-size: 0.84rem;
   color: var(--color-text-secondary);
-  line-height: 1.5;
+  line-height: 1.65;
   margin: 0;
   flex: 1;
 }
@@ -181,31 +227,32 @@
 .lib-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.2rem 0.65rem;
+  padding: 0.22rem 0.7rem;
   border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.73rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
-.lib-badge-role   { background: var(--color-info-bg);    color: var(--color-info);    }
-.lib-badge-status { background: var(--color-success-bg); color: var(--color-success); }
-.lib-badge-owner  { background: var(--color-bg);         color: var(--color-text-secondary); }
+.lib-badge-role   { background: var(--color-info-bg); color: var(--color-info); border: 1px solid var(--color-info-border); }
+.lib-badge-status { background: var(--color-success-bg); color: var(--color-success); border: 1px solid var(--color-success-border); }
+.lib-badge-owner  { background: var(--color-surface-3); color: var(--color-text-secondary); border: 1px solid var(--color-border-light); }
 
 .lib-actions-row {
   margin-top: auto;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border-light);
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
 }
 
-.lib-action-btn {
-  align-self: flex-start;
-}
+.lib-action-btn { align-self: flex-start; }
 
 .lib-member-status {
   font-size: 0.82rem;
   font-weight: 600;
-  padding: 0.35rem 0.75rem;
+  padding: 0.35rem 0.85rem;
   border-radius: 9999px;
   margin-top: auto;
   align-self: flex-start;
@@ -221,8 +268,9 @@
   margin-top: auto;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
   .libraries-grid { grid-template-columns: 1fr; }
-  .form-row-2 { grid-template-columns: 1fr; }
-  .libraries-header-inner { flex-direction: column; align-items: flex-start; }
+  .form-row-2     { grid-template-columns: 1fr; }
+  .libraries-header { padding: 2rem 1.25rem; }
+  .libraries-main-title { font-size: 1.6rem; }
 }

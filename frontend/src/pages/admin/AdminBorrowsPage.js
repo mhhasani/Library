@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { borrowAPI, libraryAdminAPI } from "../../services/api";
+import { toPersian } from "../../utils/persian";
 import "./AdminBorrowsPage.css";
 
 const STATUS_LABEL = {
@@ -146,7 +147,7 @@ const AdminBorrowsPage = () => {
                   <td>
                     <div className="abr-book-title">{b.bookTitle}</div>
                     {b.copyNumber && (
-                      <div className="abr-copy">نسخه #{b.copyNumber}</div>
+                      <div className="abr-copy">نسخه #{toPersian(b.copyNumber)}</div>
                     )}
                     {b.status === "REJECTED" && b.rejectionReason && (
                       <div style={{ fontSize: "0.72rem", color: "#dc2626", marginTop: "0.2rem" }}>

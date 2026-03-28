@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { bookAPI, borrowAPI, libraryAdminAPI, libraryStatsAPI } from "../../services/api";
 import { useLibrary } from "../../context/LibraryContext";
+import { toPersian, toPersianNum } from "../../utils/persian";
 import "./AdminDashboard.css";
 
 const AdminDashboard = () => {
@@ -74,28 +75,28 @@ const AdminDashboard = () => {
         <div className="ap-stat-card">
           <div className="ap-stat-icon ap-stat-icon--blue">📖</div>
           <div>
-            <div className="ap-stat-value">{stats.totalBooks}</div>
+            <div className="ap-stat-value">{toPersianNum(stats.totalBooks)}</div>
             <div className="ap-stat-label">کتاب ثبت‌شده</div>
           </div>
         </div>
         <div className="ap-stat-card">
           <div className="ap-stat-icon ap-stat-icon--green">✅</div>
           <div>
-            <div className="ap-stat-value">{stats.activeMembers}</div>
+            <div className="ap-stat-value">{toPersianNum(stats.activeMembers)}</div>
             <div className="ap-stat-label">عضو فعال</div>
           </div>
         </div>
         <div className="ap-stat-card">
           <div className="ap-stat-icon ap-stat-icon--gold">📋</div>
           <div>
-            <div className="ap-stat-value">{stats.pendingBorrows}</div>
+            <div className="ap-stat-value">{toPersianNum(stats.pendingBorrows)}</div>
             <div className="ap-stat-label">درخواست امانت در انتظار</div>
           </div>
         </div>
         <div className="ap-stat-card">
           <div className="ap-stat-icon ap-stat-icon--purple">👥</div>
           <div>
-            <div className="ap-stat-value">{stats.pendingMembers}</div>
+            <div className="ap-stat-value">{toPersianNum(stats.pendingMembers)}</div>
             <div className="ap-stat-label">درخواست عضویت در انتظار</div>
           </div>
         </div>
@@ -107,14 +108,14 @@ const AdminDashboard = () => {
           <span className="adb-quick-icon">📋</span>
           <span className="adb-quick-label">بررسی درخواست‌های امانت</span>
           {stats.pendingBorrows > 0 && (
-            <span className="adb-badge">{stats.pendingBorrows}</span>
+            <span className="adb-badge">{toPersianNum(stats.pendingBorrows)}</span>
           )}
         </Link>
         <Link to={`/libraries/${libraryId}/admin/members`} className="adb-quick-card">
           <span className="adb-quick-icon">👥</span>
           <span className="adb-quick-label">بررسی درخواست‌های عضویت</span>
           {stats.pendingMembers > 0 && (
-            <span className="adb-badge">{stats.pendingMembers}</span>
+            <span className="adb-badge">{toPersianNum(stats.pendingMembers)}</span>
           )}
         </Link>
         <Link to={`/libraries/${libraryId}/admin/books`} className="adb-quick-card">
@@ -134,9 +135,9 @@ const AdminDashboard = () => {
             <ol className="adb-report-list">
               {mostBorrowed.map((item, i) => (
                 <li key={item.bookId} className="adb-report-item">
-                  <span className="adb-report-rank">{i + 1}</span>
+                  <span className="adb-report-rank">{toPersian(i + 1)}</span>
                   <span className="adb-report-name">{item.bookTitle}</span>
-                  <span className="adb-report-count">{item.borrowCount} امانت</span>
+                  <span className="adb-report-count">{toPersianNum(item.borrowCount)} امانت</span>
                 </li>
               ))}
             </ol>
@@ -152,9 +153,9 @@ const AdminDashboard = () => {
             <ol className="adb-report-list">
               {userActivity.map((item, i) => (
                 <li key={item.userId} className="adb-report-item">
-                  <span className="adb-report-rank">{i + 1}</span>
+                  <span className="adb-report-rank">{toPersian(i + 1)}</span>
                   <span className="adb-report-name">{item.userEmail}</span>
-                  <span className="adb-report-count">{item.borrowCount} امانت</span>
+                  <span className="adb-report-count">{toPersianNum(item.borrowCount)} امانت</span>
                 </li>
               ))}
             </ol>
@@ -172,12 +173,12 @@ const AdminDashboard = () => {
               {underused.slice(0, 5).map((item) => (
                 <li key={item.bookId} className="adb-report-item">
                   <span className="adb-report-name">{item.bookTitle}</span>
-                  <span className="adb-report-count">{item.totalCopies} نسخه</span>
+                  <span className="adb-report-count">{toPersianNum(item.totalCopies)} نسخه</span>
                 </li>
               ))}
               {underused.length > 5 && (
                 <li className="adb-report-item adb-report-more">
-                  و {underused.length - 5} کتاب دیگر...
+                  و {toPersianNum(underused.length - 5)} کتاب دیگر...
                 </li>
               )}
             </ul>

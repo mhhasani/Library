@@ -4,6 +4,7 @@ import { bookAPI, borrowAPI, subjectAPI } from "../services/api";
 import { useLibrary } from "../context/LibraryContext";
 import { useDebounce } from "../hooks/useDebounce";
 import BorrowModal from "../components/BorrowModal";
+import { toPersian, toPersianNum } from "../utils/persian";
 import "./BooksPage.css";
 
 const BooksPage = () => {
@@ -179,7 +180,7 @@ const BooksPage = () => {
             <h1 className="books-main-title">کتاب‌ها</h1>
             {libraryName && <p className="books-library-name">🏛️ {libraryName}</p>}
           </div>
-          <div className="books-count-badge">{books.length} عنوان کتاب</div>
+          <div className="books-count-badge">{toPersianNum(books.length)} عنوان کتاب</div>
         </div>
       </div>
 
@@ -275,14 +276,14 @@ const BooksPage = () => {
                           ))}
                         </div>
                       )}
-                      {book.publicationYear && <p className="book-year">📅 {book.publicationYear}</p>}
+                      {book.publicationYear && <p className="book-year">📅 {toPersian(book.publicationYear)}</p>}
                     </div>
 
                     <div className="book-card-footer">
                       <div className="book-availability">
                         <span className={`avail-dot ${book.availableCopiesCount > 0 ? "avail-dot-green" : "avail-dot-red"}`} />
                         <span className="avail-text">
-                          {book.availableCopiesCount} از {book.totalCopiesCount} موجود
+                          {toPersian(book.availableCopiesCount)} از {toPersian(book.totalCopiesCount)} موجود
                         </span>
                         {book.hasDigitalVersions && (
                           <span className="digital-badge">دیجیتال</span>

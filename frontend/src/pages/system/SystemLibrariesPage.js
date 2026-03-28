@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { adminAPI, libraryAPI } from "../../services/api";
+import { toPersian, toPersianNum } from "../../utils/persian";
 import "./SystemLibrariesPage.css";
 
 const SystemLibrariesPage = () => {
@@ -204,7 +205,7 @@ const SystemLibrariesPage = () => {
             <tbody>
               {libraries.map((lib) => (
                 <tr key={lib.id}>
-                  <td style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{lib.id}</td>
+                  <td style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{toPersian(lib.id)}</td>
                   <td>
                     <div style={{ fontWeight: 600, color: "#1b3560" }}>{lib.name}</div>
                     {lib.description && (
@@ -212,7 +213,7 @@ const SystemLibrariesPage = () => {
                     )}
                   </td>
                   <td style={{ fontSize: "0.82rem" }}>{lib.ownerName || "—"}</td>
-                  <td style={{ fontSize: "0.82rem" }}>{lib.defaultBorrowDurationDays} روز</td>
+                  <td style={{ fontSize: "0.82rem" }}>{toPersianNum(lib.defaultBorrowDurationDays)} روز</td>
                   <td>
                     <span className={`badge ${lib.autoMembershipApproval ? "badge-success" : "badge-muted"}`}>
                       {lib.autoMembershipApproval ? "فعال" : "غیرفعال"}

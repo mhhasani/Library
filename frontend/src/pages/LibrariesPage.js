@@ -5,16 +5,18 @@ import { useAuth } from "../context/AuthContext";
 import "./LibrariesPage.css";
 
 const statusLabel = {
-  ACTIVE: "فعال",
-  PENDING: "در انتظار تأیید",
-  REJECTED: "رد شده",
+  ACTIVE:    "فعال",
+  APPROVED:  "تأیید شده",
+  PENDING:   "در انتظار تأیید",
+  REJECTED:  "رد شده",
   SUSPENDED: "معلق",
 };
 
 const roleLabel = {
-  PATRON: "اعضا",
+  ADMIN:     "مدیر",
+  MEMBER:    "عضو",
+  PATRON:    "عضو",
   LIBRARIAN: "کتابدار",
-  ADMIN: "مدیر",
 };
 
 const LibrariesPage = () => {

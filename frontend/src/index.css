@@ -1,81 +1,128 @@
 :root {
-  /* TODO: install @fontsource/vazirmatn locally (npm install @fontsource/vazirmatn) and import in index.js */
   --font-family: 'Vazirmatn', Tahoma, 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
 
-  /* Color palette */
-  --color-primary: #1B3560;
-  --color-primary-dark: #0F2040;
-  --color-primary-light: #2E5EA8;
-  --color-accent: #C8A04C;
-  --color-accent-dark: #A5832E;
-  --color-accent-light: #E8C96C;
+  /* ── Military Color Palette ────────────────────── */
+  --color-primary:        #1B3560;
+  --color-primary-dark:   #0D1B2E;
+  --color-primary-mid:    #142B4E;
+  --color-primary-light:  #2E5EA8;
+  --color-primary-subtle: #EBF0F8;
 
-  --color-success: #1F7A50;
-  --color-success-bg: #E8F5EE;
-  --color-danger: #B03030;
-  --color-danger-bg: #FDEAEA;
-  --color-warning: #C97A10;
-  --color-warning-bg: #FEF4E5;
-  --color-info: #1565C0;
-  --color-info-bg: #E3F0FB;
+  --color-accent:         #C8A04C;
+  --color-accent-dark:    #A5832E;
+  --color-accent-light:   #E8C96C;
+  --color-accent-soft:    #FBF5E6;
+  --color-accent-pale:    #F5EDD3;
 
-  --color-bg: #F2F5F9;
-  --color-surface: #FFFFFF;
-  --color-border: #D5DDE8;
-  --color-border-light: #EAF0F6;
+  /* ── Semantic ───────────────────────────────────── */
+  --color-success:        #1A6B44;
+  --color-success-bg:     #E4F4ED;
+  --color-success-border: #A5D6BE;
+  --color-danger:         #B03030;
+  --color-danger-bg:      #FDEAEA;
+  --color-danger-border:  #F0A8A8;
+  --color-warning:        #C47A10;
+  --color-warning-bg:     #FEF4E5;
+  --color-warning-border: #F5C880;
+  --color-info:           #1155A8;
+  --color-info-bg:        #E2EEFB;
+  --color-info-border:    #97C0F0;
 
-  --color-text: #1A2332;
-  --color-text-secondary: #4A5568;
-  --color-text-muted: #8A95A3;
+  /* ── Neutrals ───────────────────────────────────── */
+  --color-bg:             #C9D8ED;
+  --color-bg-dark:        #BBC9E0;
+  --color-surface:        #FFFFFF;
+  --color-surface-2:      #F4F7FC;
+  --color-surface-3:      #ECF1FA;
+  --color-border:         #C0CEDF;
+  --color-border-light:   #D4DFEE;
 
-  /* Shadows */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.10);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
-  --shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.14);
+  --color-text:           #0C1523;
+  --color-text-secondary: #3A4B62;
+  --color-text-muted:     #7A8898;
+  --color-text-inverse:   #FFFFFF;
 
-  /* Border radius */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-  --radius-full: 9999px;
+  /* ── Gradients ──────────────────────────────────── */
+  --gradient-primary:   linear-gradient(135deg, #0D1B2E 0%, #1B3560 55%, #2A4E8C 100%);
+  --gradient-primary-v: linear-gradient(180deg, #1B3560 0%, #0D1B2E 100%);
+  --gradient-accent:    linear-gradient(135deg, #A5832E 0%, #C8A04C 55%, #E0BC6A 100%);
+  --gradient-hero:      linear-gradient(160deg, #060D16 0%, #0D1B2E 25%, #1B3560 65%, #0F2040 100%);
+  --gradient-card:      linear-gradient(180deg, #FFFFFF 0%, #F7F9FD 100%);
 
-  /* Transitions */
-  --transition: all 0.22s ease;
+  /* ── Shadows ────────────────────────────────────── */
+  --shadow-xs:        0 1px 4px rgba(13, 27, 46, 0.08);
+  --shadow-sm:        0 2px 10px rgba(13, 27, 46, 0.12);
+  --shadow-md:        0 5px 22px rgba(13, 27, 46, 0.14);
+  --shadow-lg:        0 10px 36px rgba(13, 27, 46, 0.17);
+  --shadow-xl:        0 20px 60px rgba(13, 27, 46, 0.20);
+  --shadow-inner:     inset 0 2px 6px rgba(13, 27, 46, 0.07);
+  --shadow-accent:    0 4px 20px rgba(200, 160, 76, 0.30);
+  --shadow-glow:      0 0 0 3px rgba(27, 53, 96, 0.14);
+  --shadow-gold-glow: 0 0 0 3px rgba(200, 160, 76, 0.25);
+
+  /* ── Border Radius ──────────────────────────────── */
+  --radius-xs:    4px;
+  --radius-sm:    8px;
+  --radius-md:    12px;
+  --radius-lg:    16px;
+  --radius-xl:    24px;
+  --radius-2xl:   32px;
+  --radius-full:  9999px;
+
+  /* ── Transitions ────────────────────────────────── */
+  --transition:       all 0.22s ease;
+  --transition-fast:  all 0.12s ease;
+  --transition-slow:  all 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── Layout ─────────────────────────────────────── */
+  --navbar-height: 68px;
+  --sidebar-width: 260px;
+  --content-max:   1160px;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* ── Reset ─────────────────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-html, body, #root {
-  height: 100%;
-  direction: rtl;
-}
+html, body, #root { height: 100%; direction: rtl; }
 
 body {
   font-family: var(--font-family);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--color-bg);
+  background-image: url("data:image/svg+xml,%3Csvg width='500' height='250' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M-20 60 C70 35 170 85 270 58 C370 31 450 72 520 60' stroke='%231B3560' stroke-width='1' fill='none' opacity='0.06'/%3E%3Cpath d='M-20 110 C70 85 170 135 270 108 C370 81 450 122 520 110' stroke='%231B3560' stroke-width='1' fill='none' opacity='0.04'/%3E%3Cpath d='M-20 160 C70 135 170 185 270 158 C370 131 450 172 520 160' stroke='%231B3560' stroke-width='1' fill='none' opacity='0.06'/%3E%3Cpath d='M-20 210 C70 185 170 235 270 208 C370 181 450 222 520 210' stroke='%231B3560' stroke-width='1' fill='none' opacity='0.04'/%3E%3C/svg%3E");
+  background-size: 500px 250px;
+  background-repeat: repeat;
   color: var(--color-text);
-  line-height: 1.6;
+  line-height: 1.65;
+  font-size: 15px;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track { background: var(--color-bg); }
-::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: var(--radius-full); }
-::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
+/* ── Scrollbar ─────────────────────────────────────── */
+::-webkit-scrollbar              { width: 6px; height: 6px; }
+::-webkit-scrollbar-track        { background: transparent; }
+::-webkit-scrollbar-thumb        { background: rgba(27, 53, 96, 0.22); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover  { background: rgba(27, 53, 96, 0.42); }
 
-/* Global link */
-a { text-decoration: none; color: inherit; }
-button { font-family: var(--font-family); cursor: pointer; }
-input, textarea, select { font-family: var(--font-family); }
+/* ── Selection ─────────────────────────────────────── */
+::selection { background: rgba(200, 160, 76, 0.22); color: var(--color-text); }
+
+/* ── Focus ──────────────────────────────────────────── */
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 4px; }
+
+/* ── Base ───────────────────────────────────────────── */
+img { max-width: 100%; height: auto; display: block; }
+a   { color: var(--color-primary-light); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Animations ─────────────────────────────────────── */
+@keyframes spin         { to { transform: rotate(360deg); } }
+@keyframes fadeIn       { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp      { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideDown    { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideInRight { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes float        { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes rotate-slow  { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes pulse-gold   { 0%, 100% { box-shadow: 0 0 0 0 rgba(200,160,76,0); } 50% { box-shadow: 0 0 0 8px rgba(200,160,76,0.15); } }
+@keyframes topo-drift   { from { background-position: 0 0; } to { background-position: 400px 0; } }
+@keyframes radar-blip   { 0%,100% { opacity: 0; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }

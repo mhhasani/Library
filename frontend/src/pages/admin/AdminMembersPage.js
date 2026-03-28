@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { libraryAdminAPI } from "../../services/api";
+import { toPersianNum } from "../../utils/persian";
 import "./AdminMembersPage.css";
 
 const ROLE_LABEL = { ADMIN: "مدیر", MEMBER: "عضو" };
@@ -94,7 +95,7 @@ const AdminMembersPage = () => {
         <div className="ap-card amm-section">
           <h2 className="amm-section-title">
             ⏳ درخواست‌های در انتظار
-            <span className="badge badge-warning amm-count">{pending.length}</span>
+            <span className="badge badge-warning amm-count">{toPersianNum(pending.length)}</span>
           </h2>
           <div className="table-wrapper">
             <table className="modern-table">
@@ -145,7 +146,7 @@ const AdminMembersPage = () => {
 
       {/* All members */}
       <div className="ap-card">
-        <h2 className="amm-section-title">👥 همه اعضا ({rest.length})</h2>
+        <h2 className="amm-section-title">👥 همه اعضا ({toPersianNum(rest.length)})</h2>
         {rest.length === 0 ? (
           <div className="empty-state">
             <span className="empty-icon">👥</span>

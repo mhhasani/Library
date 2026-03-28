@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import PasswordInput from "../components/PasswordInput";
+import AjaLogo from "../components/AjaLogo";
 import "./AuthPages.css";
 
 const LoginPage = () => {
@@ -33,11 +34,11 @@ const LoginPage = () => {
     <div className="auth-page">
       <div className="auth-panel">
         <div className="auth-brand">
-          <span className="auth-brand-icon">📚</span>
-          <span className="auth-brand-name">سامانه کتابخانه</span>
+          <AjaLogo size={32} />
+          <span className="auth-brand-name">کتابخانه هوشمند آجا</span>
         </div>
-        <h2 className="auth-title">ورود به حساب</h2>
-        <p className="auth-subtitle">خوش برگشتید! لطفاً اطلاعات خود را وارد کنید</p>
+        <h2 className="auth-title">ورود به سامانه</h2>
+        <p className="auth-subtitle">خوش آمدید — لطفاً اطلاعات کاربری خود را وارد کنید</p>
 
         {error && <div className="error-message">{error}</div>}
 
@@ -51,7 +52,8 @@ const LoginPage = () => {
               value={formData.email}
               onChange={handleChange}
               required
-              placeholder="example@email.com"
+              placeholder="example@army.ir"
+              autoComplete="email"
             />
           </div>
           <div className="form-group">
@@ -72,7 +74,7 @@ const LoginPage = () => {
                 <span className="btn-spinner" /> در حال ورود...
               </span>
             ) : (
-              "ورود"
+              "ورود به سامانه"
             )}
           </button>
         </form>
@@ -84,12 +86,21 @@ const LoginPage = () => {
       </div>
 
       <div className="auth-decoration">
+        <div className="auth-radar" aria-hidden="true" />
         <div className="auth-deco-circle c1" />
         <div className="auth-deco-circle c2" />
         <div className="auth-deco-circle c3" />
         <div className="auth-deco-text">
-          <span>📖</span>
-          <p>دروازه‌ای به دنیای کتاب و دانش</p>
+          <div className="auth-deco-emblem">
+            <AjaLogo size={80} />
+          </div>
+          <div className="auth-deco-title">کتابخانه هوشمند آجا</div>
+          <p>سامانه یکپارچه مدیریت منابع علمی و تخصصی نیروهای مسلح جمهوری اسلامی ایران</p>
+          <div className="auth-deco-badges">
+            <span className="auth-deco-badge">📚 هزاران کتاب</span>
+            <span className="auth-deco-badge">🔒 دسترسی امن</span>
+            <span className="auth-deco-badge">💻 نسخه دیجیتال</span>
+          </div>
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { adminAPI } from "../../services/api";
+import { toPersian, toPersianNum } from "../../utils/persian";
 import "./SystemUsersPage.css";
 
 const ROLE_LABELS = { SYSTEM_ADMIN: "مدیر سیستم", USER: "کاربر عادی" };
@@ -113,7 +114,7 @@ const SystemUsersPage = () => {
           ))}
         </div>
         <span className="su-count">
-          {users.length} کاربر
+          {toPersianNum(users.length)} کاربر
         </span>
       </div>
 
@@ -142,7 +143,7 @@ const SystemUsersPage = () => {
             <tbody>
               {users.map((u) => (
                 <tr key={u.id}>
-                  <td style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{u.id}</td>
+                  <td style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{toPersian(u.id)}</td>
                   <td style={{ fontWeight: 500 }}>{u.email}</td>
                   <td>
                     {u.firstName || u.lastName

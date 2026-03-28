@@ -1,17 +1,44 @@
 .books-page {
-  min-height: calc(100vh - 64px);
+  min-height: calc(100vh - 68px);
 }
 
 /* ── Header ──────────────────────────────────── */
 .books-header {
-  background: linear-gradient(135deg, #1A2F50, var(--color-primary));
-  padding: 2.5rem 1.5rem;
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='400' height='160' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M-20 40 C60 22 140 58 220 38 C300 18 380 54 420 40' stroke='white' stroke-width='0.8' fill='none' opacity='0.05'/%3E%3Cpath d='M-20 80 C60 62 140 98 220 78 C300 58 380 94 420 80' stroke='white' stroke-width='0.8' fill='none' opacity='0.03'/%3E%3Cpath d='M-20 120 C60 102 140 138 220 118 C300 98 380 134 420 120' stroke='white' stroke-width='0.8' fill='none' opacity='0.05'/%3E%3Cpath d='M-20 160 C60 142 140 178 220 158 C300 138 380 174 420 160' stroke='white' stroke-width='0.8' fill='none' opacity='0.03'/%3E%3C/svg%3E"),
+    var(--gradient-hero);
+  background-size: 400px 160px, cover;
+  background-position: 0 0, center;
+  padding: 3rem 1.5rem;
   color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.books-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.books-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(200,160,76,0.6) 30%, var(--color-accent) 50%, rgba(200,160,76,0.6) 70%, transparent);
 }
 
 .books-header-inner {
-  max-width: 1100px;
+  max-width: var(--content-max);
   margin: 0 auto;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -19,10 +46,11 @@
 }
 
 .books-main-title {
-  font-size: 1.8rem;
-  font-weight: 800;
+  font-size: 2rem;
+  font-weight: 900;
   color: white;
   margin-bottom: 0.2rem;
+  letter-spacing: -0.02em;
 }
 
 .books-library-name {
@@ -43,9 +71,9 @@
 
 /* ── Body ──────────────────────────────────── */
 .books-body {
-  max-width: 1100px;
+  max-width: var(--content-max);
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 2.25rem 1.5rem;
 }
 
 /* ── Search + Filter inline bar ─────────────── */

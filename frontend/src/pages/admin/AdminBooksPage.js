@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { bookAPI, subjectAPI } from "../../services/api";
+import { toPersian, toPersianNum } from "../../utils/persian";
 import "./AdminBooksPage.css";
 
 const EMPTY_FORM = {
@@ -17,7 +18,7 @@ const EMPTY_FORM = {
 const UploadProgressBar = ({ progress }) => (
   <div className="upload-progress-wrap">
     <div className="upload-progress-bar" style={{ width: `${progress}%` }} />
-    <span className="upload-progress-text">{progress}%</span>
+    <span className="upload-progress-text">{toPersian(progress)}٪</span>
   </div>
 );
 
@@ -427,10 +428,10 @@ const AdminBooksPage = () => {
                     {book.publisher && <div className="abk-publisher">{book.publisher}</div>}
                   </td>
                   <td>{book.author}</td>
-                  <td>{book.publicationYear || "—"}</td>
+                  <td>{book.publicationYear ? toPersian(book.publicationYear) : "—"}</td>
                   <td>
                     <span className={`badge ${book.availableCopiesCount > 0 ? "badge-success" : "badge-danger"}`}>
-                      {book.availableCopiesCount ?? 0} موجود
+                      {toPersianNum(book.availableCopiesCount ?? 0)} موجود
                     </span>
                   </td>
                   <td>
@@ -701,7 +702,7 @@ const AdminBooksPage = () => {
               </div>
               <div className="ap-modal-actions">
                 <button className="btn btn-primary" type="submit" disabled={digitalUploading || !digitalFile}>
-                  {digitalUploading ? `در حال آپلود... ${digitalProgress}%` : "آپلود نسخه دیجیتال"}
+                  {digitalUploading ? `در حال آپلود... ${toPersian(digitalProgress)}٪` : "آپلود نسخه دیجیتال"}
                 </button>
                 <button className="btn btn-outline" type="button" onClick={() => setDigitalTarget(null)}>بستن</button>
               </div>
@@ -762,7 +763,7 @@ const AdminBooksPage = () => {
             {deleteSubjectTarget.bookCount > 0 ? (
               <p className="ap-confirm-msg">
                 موضوع «{deleteSubjectTarget.name}» در{" "}
-                <strong>{deleteSubjectTarget.bookCount} کتاب</strong> استفاده شده است.
+                <strong>{toPersianNum(deleteSubjectTarget.bookCount)} کتاب</strong> استفاده شده است.
                 <br />
                 با حذف این موضوع، از همه آن کتاب‌ها نیز حذف می‌شود. ادامه می‌دهید؟
               </p>

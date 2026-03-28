@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { borrowAPI } from "../services/api";
 import { useLibrary } from "../context/LibraryContext";
+import { toPersian, toPersianNum } from "../utils/persian";
 import "./BorrowsPage.css";
 
 const STATUS_LABELS = {
@@ -84,7 +85,7 @@ const BorrowsPage = () => {
             )}
           </div>
           <div className="borrows-count-badge">
-            {borrows.length} رکورد
+            {toPersianNum(borrows.length)} رکورد
           </div>
         </div>
       </div>
@@ -133,7 +134,7 @@ const BorrowsPage = () => {
                       <td className="borrow-book-title">
                         {borrow.bookTitle || "—"}
                         {borrow.copyNumber && (
-                          <div style={{ fontSize: "0.75rem", color: "#9ca3af" }}>نسخه #{borrow.copyNumber}</div>
+                          <div style={{ fontSize: "0.75rem", color: "#9ca3af" }}>نسخه {toPersian(borrow.copyNumber)}</div>
                         )}
                         {borrow.status === "REJECTED" && borrow.rejectionReason && (
                           <div style={{ fontSize: "0.75rem", color: "#dc2626", marginTop: "0.2rem" }}>

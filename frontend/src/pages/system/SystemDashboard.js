@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { adminAPI } from "../../services/api";
+import { toPersianNum } from "../../utils/persian";
 import "./SystemDashboard.css";
 
 const SystemDashboard = () => {
@@ -48,21 +49,21 @@ const SystemDashboard = () => {
         <div className="ap-stat-card">
           <div className="ap-stat-icon ap-stat-icon--blue">👤</div>
           <div>
-            <div className="ap-stat-value">{stats.totalUsers}</div>
+            <div className="ap-stat-value">{toPersianNum(stats.totalUsers)}</div>
             <div className="ap-stat-label">کل کاربران</div>
           </div>
         </div>
         <div className="ap-stat-card">
           <div className="ap-stat-icon ap-stat-icon--green">✅</div>
           <div>
-            <div className="ap-stat-value">{stats.activeUsers}</div>
+            <div className="ap-stat-value">{toPersianNum(stats.activeUsers)}</div>
             <div className="ap-stat-label">کاربران فعال</div>
           </div>
         </div>
         <div className="ap-stat-card">
           <div className="ap-stat-icon ap-stat-icon--gold">🏛️</div>
           <div>
-            <div className="ap-stat-value">{stats.totalLibraries}</div>
+            <div className="ap-stat-value">{toPersianNum(stats.totalLibraries)}</div>
             <div className="ap-stat-label">کتابخانه‌های ثبت‌شده</div>
           </div>
         </div>

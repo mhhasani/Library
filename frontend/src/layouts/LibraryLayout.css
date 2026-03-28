@@ -1,14 +1,15 @@
 .library-subnav {
-  background: #fff;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border-light);
   padding: 0 1.5rem;
   position: sticky;
-  top: 60px;
+  top: 68px;
   z-index: 90;
+  box-shadow: 0 2px 8px rgba(13, 27, 46, 0.06);
 }
 
 .library-subnav-inner {
-  max-width: 1200px;
+  max-width: var(--content-max);
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -17,14 +18,16 @@
 }
 
 .library-subnav-name {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #374151;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-primary);
   padding: 0.75rem 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 220px;
+  max-width: 240px;
+  border-left: 2px solid var(--color-border-light);
+  padding-left: 1.25rem;
 }
 
 .library-subnav-tabs {
@@ -35,45 +38,47 @@
 .library-tab {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.75rem 1.1rem;
+  gap: 0.35rem;
+  padding: 0.8rem 1.1rem;
   font-size: 0.88rem;
-  color: #6b7280;
+  font-weight: 500;
+  color: var(--color-text-secondary);
   text-decoration: none;
-  border-bottom: 2px solid transparent;
-  transition: color 0.15s, border-color 0.15s;
+  border-bottom: 3px solid transparent;
+  transition: var(--transition);
   white-space: nowrap;
 }
 
 .library-tab:hover {
-  color: #111827;
+  color: var(--color-primary);
+  background: var(--color-primary-subtle);
+  text-decoration: none;
 }
 
 .library-tab--active {
-  color: var(--color-primary, #4f46e5);
-  border-bottom-color: var(--color-primary, #4f46e5);
-  font-weight: 600;
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: 700;
+  background: var(--color-primary-subtle);
 }
 
 .library-tab--admin {
-  color: #d97706;
+  color: var(--color-accent-dark);
+}
+
+.library-tab--admin:hover {
+  color: var(--color-accent-dark);
+  background: var(--color-accent-soft);
 }
 
 .library-tab--admin.library-tab--active {
-  color: #b45309;
-  border-bottom-color: #b45309;
+  color: var(--color-accent-dark);
+  border-bottom-color: var(--color-accent-dark);
+  background: var(--color-accent-soft);
 }
 
 @media (max-width: 600px) {
-  .library-subnav {
-    top: 56px;
-    padding: 0 0.75rem;
-  }
-  .library-subnav-name {
-    display: none;
-  }
-  .library-tab {
-    padding: 0.65rem 0.75rem;
-    font-size: 0.82rem;
-  }
+  .library-subnav         { top: 68px; padding: 0 0.75rem; }
+  .library-subnav-name    { display: none; }
+  .library-tab            { padding: 0.65rem 0.8rem; font-size: 0.82rem; }
 }
