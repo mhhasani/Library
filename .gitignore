@@ -39,3 +39,8 @@ docker-compose.override.yml
 # Frontend
 frontend/node_modules/
 frontend/build/
+frontend/dist/
+
+# Offline deployment bundle
+bundle/
+*.tar.gz
