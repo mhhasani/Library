@@ -1,0 +1,16 @@
+# Maven build output
+target/
+
+# Frontend (built separately in its own container)
+frontend/
+
+# Development files
+*.md
+.git/
+.gitignore
+.github/
+
+# IDE and OS files
+.idea/
+*.iml
+.DS_Store
