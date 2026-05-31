@@ -1,0 +1,10 @@
+FROM eclipse-temurin:21-jre-jammy
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+RUN groupadd --system --gid 1001 appgroup && \
+    useradd --system --uid 1001 --gid appgroup appuser
+COPY target/library-management-system-1.0.0.jar app.jar
+RUN chown appuser:appgroup app.jar
+USER appuser
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]

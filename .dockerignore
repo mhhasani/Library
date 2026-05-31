@@ -1,5 +1,5 @@
-# Maven build output
-target/
+# Maven build output (uncomment when using Dockerfile.quick)
+# target/
 
 # Frontend (built separately in its own container)
 frontend/
