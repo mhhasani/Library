@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Request to create or update a library")
 public class LibraryRequest {
 
-    @NotBlank(message = "Library name cannot be blank")
+    @NotBlank(message = "نام کتابخانه را وارد کنید")
     @Schema(description = "Library name", example = "City Public Library")
     private String name;
 
@@ -25,7 +25,13 @@ public class LibraryRequest {
     @Schema(description = "Auto-approve membership requests", example = "false")
     private Boolean autoMembershipApproval = false;
 
-    @Positive(message = "Borrow duration must be positive")
+    @Positive(message = "مدت امانت باید بزرگ‌تر از صفر باشد")
     @Schema(description = "Default borrow duration in days", example = "14")
     private Integer defaultBorrowDurationDays = 14;
+
+    @Schema(description = "Active status (used to (re)activate a library)", example = "true")
+    private Boolean isActive;
+
+    @Schema(description = "Owner user id — system admin may assign the library owner/admin on direct creation")
+    private Long ownerUserId;
 }

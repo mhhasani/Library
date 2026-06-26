@@ -127,7 +127,7 @@ const AdminBooksPage = () => {
     setShowModal(true);
   };
 
-  const openEditModal = (book) => {
+  const openEditModal = async (book) => {
     setEditingBook(book);
     setForm({
       title: book.title || "",
@@ -142,7 +142,48 @@ const AdminBooksPage = () => {
     setCoverFile(null);
     setCoverPreview(book.coverImageUrl || null);
     setCoverProgress(0);
+    // reset inline physical-copy + digital management state
+    setCopyCount(book.totalCopiesCount ?? 0);
+    setDigitalFile(null);
+    setDigitalVersionName("");
+    setDigitalProgress(0);
+    setDigitalError("");
+    setDigitalBooks([]);
     setShowModal(true);
+    // load this book's digital versions for in-modal management
+    setDigitalLoading(true);
+    try {
+      const res = await bookAPI.listDigitalBooks(libraryId, book.id);
+      setDigitalBooks(res.data?.data || []);
+    } catch {
+      setDigitalError("خطا در بارگذاری نسخه‌های دیجیتال");
+    } finally {
+      setDigitalLoading(false);
+    }
+  };
+
+  // Add physical copies from within the edit modal
+  const handleSetCopyCount = async () => {
+    if (!editingBook || !libraryId) return;
+    const n = Number(copyCount);
+    if (n < 0 || Number.isNaN(n)) { setError("تعداد نسخه نامعتبر است"); return; }
+    try {
+      setAddingCopies(true);
+      setError("");
+      const res = await bookAPI.setCopyCount(libraryId, editingBook.id, n);
+      const updated = res.data?.data || res.data;
+      setEditingBook((b) => ({
+        ...b,
+        totalCopiesCount: updated?.totalCopiesCount ?? n,
+        availableCopiesCount: updated?.availableCopiesCount ?? b.availableCopiesCount,
+      }));
+      showSuccess(`تعداد نسخه‌ها روی ${n} تنظیم شد`);
+      fetchBooks();
+    } catch (err) {
+      setError(err.response?.data?.error || err.response?.data?.message || "خطا در تنظیم تعداد نسخه");
+    } finally {
+      setAddingCopies(false);
+    }
   };
 
   const handleFormChange = (e) => {
@@ -183,15 +224,17 @@ const AdminBooksPage = () => {
       };
 
       let savedBook;
+      const wasEditing = !!editingBook;
       if (editingBook) {
         const res = await bookAPI.updateBook(libraryId, editingBook.id, payload);
         savedBook = res.data?.data || res.data;
-        showSuccess("کتاب با موفقیت ویرایش شد");
       } else {
         const res = await bookAPI.createBook(libraryId, payload);
         savedBook = res.data?.data || res.data;
-        showSuccess("کتاب با موفقیت افزوده شد");
       }
+
+      // Collect any sub-step failure so we can keep the modal open and show it inside.
+      let subError = "";
 
       if (savedBook?.id) {
         // Upload cover image if selected
@@ -200,20 +243,20 @@ const AdminBooksPage = () => {
             setCoverUploading(true);
             await bookAPI.uploadCoverImage(libraryId, savedBook.id, coverFile, (p) => setCoverProgress(p));
           } catch {
-            setError("کتاب ذخیره شد ولی آپلود تصویر جلد با خطا مواجه شد");
+            subError = "اطلاعات ذخیره شد ولی آپلود تصویر جلد با خطا مواجه شد";
           } finally {
             setCoverUploading(false);
           }
         }
 
-        // For new books: add physical copies and/or upload PDF
-        if (!editingBook) {
+        if (!wasEditing) {
+          // New book: add the initial physical copies and/or upload the chosen PDF
           const copies = Number(form.initialCopies);
           if (copies > 0) {
             try {
               await bookAPI.addCopies(libraryId, savedBook.id, copies);
             } catch {
-              setError("کتاب ذخیره شد ولی افزودن نسخه فیزیکی با خطا مواجه شد");
+              subError = "کتاب ذخیره شد ولی افزودن نسخه چاپی با خطا مواجه شد";
             }
           }
           if (createPdfFile) {
@@ -222,14 +265,47 @@ const AdminBooksPage = () => {
               setCreatePdfProgress(0);
               await bookAPI.uploadDigitalBook(libraryId, savedBook.id, createPdfFile, undefined, (p) => setCreatePdfProgress(p));
             } catch (err) {
-              setError(err.response?.data?.error || err.response?.data?.message || "کتاب ذخیره شد ولی آپلود PDF با خطا مواجه شد");
+              subError = err.response?.data?.error || err.response?.data?.message || "کتاب ذخیره شد ولی آپلود PDF با خطا مواجه شد";
             } finally {
               setCreatePdfUploading(false);
+            }
+          }
+        } else {
+          // Existing book: the main save also applies a pending copy-count change and a chosen PDF,
+          // so the user doesn't have to use the separate inline buttons.
+          const targetCount = Number(copyCount);
+          if (!Number.isNaN(targetCount) && targetCount !== (editingBook.totalCopiesCount ?? 0)) {
+            try {
+              await bookAPI.setCopyCount(libraryId, savedBook.id, targetCount);
+            } catch (err) {
+              subError = err.response?.data?.error || err.response?.data?.message || "اطلاعات ذخیره شد ولی تنظیم تعداد نسخه با خطا مواجه شد";
+            }
+          }
+          if (digitalFile) {
+            try {
+              setDigitalUploading(true);
+              setDigitalProgress(0);
+              await bookAPI.uploadDigitalBook(libraryId, savedBook.id, digitalFile, digitalVersionName || undefined, (p) => setDigitalProgress(p));
+              setDigitalFile(null);
+              setDigitalVersionName("");
+              if (digitalInputRef.current) digitalInputRef.current.value = "";
+            } catch (err) {
+              subError = err.response?.data?.error || err.response?.data?.message || "اطلاعات ذخیره شد ولی آپلود نسخه دیجیتال با خطا مواجه شد";
+            } finally {
+              setDigitalUploading(false);
             }
           }
         }
       }
 
+      if (subError) {
+        // Keep the modal open so the error is visible inside it; refresh underlying data.
+        setError(subError);
+        fetchBooks();
+        return;
+      }
+
+      showSuccess(wasEditing ? "کتاب با موفقیت ویرایش شد" : "کتاب با موفقیت افزوده شد");
       setShowModal(false);
       fetchBooks();
     } catch (err) {
@@ -296,13 +372,14 @@ const AdminBooksPage = () => {
 
   const handleUploadDigital = async (e) => {
     e.preventDefault();
-    if (!digitalFile || !digitalTarget) return;
+    const target = editingBook || digitalTarget;
+    if (!digitalFile || !target) return;
     try {
       setDigitalUploading(true);
       setDigitalProgress(0);
       setDigitalError("");
       const res = await bookAPI.uploadDigitalBook(
-        libraryId, digitalTarget.id, digitalFile,
+        libraryId, target.id, digitalFile,
         digitalVersionName || undefined,
         (p) => setDigitalProgress(p)
       );
@@ -321,8 +398,9 @@ const AdminBooksPage = () => {
   };
 
   const handleDeleteDigital = async (digitalBookId) => {
+    const target = editingBook || digitalTarget;
     try {
-      await bookAPI.deleteDigitalBook(libraryId, digitalTarget.id, digitalBookId);
+      await bookAPI.deleteDigitalBook(libraryId, target.id, digitalBookId);
       setDigitalBooks((prev) => prev.filter((d) => d.id !== digitalBookId));
       fetchBooks();
     } catch (err) {
@@ -418,7 +496,7 @@ const AdminBooksPage = () => {
                 <tr key={book.id}>
                   <td>
                     {book.coverImageUrl ? (
-                      <img src={book.coverImageUrl} alt="جلد" className="abk-cover-thumb" />
+                      <img src={`${book.coverImageUrl}?v=${encodeURIComponent(book.updatedAt || "")}`} alt="جلد" className="abk-cover-thumb" />
                     ) : (
                       <div className="abk-cover-placeholder">📖</div>
                     )}
@@ -443,9 +521,7 @@ const AdminBooksPage = () => {
                   </td>
                   <td>
                     <div className="abk-actions">
-                      <button className="btn-icon btn-icon--edit" title="ویرایش" onClick={() => openEditModal(book)}>✏️</button>
-                      <button className="btn-icon btn-icon--copy" title="افزودن نسخه فیزیکی" onClick={() => { setCopyTarget(book); setCopyCount(1); }}>📦</button>
-                      <button className="btn-icon btn-icon--digital" title="مدیریت نسخه دیجیتال" onClick={() => openDigitalModal(book)}>💾</button>
+                      <button className="btn-icon btn-icon--edit" title="ویرایش (اطلاعات، نسخه چاپی و دیجیتال)" onClick={() => openEditModal(book)}>✏️</button>
                       <button className="btn-icon btn-icon--delete" title="حذف" onClick={() => setDeleteTarget(book)}>🗑️</button>
                     </div>
                   </td>
@@ -461,6 +537,7 @@ const AdminBooksPage = () => {
         <div className="ap-modal-overlay" onClick={() => setShowModal(false)}>
           <div className="ap-modal" onClick={(e) => e.stopPropagation()}>
             <h2 className="ap-modal-title">{editingBook ? "ویرایش کتاب" : "افزودن کتاب جدید"}</h2>
+            {error && <div className="error-message" style={{ marginBottom: "1rem" }}>{error}</div>}
             <form onSubmit={handleSave}>
               <div className="ap-form-grid">
                 <div className="ap-form-group">
@@ -530,16 +607,81 @@ const AdminBooksPage = () => {
                     {coverUploading && <UploadProgressBar progress={coverProgress} />}
                   </div>
                 </div>
+
+                {editingBook && (
+                  <div className="ap-form-group abk-edit-section" style={{ gridColumn: "1 / -1" }}>
+                    <label>تعداد نسخه‌های چاپی</label>
+                    <div className="abk-inline-row">
+                      <span className="abk-inline-count">
+                        موجود: {toPersian(editingBook.availableCopiesCount ?? 0)} از {toPersian(editingBook.totalCopiesCount ?? 0)}
+                      </span>
+                      <input
+                        type="number" min="0" max="1000" value={copyCount}
+                        onChange={(e) => setCopyCount(e.target.value)}
+                        style={{ width: 110 }}
+                      />
+                      <button type="button" className="btn btn-outline btn-sm" onClick={handleSetCopyCount} disabled={addingCopies}>
+                        {addingCopies ? "..." : "ذخیره تعداد"}
+                      </button>
+                    </div>
+                    <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+                      هر تعداد قابل تنظیم است؛ نمی‌توان کمتر از تعداد نسخه‌های در حال امانت تنظیم کرد.
+                    </span>
+                  </div>
+                )}
+
+                {editingBook && (
+                  <div className="ap-form-group abk-edit-section" style={{ gridColumn: "1 / -1" }}>
+                    <label>نسخه‌های دیجیتال (PDF)</label>
+                    {digitalError && <div className="error-message" style={{ marginBottom: "0.5rem" }}>{digitalError}</div>}
+                    {digitalLoading ? (
+                      <p style={{ fontSize: "0.85rem", color: "var(--color-text-muted)" }}>در حال بارگذاری...</p>
+                    ) : digitalBooks.length === 0 ? (
+                      <p style={{ fontSize: "0.85rem", color: "var(--color-text-muted)" }}>نسخه دیجیتالی ثبت نشده است.</p>
+                    ) : (
+                      <ul className="abk-digital-list">
+                        {digitalBooks.map((db) => (
+                          <li key={db.id} className="abk-digital-item">
+                            <span>📄 {db.versionName || db.fileFormat || "PDF"}</span>
+                            <button type="button" className="btn-icon btn-icon--delete" title="حذف"
+                              onClick={() => handleDeleteDigital(db.id)}>🗑️</button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <div className="abk-inline-row" style={{ marginTop: "0.5rem" }}>
+                      <button type="button" className="btn btn-outline btn-sm" onClick={() => digitalInputRef.current?.click()}>
+                        انتخاب فایل PDF
+                      </button>
+                      {digitalFile
+                        ? <span className="cover-filename">{digitalFile.name}</span>
+                        : <span style={{ color: "var(--color-text-muted)", fontSize: "0.82rem" }}>فایلی انتخاب نشده</span>}
+                      <input
+                        type="text" value={digitalVersionName}
+                        onChange={(e) => setDigitalVersionName(e.target.value)}
+                        placeholder="نام نسخه (اختیاری)" style={{ width: 150 }}
+                      />
+                      <button type="button" className="btn btn-primary btn-sm"
+                        onClick={handleUploadDigital} disabled={!digitalFile || digitalUploading}>
+                        {digitalUploading ? "..." : "⬆ آپلود"}
+                      </button>
+                      <input ref={digitalInputRef} type="file" accept=".pdf,application/pdf"
+                        style={{ display: "none" }} onChange={handleDigitalFileChange} />
+                    </div>
+                    {digitalUploading && <UploadProgressBar progress={digitalProgress} />}
+                  </div>
+                )}
+
                 {!editingBook && (
                   <>
                     <div className="ap-form-group">
-                      <label>تعداد نسخه فیزیکی اولیه</label>
+                      <label>تعداد نسخه چاپی اولیه</label>
                       <input
                         name="initialCopies"
                         type="number"
                         value={form.initialCopies}
                         onChange={handleFormChange}
-                        placeholder="۰ = بدون نسخه فیزیکی"
+                        placeholder="۰ = بدون نسخه چاپی"
                         min="0"
                         max="100"
                       />
@@ -570,17 +712,13 @@ const AdminBooksPage = () => {
                     </div>
                   </>
                 )}
-                <div className="ap-form-group" style={{ gridColumn: "1 / -1" }}>
-                  <label className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      name="autoDigitalBorrowEnabled"
-                      checked={form.autoDigitalBorrowEnabled}
-                      onChange={handleFormChange}
-                    />
-                    تأیید خودکار امانت دیجیتال
-                  </label>
-                </div>
+                {editingBook && (
+                  <div className="ap-form-group" style={{ gridColumn: "1 / -1" }}>
+                    <span style={{ fontSize: "0.8rem", color: "var(--color-text-muted)" }}>
+                      💡 نسخه‌های دیجیتال برای همه‌ی اعضای کتابخانه به‌صورت آنی قابل دانلود است.
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="ap-modal-actions">
                 <button className="btn btn-primary" type="submit" disabled={saving || coverUploading || createPdfUploading}>
@@ -616,7 +754,7 @@ const AdminBooksPage = () => {
       {copyTarget && (
         <div className="ap-modal-overlay" onClick={() => setCopyTarget(null)}>
           <div className="ap-modal" style={{ maxWidth: 380 }} onClick={(e) => e.stopPropagation()}>
-            <h2 className="ap-modal-title">افزودن نسخه فیزیکی</h2>
+            <h2 className="ap-modal-title">افزودن نسخه چاپی</h2>
             <p style={{ fontSize: "0.88rem", color: "#6b7280", marginBottom: "1.25rem" }}>
               کتاب: <strong>{copyTarget.title}</strong>
             </p>

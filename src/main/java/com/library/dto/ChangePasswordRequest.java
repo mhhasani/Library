@@ -15,12 +15,12 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Request to change user password")
 public class ChangePasswordRequest {
 
-    @NotBlank(message = "Current password is required")
+    @NotBlank(message = "رمز عبور فعلی را وارد کنید")
     @Schema(description = "Current password")
     private String currentPassword;
 
-    @NotBlank(message = "New password is required")
-    @Size(min = 8, message = "New password must be at least 8 characters")
+    @NotBlank(message = "رمز عبور جدید را وارد کنید")
+    @Size(min = 8, message = "رمز عبور جدید باید حداقل ۸ کاراکتر باشد")
     @Schema(description = "New password (minimum 8 characters)")
     private String newPassword;
 }

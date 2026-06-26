@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Request to add physical book copies")
 public class AddBookCopyRequest {
 
-    @Positive(message = "Number of copies must be positive")
+    @Positive(message = "تعداد نسخه‌ها باید بزرگ‌تر از صفر باشد")
     @Schema(description = "Number of copies to add", example = "5")
     private Integer numberOfCopies;
 }

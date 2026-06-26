@@ -33,6 +33,15 @@
   font-size: 0.88rem;
 }
 
+.abr-tracking {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #1b3560;
+  font-family: ui-monospace, monospace;
+  margin-top: 0.15rem;
+}
+
 .abr-copy {
   font-size: 0.75rem;
   color: #9ca3af;
@@ -46,4 +55,137 @@
 
 .abr-row--overdue td {
   background: rgba(254, 226, 226, 0.3);
+}
+
+/* ── Physical borrow cards & shared chips ── */
+.abr-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.abr-card {
+  background: var(--color-surface, #fff);
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 1.1rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04);
+}
+.abr-card--overdue {
+  border-color: #fca5a5;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
+}
+.abr-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+.abr-user-line {
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #6b7280);
+  margin-top: 0.25rem;
+}
+.abr-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.7rem 1rem;
+  border-top: 1px dashed #e5e7eb;
+  padding-top: 0.9rem;
+}
+.abr-detail { display: flex; flex-direction: column; gap: 0.18rem; }
+.abr-detail--wide { grid-column: 1 / -1; }
+.abr-detail-label { font-size: 0.72rem; color: var(--color-text-muted, #9ca3af); }
+.abr-detail-value { font-size: 0.86rem; color: var(--color-text, #1f2937); font-weight: 600; }
+.abr-detail-value--danger { color: #dc2626; }
+.abr-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid #f3f4f6;
+}
+
+/* Reject reason preset chips */
+.abr-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+}
+.abr-chip {
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.78rem;
+  color: #374151;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+.abr-chip:hover {
+  border-color: var(--color-primary, #1B3560);
+  background: rgba(27, 53, 96, 0.06);
+}
+
+/* ── Borrower summary panel (in approve/reject modals) ── */
+.abr-summary {
+  background: rgba(27, 53, 96, 0.05);
+  border: 1px solid rgba(27, 53, 96, 0.12);
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 1rem;
+}
+.abr-summary--loading { color: #6b7280; font-size: 0.82rem; }
+.abr-summary-title { font-size: 0.8rem; font-weight: 700; color: #1f2937; margin-bottom: 0.5rem; }
+.abr-summary-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.abr-sum-chip {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.74rem;
+  color: #374151;
+}
+.abr-sum-chip--danger { color: #dc2626; border-color: #fca5a5; background: #fef2f2; }
+.abr-summary-loans { font-size: 0.76rem; color: #6b7280; margin-top: 0.5rem; line-height: 1.7; }
+
+/* ── Per-borrow event timeline ── */
+.abr-timeline { display: flex; flex-direction: column; gap: 0; max-height: 50vh; overflow-y: auto; padding-right: 0.25rem; }
+.abr-tl-item { position: relative; display: flex; gap: 0.6rem; padding: 0 0 1rem 0; }
+.abr-tl-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--color-primary, #1B3560);
+  margin-top: 4px; flex-shrink: 0; position: relative; z-index: 1;
+}
+.abr-tl-item:not(:last-child)::before {
+  content: ""; position: absolute; top: 10px; right: 5px;
+  width: 2px; height: 100%; background: #e5e7eb;
+}
+.abr-tl-body { flex: 1; }
+.abr-tl-head { display: flex; justify-content: space-between; gap: 0.5rem; align-items: baseline; }
+.abr-tl-title { font-size: 0.86rem; font-weight: 700; color: #1f2937; }
+.abr-tl-time { font-size: 0.72rem; color: #9ca3af; white-space: nowrap; }
+.abr-tl-detail { font-size: 0.8rem; color: #4b5563; margin-top: 0.2rem; line-height: 1.7; }
+.abr-tl-actor { font-size: 0.74rem; color: #6b7280; margin-top: 0.2rem; }
+
+/* ── Table toolbar / search ── */
+.abr-toolbar { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin-bottom: 1rem; }
+.abr-search {
+  flex: 1; min-width: 240px;
+  border: 1.5px solid rgba(200, 160, 76, 0.35);
+  border-radius: 14px;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  font-family: var(--font-family, 'Vazirmatn', Tahoma, sans-serif);
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #1f2937);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.abr-search:focus {
+  border-color: var(--color-accent, #C8A04C);
+  box-shadow: 0 0 0 3px rgba(200, 160, 76, 0.15);
 }

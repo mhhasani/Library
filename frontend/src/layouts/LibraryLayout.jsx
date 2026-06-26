@@ -13,6 +13,21 @@ const LibraryLayout = () => {
   const [userRole, setUserRole] = useState(null);
   const [membershipStatus, setMembershipStatus] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [joining, setJoining] = useState(false);
+  const [joinMsg, setJoinMsg] = useState("");
+
+  const handleJoin = async () => {
+    try {
+      setJoining(true);
+      await libraryAPI.requestMembership(libraryId);
+      setMembershipStatus("PENDING");
+      setJoinMsg("درخواست عضویت شما ثبت شد و در انتظار تأیید است.");
+    } catch (err) {
+      setJoinMsg(err.response?.data?.message || "خطا در ثبت درخواست عضویت");
+    } finally {
+      setJoining(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -57,11 +72,21 @@ const LibraryLayout = () => {
           ) : membershipStatus === "REJECTED" ? (
             <p>درخواست عضویت شما در این کتابخانه رد شده است.</p>
           ) : (
-            <p>شما عضو این کتابخانه نیستید.</p>
+            <>
+              <p style={{ marginBottom: "1rem" }}>
+                برای مشاهده‌ی کتاب‌ها و امانت در این کتابخانه ابتدا باید عضو شوید.
+              </p>
+              <button className="btn btn-accent" onClick={handleJoin} disabled={joining}>
+                {joining ? "در حال ثبت..." : "➕ درخواست عضویت"}
+              </button>
+            </>
           )}
-          <a href="/libraries" style={{ color: "var(--color-primary)", fontWeight: 600 }}>
-            بازگشت به کتابخانه‌ها
-          </a>
+          {joinMsg && <p style={{ marginTop: "1rem", color: "var(--color-primary)", fontWeight: 600 }}>{joinMsg}</p>}
+          <div style={{ marginTop: "1.25rem" }}>
+            <a href="/libraries" style={{ color: "var(--color-primary)", fontWeight: 600 }}>
+              بازگشت به کتابخانه‌ها
+            </a>
+          </div>
         </div>
       </LibraryContext.Provider>
     );
@@ -83,12 +108,12 @@ const LibraryLayout = () => {
                 📚 کتاب‌ها
               </NavLink>
               <NavLink
-                to={`/libraries/${libraryId}/borrows`}
+                to="/profile"
                 className={({ isActive }) =>
                   `library-tab ${isActive ? "library-tab--active" : ""}`
                 }
               >
-                📋 امانت‌های من
+                📚 فعالیت من
               </NavLink>
               {userRole === "ADMIN" && membershipStatus === "APPROVED" && (
                 <NavLink

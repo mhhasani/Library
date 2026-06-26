@@ -41,23 +41,23 @@ public class CoverImageService {
         Long currentUserId = SecurityUtils.getCurrentUserId();
 
         var membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
-                .orElseThrow(() -> new UnauthorizedException("Not a member of this library"));
+                .orElseThrow(() -> new UnauthorizedException("شما عضو این کتابخانه نیستید"));
         if (membership.getRole() != LibraryMembershipRole.ADMIN) {
-            throw new UnauthorizedException("Only library admins can upload cover images");
+            throw new UnauthorizedException("فقط مدیر کتابخانه می‌تواند تصویر جلد بارگذاری کند");
         }
 
         if (file == null || file.isEmpty()) {
-            throw new BadRequestException("File is empty");
+            throw new BadRequestException("فایل خالی است");
         }
         String contentType = file.getContentType();
         if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase())) {
-            throw new BadRequestException("Unsupported image type. Allowed: JPEG, PNG, WEBP, GIF");
+            throw new BadRequestException("فرمت تصویر پشتیبانی نمی‌شود. فرمت‌های مجاز: JPEG، PNG، WEBP، GIF");
         }
 
         Book book = bookRepository.findById(bookId)
-                .orElseThrow(() -> new ResourceNotFoundException("Book not found: " + bookId));
+                .orElseThrow(() -> new ResourceNotFoundException("کتاب پیدا نشد: " + bookId));
         if (!book.getLibrary().getId().equals(libraryId)) {
-            throw new BadRequestException("Book does not belong to this library");
+            throw new BadRequestException("این کتاب مربوط به این کتابخانه نیست");
         }
 
         // Delete old cover image file if exists and not referenced by other books
@@ -74,7 +74,7 @@ public class CoverImageService {
 
         String checksum = computeChecksum(file);
         User uploader = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("کاربر پیدا نشد"));
 
         FileResource fileResource = fileResourceRepository.findByChecksumSha256(checksum)
                 .orElseGet(() -> {
@@ -101,7 +101,7 @@ public class CoverImageService {
             byte[] hash = digest.digest(file.getBytes());
             return HexFormat.of().formatHex(hash);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to compute file checksum", e);
+            throw new RuntimeException("محاسبه‌ی شناسه‌ی فایل ناموفق بود", e);
         }
     }
 }

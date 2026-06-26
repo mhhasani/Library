@@ -40,6 +40,7 @@ public class StatsController {
                 .totalBooks(bookRepository.count())
                 .totalUsers(userRepository.count())
                 .activeBorrows(borrowRepository.countByStatus(BorrowStatus.APPROVED))
+                .activeUsers(userRepository.countByAccountStatus(com.library.entity.enums.AccountStatus.ACTIVE))
                 .build();
         return ResponseEntity.ok(ApiResponse.success("Stats retrieved successfully", stats));
     }

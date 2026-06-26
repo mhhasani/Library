@@ -1,3 +1,21 @@
+/* Self-hosted Vazirmatn (variable) — works fully offline, no CDN required */
+@font-face {
+  font-family: 'Vazirmatn';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/vazirmatn-arabic.woff2') format('woff2');
+  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FBB2-FBC1;
+}
+@font-face {
+  font-family: 'Vazirmatn';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/vazirmatn-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
   --font-family: 'Vazirmatn', Tahoma, 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
 
@@ -77,7 +95,7 @@
   /* ── Layout ─────────────────────────────────────── */
   --navbar-height: 68px;
   --sidebar-width: 260px;
-  --content-max:   1160px;
+  --content-max:   1480px;
 }
 
 /* ── Reset ─────────────────────────────────────────── */
@@ -126,3 +144,22 @@ a:hover { text-decoration: underline; }
 @keyframes pulse-gold   { 0%, 100% { box-shadow: 0 0 0 0 rgba(200,160,76,0); } 50% { box-shadow: 0 0 0 8px rgba(200,160,76,0.15); } }
 @keyframes topo-drift   { from { background-position: 0 0; } to { background-position: 400px 0; } }
 @keyframes radar-blip   { 0%,100% { opacity: 0; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
+
+/* ── Shared table toolbar / search (used across admin & system tables) ── */
+.abr-toolbar { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin-bottom: 1rem; }
+.abr-search {
+  flex: 1; min-width: 240px;
+  border: 1.5px solid rgba(200, 160, 76, 0.35);
+  border-radius: 14px;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  font-family: var(--font-family, 'Vazirmatn', Tahoma, sans-serif);
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #1f2937);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.abr-search:focus {
+  border-color: var(--color-accent, #C8A04C);
+  box-shadow: 0 0 0 3px rgba(200, 160, 76, 0.15);
+}

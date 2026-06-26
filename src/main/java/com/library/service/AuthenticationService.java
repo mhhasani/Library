@@ -41,7 +41,7 @@ public class AuthenticationService {
     public UserDTO register(RegisterRequest request) {
         // Check if email already exists
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BadRequestException("Email already registered");
+            throw new BadRequestException("این ایمیل قبلاً ثبت شده است");
         }
 
         // Create new user
@@ -75,7 +75,7 @@ public class AuthenticationService {
 
             // Get user
             User user = userRepository.findByEmail(request.getEmail())
-                    .orElseThrow(() -> new UnauthorizedException("User not found"));
+                    .orElseThrow(() -> new UnauthorizedException("کاربر پیدا نشد"));
 
             // Update last login
             user.setLastLoginAt(LocalDateTime.now());
@@ -97,20 +97,20 @@ public class AuthenticationService {
 
         } catch (AuthenticationException ex) {
             log.error("Authentication failed for email: {}", request.getEmail());
-            throw new UnauthorizedException("Invalid email or password");
+            throw new UnauthorizedException("ایمیل یا رمز عبور نادرست است");
         }
     }
 
     public AuthResponse refreshToken(String refreshToken) {
         if (!tokenProvider.isTokenValid(refreshToken)) {
-            throw new UnauthorizedException("Invalid refresh token");
+            throw new UnauthorizedException("نشست شما منقضی شده است؛ لطفاً دوباره وارد شوید");
         }
 
         String email = tokenProvider.extractEmail(refreshToken);
         Long userId = tokenProvider.extractUserId(refreshToken);
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UnauthorizedException("User not found"));
+                .orElseThrow(() -> new UnauthorizedException("کاربر پیدا نشد"));
 
         String newAccessToken = tokenProvider.generateAccessToken(email, userId);
         String newRefreshToken = tokenProvider.generateRefreshToken(email, userId);

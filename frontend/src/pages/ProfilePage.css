@@ -56,7 +56,7 @@
 
 /* ── Body ──────────────────────────────────── */
 .profile-body {
-  max-width: 760px;
+  max-width: 1080px;
   margin: 0 auto;
   padding: 2.25rem 1.5rem;
 }
@@ -69,6 +69,46 @@
   border: 1px solid var(--color-border-light);
   overflow: hidden;
   margin-bottom: 1.5rem;
+}
+
+/* ── Top-level tabs ─────────────────────────── */
+.profile-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+.profile-tab {
+  border: 1px solid var(--color-border, #d1d5db);
+  background: var(--color-surface, #fff);
+  border-radius: 999px;
+  padding: 0.55rem 1.15rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-secondary, #4b5563);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+.profile-tab:hover { border-color: var(--color-primary, #1B3560); }
+.profile-tab--active {
+  background: var(--color-primary, #1B3560);
+  border-color: var(--color-primary, #1B3560);
+  color: #fff;
+}
+
+/* ── Card head (title + action) ─────────────── */
+.profile-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 2rem 0.75rem;
+}
+.profile-section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
 }
 
 /* ── Avatar Section ──────────────────────── */

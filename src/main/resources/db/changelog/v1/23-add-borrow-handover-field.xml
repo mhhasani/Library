@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
+
+    <changeSet id="23" author="system">
+        <comment>Track when the recipient handed the book to the courier (in transit back to the library).</comment>
+        <addColumn tableName="borrows">
+            <column name="handed_over_by_user_at" type="timestamp"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 
 // Route guards
@@ -18,19 +18,23 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import LibrariesPage from "./pages/LibrariesPage";
 import BooksPage from "./pages/BooksPage";
-import BorrowsPage from "./pages/BorrowsPage";
+import BookProfilePage from "./pages/BookProfilePage";
+import PhysicalBorrowsPage from "./pages/PhysicalBorrowsPage";
+import DigitalBorrowsPage from "./pages/DigitalBorrowsPage";
 import ProfilePage from "./pages/ProfilePage";
 
 // Library admin pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminBooksPage from "./pages/admin/AdminBooksPage";
 import AdminMembersPage from "./pages/admin/AdminMembersPage";
-import AdminBorrowsPage from "./pages/admin/AdminBorrowsPage";
+import AdminPhysicalBorrowsPage from "./pages/admin/AdminPhysicalBorrowsPage";
+import AdminDigitalBorrowsPage from "./pages/admin/AdminDigitalBorrowsPage";
 
 // System admin pages
 import SystemDashboard from "./pages/system/SystemDashboard";
 import SystemUsersPage from "./pages/system/SystemUsersPage";
 import SystemLibrariesPage from "./pages/system/SystemLibrariesPage";
+import SystemLibraryRequestsPage from "./pages/system/SystemLibraryRequestsPage";
 
 import "./App.css";
 
@@ -38,6 +42,7 @@ const SYSTEM_ADMIN_NAV = [
   { to: "/system",           end: true,  icon: "📊", label: "داشبورد سیستم" },
   { to: "/system/users",     end: false, icon: "👤", label: "مدیریت کاربران" },
   { to: "/system/libraries", end: false, icon: "🏛️", label: "کتابخانه‌ها" },
+  { to: "/system/library-requests", end: false, icon: "📨", label: "درخواست‌های کتابخانه" },
 ];
 
 function App() {
@@ -63,8 +68,17 @@ function App() {
                 element={<PrivateRoute><BooksPage /></PrivateRoute>}
               />
               <Route
-                path="borrows"
-                element={<PrivateRoute><BorrowsPage /></PrivateRoute>}
+                path="books/:bookId"
+                element={<PrivateRoute><BookProfilePage /></PrivateRoute>}
+              />
+              <Route path="borrows" element={<Navigate to="physical" replace />} />
+              <Route
+                path="borrows/physical"
+                element={<PrivateRoute><PhysicalBorrowsPage /></PrivateRoute>}
+              />
+              <Route
+                path="borrows/digital"
+                element={<PrivateRoute><DigitalBorrowsPage /></PrivateRoute>}
               />
             </Route>
           </Route>
@@ -77,7 +91,9 @@ function App() {
             <Route index element={<AdminDashboard />} />
             <Route path="books" element={<AdminBooksPage />} />
             <Route path="members" element={<AdminMembersPage />} />
-            <Route path="borrows" element={<AdminBorrowsPage />} />
+            <Route path="borrows" element={<Navigate to="physical" replace />} />
+            <Route path="borrows/physical" element={<AdminPhysicalBorrowsPage />} />
+            <Route path="borrows/digital" element={<AdminDigitalBorrowsPage />} />
           </Route>
 
           {/* ── System admin panel ── */}
@@ -96,6 +112,7 @@ function App() {
             <Route index element={<SystemDashboard />} />
             <Route path="users" element={<SystemUsersPage />} />
             <Route path="libraries" element={<SystemLibrariesPage />} />
+            <Route path="library-requests" element={<SystemLibraryRequestsPage />} />
           </Route>
         </Routes>
       </AuthProvider>

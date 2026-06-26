@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useParams } from "react-router-dom";
-import { bookAPI, borrowAPI, subjectAPI } from "../services/api";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { bookAPI, borrowAPI, subjectAPI, meAPI } from "../services/api";
 import { useLibrary } from "../context/LibraryContext";
 import { useDebounce } from "../hooks/useDebounce";
 import BorrowModal from "../components/BorrowModal";
+import ConfirmDialog from "../components/ConfirmDialog";
 import { toPersian, toPersianNum } from "../utils/persian";
 import "./BooksPage.css";
 
@@ -11,10 +12,12 @@ const BooksPage = () => {
   const { libraryId } = useParams();
   const { libraryName, borrowDuration } = useLibrary() || {};
 
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("q") || "");
   const [searching, setSearching] = useState(false);
   const isFirstLoad = useRef(true);
 
@@ -22,6 +25,7 @@ const BooksPage = () => {
   const [filterSubjectId, setFilterSubjectId] = useState("");
   const [filterYearFrom, setFilterYearFrom] = useState("");
   const [filterYearTo, setFilterYearTo] = useState("");
+  const [availFilter, setAvailFilter] = useState("all"); // all | physical | digital
   const [availableSubjects, setAvailableSubjects] = useState([]);
 
   // Debounce text-based filters — any new text filter added here is automatically debounced
@@ -32,6 +36,14 @@ const BooksPage = () => {
   // Physical borrow modal
   const [selectedBook, setSelectedBook] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editBorrow, setEditBorrow] = useState(null);
+
+  // Confirmation dialog (generic)
+  const [confirm, setConfirm] = useState(null); // { title, message, variant, confirmLabel, onConfirm }
+  const [confirmLoading, setConfirmLoading] = useState(false);
+
+  // Favorites (starred books)
+  const [favoriteIds, setFavoriteIds] = useState(new Set());
 
   // borrowMap[bookId] = { hasActivePhysical, hasActiveDigital, hasApprovedDigital }
   const [borrowMap, setBorrowMap] = useState({});
@@ -76,8 +88,11 @@ const BooksPage = () => {
       myBorrows.forEach((b) => {
         const bid = b.bookId;
         if (!map[bid]) map[bid] = {};
-        const isActive = (b.status === "REQUESTED" || b.status === "APPROVED") && !b.returnDate;
-        if (b.borrowType === "PHYSICAL" && isActive) map[bid].hasActivePhysical = true;
+        const isActive = (b.status === "REQUESTED" || b.status === "APPROVED" || b.status === "RECEIVED") && !b.returnDate;
+        if (b.borrowType === "PHYSICAL" && isActive) {
+          map[bid].hasActivePhysical = true;
+          if (b.status === "REQUESTED") map[bid].pendingPhysical = b;
+        }
         if (b.borrowType === "DIGITAL" && isActive) {
           map[bid].hasActiveDigital = true;
           if (b.status === "APPROVED") map[bid].hasApprovedDigital = true;
@@ -96,6 +111,28 @@ const BooksPage = () => {
 
   useEffect(() => { fetchBooks(); }, [fetchBooks]);
 
+  // Load the user's favorite book ids (for the star state)
+  useEffect(() => {
+    meAPI.favoriteIds()
+      .then((res) => setFavoriteIds(new Set(res.data?.data || res.data || [])))
+      .catch(() => {});
+  }, [libraryId]);
+
+  const toggleFavorite = async (e, bookId) => {
+    e.stopPropagation();
+    try {
+      const res = await meAPI.toggleFavorite(bookId);
+      const fav = (res.data?.data || res.data)?.favorited;
+      setFavoriteIds((prev) => {
+        const next = new Set(prev);
+        if (fav) next.add(bookId); else next.delete(bookId);
+        return next;
+      });
+    } catch {
+      setError("خطا در ذخیره‌ی نشان");
+    }
+  };
+
   const clearFilters = () => {
     setSearchTerm("");
     setFilterSubjectId("");
@@ -103,35 +140,67 @@ const BooksPage = () => {
     setFilterYearTo("");
   };
 
-  // Physical borrow
-  const handleBorrow = async (bookId) => {
+  // Submit handler for the physical borrow modal (create OR edit)
+  const handlePhysicalSubmit = async (details) => {
     try {
-      await borrowAPI.createBorrow(libraryId, { bookId, borrowType: "PHYSICAL" });
+      if (editBorrow) {
+        await borrowAPI.updateRequest(libraryId, editBorrow.id, details);
+      } else {
+        await borrowAPI.createBorrow(libraryId, {
+          bookId: selectedBook.id,
+          borrowType: "PHYSICAL",
+          ...details,
+        });
+      }
       setIsModalOpen(false);
       setSelectedBook(null);
+      setEditBorrow(null);
       fetchBooks();
     } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.message || "خطا در ثبت امانت");
+      const msg = err.response?.data?.error || err.response?.data?.message || "خطا در ثبت درخواست";
+      throw new Error(msg); // surfaced inside the modal
     }
   };
 
-  // Reserve when no copy available
-  const handleReserve = async (book) => {
-    try {
-      await borrowAPI.reserveBook(libraryId, book.id);
-      fetchBooks();
-    } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.message || "خطا در ثبت رزرو");
-    }
+  // Reserve when no copy available (with confirmation)
+  const handleReserve = (book) => {
+    setConfirm({
+      title: "رزرو کتاب",
+      message: `کتاب «${book.title}» موجود نیست. آیا می‌خواهید آن را رزرو کنید تا هنگام موجود شدن در نوبت قرار بگیرید؟`,
+      confirmLabel: "بله، رزرو کن",
+      variant: "primary",
+      onConfirm: async () => {
+        await borrowAPI.reserveBook(libraryId, book.id);
+        fetchBooks();
+      },
+    });
   };
 
-  // Digital borrow request
-  const handleRequestDigital = async (book) => {
+  // Digital borrow request (with confirmation)
+  const handleRequestDigital = (book) => {
+    setConfirm({
+      title: "درخواست دانلود",
+      message: `آیا درخواست دانلود کتاب «${book.title}» را ثبت می‌کنید؟`,
+      confirmLabel: "بله، ثبت کن",
+      variant: "primary",
+      onConfirm: async () => {
+        await borrowAPI.createBorrow(libraryId, { bookId: book.id, borrowType: "DIGITAL" });
+        fetchBooks();
+      },
+    });
+  };
+
+  const runConfirm = async () => {
+    if (!confirm?.onConfirm) return;
     try {
-      await borrowAPI.createBorrow(libraryId, { bookId: book.id, borrowType: "DIGITAL" });
-      fetchBooks();
+      setConfirmLoading(true);
+      await confirm.onConfirm();
+      setConfirm(null);
     } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.message || "خطا در ثبت درخواست دیجیتال");
+      setError(err.response?.data?.error || err.response?.data?.message || "خطا در انجام عملیات");
+      setConfirm(null);
+    } finally {
+      setConfirmLoading(false);
     }
   };
 
@@ -171,6 +240,10 @@ const BooksPage = () => {
 
   if (loading) return <div className="loading">در حال بارگذاری کتاب‌ها...</div>;
 
+  const visibleBooks = books.filter((b) =>
+    availFilter === "physical" ? (b.totalCopiesCount || 0) > 0
+      : availFilter === "digital" ? !!b.hasDigitalVersions
+      : true);
 
   return (
     <div className="books-page">
@@ -237,6 +310,22 @@ const BooksPage = () => {
           )}
         </div>
 
+        <div className="books-avail-filters">
+          {[
+            { k: "all", label: "همه" },
+            { k: "physical", label: "📦 نسخه چاپی" },
+            { k: "digital", label: "💻 نسخه دیجیتال" },
+          ].map((f) => (
+            <button
+              key={f.k}
+              className={`books-avail-chip ${availFilter === f.k ? "books-avail-chip--active" : ""}`}
+              onClick={() => setAvailFilter(f.k)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
         {error && <div className="error-message">{error}</div>}
 
         {searching ? (
@@ -244,17 +333,29 @@ const BooksPage = () => {
             <div className="books-searching-spinner" />
             <span>در حال جستجو...</span>
           </div>
-        ) : books.length === 0 && !error ? (
+        ) : visibleBooks.length === 0 && !error ? (
           <div className="empty-state">
             <span className="empty-icon">📚</span>
             <p>کتابی یافت نشد</p>
           </div>
         ) : (
           <div className="books-grid">
-            {books.map((book) => {
+            {visibleBooks.map((book) => {
               const borrow = borrowMap[book.id] || {};
               return (
-                <div key={book.id} className="book-card">
+                <div
+                  key={book.id}
+                  className="book-card book-card--clickable"
+                  onClick={() => navigate(`/libraries/${libraryId}/books/${book.id}`)}
+                  title="مشاهده پروفایل کتاب"
+                >
+                  <button
+                    className={`book-fav-btn ${favoriteIds.has(book.id) ? "book-fav-btn--on" : ""}`}
+                    onClick={(e) => toggleFavorite(e, book.id)}
+                    title={favoriteIds.has(book.id) ? "حذف از نشان‌شده‌ها" : "نشان‌کردن"}
+                  >
+                    {favoriteIds.has(book.id) ? "★" : "☆"}
+                  </button>
                   <div className="book-card-cover">
                     {book.coverImageUrl
                       ? <img src={book.coverImageUrl} alt="جلد" className="book-cover-img" />
@@ -266,7 +367,13 @@ const BooksPage = () => {
                   </div>
                   <div className="book-card-body">
                     <div className="book-card-top">
-                      <h3 className="book-title">{book.title}</h3>
+                      <h3
+                        className="book-title book-title--link"
+                        onClick={() => navigate(`/libraries/${libraryId}/books/${book.id}`)}
+                        title="مشاهده پروفایل کتاب"
+                      >
+                        {book.title}
+                      </h3>
                       <p className="book-author">✍️ {book.author}</p>
                       {book.publisher && <p className="book-publisher">🏢 {book.publisher}</p>}
                       {book.subjectNames?.length > 0 && (
@@ -277,6 +384,14 @@ const BooksPage = () => {
                         </div>
                       )}
                       {book.publicationYear && <p className="book-year">📅 {toPersian(book.publicationYear)}</p>}
+                      <div className="book-version-badges">
+                        <span className={`ver-badge ${book.totalCopiesCount > 0 ? "ver-badge--phys" : "ver-badge--off"}`}>
+                          {book.totalCopiesCount > 0 ? "✓" : "✗"} نسخه چاپی
+                        </span>
+                        <span className={`ver-badge ${book.hasDigitalVersions ? "ver-badge--digi" : "ver-badge--off"}`}>
+                          {book.hasDigitalVersions ? "✓" : "✗"} نسخه دیجیتال
+                        </span>
+                      </div>
                     </div>
 
                     <div className="book-card-footer">
@@ -290,13 +405,21 @@ const BooksPage = () => {
                         )}
                       </div>
 
-                      <div className="book-card-actions">
+                      <div className="book-card-actions" onClick={(e) => e.stopPropagation()}>
                         {book.totalCopiesCount > 0 && (
-                          borrow.hasActivePhysical ? (
-                            <button className="btn btn-ghost btn-sm" disabled>✓ امانت فیزیکی</button>
+                          borrow.pendingPhysical ? (
+                            <button
+                              className="btn btn-outline btn-sm"
+                              onClick={() => { setEditBorrow(borrow.pendingPhysical); setSelectedBook(book); setIsModalOpen(true); }}
+                              title="ویرایش درخواست تأییدنشده"
+                            >
+                              ✏️ ویرایش درخواست
+                            </button>
+                          ) : borrow.hasActivePhysical ? (
+                            <button className="btn btn-ghost btn-sm" disabled>✓ امانت</button>
                           ) : book.availableCopiesCount > 0 ? (
-                            <button className="btn btn-success btn-sm" onClick={() => { setSelectedBook(book); setIsModalOpen(true); }}>
-                              📚 امانت فیزیکی
+                            <button className="btn btn-success btn-sm" onClick={() => { setEditBorrow(null); setSelectedBook(book); setIsModalOpen(true); }}>
+                              📚 امانت
                             </button>
                           ) : (
                             <button className="btn btn-outline btn-sm" onClick={() => handleReserve(book)}
@@ -315,7 +438,7 @@ const BooksPage = () => {
                             <button className="btn btn-ghost btn-sm" disabled>✓ در انتظار تایید دیجیتال</button>
                           ) : (
                             <button className="btn btn-outline btn-sm" onClick={() => handleRequestDigital(book)}>
-                              💾 امانت دیجیتال
+                              💾 دانلود
                             </button>
                           )
                         )}
@@ -332,9 +455,21 @@ const BooksPage = () => {
       <BorrowModal
         isOpen={isModalOpen}
         book={selectedBook}
+        editBorrow={editBorrow}
         borrowDuration={borrowDuration}
-        onClose={() => { setIsModalOpen(false); setSelectedBook(null); }}
-        onBorrow={handleBorrow}
+        onClose={() => { setIsModalOpen(false); setSelectedBook(null); setEditBorrow(null); }}
+        onSubmit={handlePhysicalSubmit}
+      />
+
+      <ConfirmDialog
+        open={!!confirm}
+        title={confirm?.title}
+        message={confirm?.message}
+        confirmLabel={confirm?.confirmLabel}
+        variant={confirm?.variant}
+        loading={confirmLoading}
+        onConfirm={runConfirm}
+        onCancel={() => setConfirm(null)}
       />
 
       {downloadBook && (

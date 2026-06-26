@@ -22,6 +22,9 @@ public class BookDTO {
     @Schema(description = "Library ID", example = "1")
     private Long libraryId;
 
+    @Schema(description = "Library name (for cross-library search results)")
+    private String libraryName;
+
     @Schema(description = "Book title", example = "Clean Code")
     private String title;
 

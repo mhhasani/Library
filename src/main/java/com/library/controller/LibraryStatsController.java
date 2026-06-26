@@ -91,12 +91,12 @@ public class LibraryStatsController {
 
     private void requireAdmin(Long libraryId) {
         libraryRepository.findById(libraryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Library not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("کتابخانه پیدا نشد"));
         Long currentUserId = SecurityUtils.getCurrentUserId();
         LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
-                .orElseThrow(() -> new UnauthorizedException("Not a member"));
+                .orElseThrow(() -> new UnauthorizedException("شما عضو این کتابخانه نیستید"));
         if (membership.getRole() != LibraryMembershipRole.ADMIN) {
-            throw new UnauthorizedException("Only library admins can view stats");
+            throw new UnauthorizedException("فقط مدیر کتابخانه می‌تواند آمار را ببیند");
         }
     }
 }

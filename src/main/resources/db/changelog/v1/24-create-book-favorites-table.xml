@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
+
+    <changeSet id="24" author="system">
+        <comment>User bookmarks/stars on books.</comment>
+        <createTable tableName="book_favorites">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="user_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_fav_user" references="users(id)" deleteCascade="true"/>
+            </column>
+            <column name="book_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_fav_book" references="books(id)" deleteCascade="true"/>
+            </column>
+            <column name="created_at" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="book_favorites" columnNames="user_id, book_id" constraintName="uk_fav_user_book"/>
+        <createIndex tableName="book_favorites" indexName="idx_fav_user"><column name="user_id"/></createIndex>
+        <createIndex tableName="book_favorites" indexName="idx_fav_book"><column name="book_id"/></createIndex>
+    </changeSet>
+
+</databaseChangeLog>

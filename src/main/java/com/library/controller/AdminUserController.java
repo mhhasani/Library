@@ -32,10 +32,15 @@ public class AdminUserController {
     private LibraryService libraryService;
 
     @GetMapping("/users")
-    @Operation(summary = "Get users", description = "Retrieve users (optionally filter by account status)")
-    public ResponseEntity<ApiResponse<List<UserDTO>>> getUsers(
-            @RequestParam(value = "status", required = false) AccountStatus status) {
-        List<UserDTO> users = userService.getUsers(status);
+    @Operation(summary = "Get users", description = "Paginated, searchable users (optionally filter by account status)")
+    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<UserDTO>>> getUsers(
+            @RequestParam(value = "status", required = false) AccountStatus status,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size) {
+        var pageable = org.springframework.data.domain.PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by("id").descending());
+        var users = userService.getUsersPaged(status, search, pageable);
         return ResponseEntity.ok(ApiResponse.success("Users retrieved successfully", users));
     }
 
@@ -50,7 +55,8 @@ public class AdminUserController {
     }
 
     @PatchMapping("/users/{userId}/role")
-    @Operation(summary = "Update user system role", description = "Promote or demote a user's system role")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @Operation(summary = "Update user system role", description = "Promote or demote a user's system role — super admin only")
     public ResponseEntity<ApiResponse<UserDTO>> updateUserRole(
             @PathVariable Long userId,
             @RequestBody Map<String, String> body) {
@@ -60,9 +66,14 @@ public class AdminUserController {
     }
 
     @GetMapping("/libraries")
-    @Operation(summary = "Get all libraries", description = "Retrieve all libraries in the system")
-    public ResponseEntity<ApiResponse<List<LibraryDTO>>> getAllLibraries() {
-        List<LibraryDTO> libraries = libraryService.getAllLibrariesForAdmin();
+    @Operation(summary = "Get all libraries", description = "Paginated, searchable libraries")
+    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<LibraryDTO>>> getAllLibraries(
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size) {
+        var pageable = org.springframework.data.domain.PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by("id").descending());
+        var libraries = libraryService.getAllLibrariesForAdminPaged(search, pageable);
         return ResponseEntity.ok(ApiResponse.success("Libraries retrieved successfully", libraries));
     }
 }

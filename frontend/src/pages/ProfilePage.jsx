@@ -1,24 +1,39 @@
 import React, { useEffect, useState } from "react";
 import { userAPI } from "../services/api";
 import PasswordInput from "../components/PasswordInput";
+import MyLibraryActivity from "../components/MyLibraryActivity";
 import "./ProfilePage.css";
 
 const extractError = (err) =>
   err.response?.data?.error || err.response?.data?.message || "خطا رخ داد";
 
 const ROLE_LABELS = {
+  SUPER_ADMIN: "ادمین اصلی",
   SYSTEM_ADMIN: "مدیر سیستم",
   USER: "کاربر عادی",
 };
+
+const TABS = [
+  { key: "account", label: "👤 اطلاعات حساب" },
+  { key: "activity", label: "📚 فعالیت کتابخانه‌ای" },
+  { key: "password", label: "🔐 تغییر رمز عبور" },
+];
 
 const ProfilePage = () => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [tab, setTab] = useState("account");
 
   // Edit profile state
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ firstName: "", lastName: "", phoneNumber: "" });
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    phoneNumber: "",
+    deliveryAddress: "",
+    internalExtension: "",
+  });
   const [saving, setSaving] = useState(false);
   const [editSuccess, setEditSuccess] = useState("");
 
@@ -37,6 +52,8 @@ const ProfilePage = () => {
           firstName: data.firstName || "",
           lastName: data.lastName || "",
           phoneNumber: data.phoneNumber || "",
+          deliveryAddress: data.deliveryAddress || "",
+          internalExtension: data.internalExtension || "",
         });
       })
       .catch(() => setError("خطا در بارگذاری پروفایل"))
@@ -50,6 +67,10 @@ const ProfilePage = () => {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
+    if (form.internalExtension && !/^\d{8}$/.test(form.internalExtension)) {
+      setError("شماره تلفن داخلی باید ۸ رقم باشد");
+      return;
+    }
     try {
       setSaving(true);
       setError("");
@@ -117,10 +138,7 @@ const ProfilePage = () => {
       </div>
 
       <div className="profile-body">
-        {error && <div className="error-message" style={{ marginBottom: "1rem" }}>{error}</div>}
-        {editSuccess && <div className="success-message" style={{ marginBottom: "1rem" }}>{editSuccess}</div>}
-
-        {/* Info Card */}
+        {/* Identity card — always visible */}
         <div className="profile-card" style={{ marginBottom: "1.5rem" }}>
           <div className="profile-avatar-section">
             <div className="profile-avatar">{initials}</div>
@@ -130,10 +148,33 @@ const ProfilePage = () => {
                 {ROLE_LABELS[profile?.systemRole] || profile?.systemRole || "کاربر"}
               </span>
             </div>
+          </div>
+        </div>
+
+        {/* Top-level tabs */}
+        <div className="profile-tabs">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              className={`profile-tab ${tab === t.key ? "profile-tab--active" : ""}`}
+              onClick={() => setTab(t.key)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Account tab */}
+        {tab === "account" && (
+        <div className="profile-card">
+          {error && <div className="error-message" style={{ margin: "1rem 2rem 0" }}>{error}</div>}
+          {editSuccess && <div className="success-message" style={{ margin: "1rem 2rem 0" }}>{editSuccess}</div>}
+
+          <div className="profile-card-head">
+            <h3 className="profile-section-title">👤 اطلاعات حساب</h3>
             {!editing && (
               <button
                 className="btn btn-outline btn-sm"
-                style={{ marginRight: "auto" }}
                 onClick={() => {
                   setEditing(true);
                   setError("");
@@ -169,13 +210,39 @@ const ProfilePage = () => {
                     placeholder="نام خانوادگی"
                   />
                 </div>
-                <div className="ap-form-group" style={{ gridColumn: "1 / -1" }}>
+                <div className="ap-form-group">
                   <label>شماره تلفن</label>
                   <input
                     name="phoneNumber"
                     value={form.phoneNumber}
                     onChange={handleFormChange}
                     placeholder="09121234567"
+                  />
+                </div>
+                <div className="ap-form-group">
+                  <label>شماره تلفن داخلی</label>
+                  <input
+                    name="internalExtension"
+                    value={form.internalExtension}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        internalExtension: e.target.value.replace(/\D/g, "").slice(0, 8),
+                      }))
+                    }
+                    inputMode="numeric"
+                    maxLength={8}
+                    placeholder="۸ رقم"
+                  />
+                </div>
+                <div className="ap-form-group" style={{ gridColumn: "1 / -1" }}>
+                  <label>آدرس تحویل کتاب فیزیکی</label>
+                  <textarea
+                    name="deliveryAddress"
+                    value={form.deliveryAddress}
+                    onChange={handleFormChange}
+                    rows={2}
+                    placeholder="مثال: ساختمان فناوری اطلاعات، طبقه دوم، اتاق ۱۱۲"
                   />
                 </div>
               </div>
@@ -192,6 +259,8 @@ const ProfilePage = () => {
                       firstName: profile.firstName || "",
                       lastName: profile.lastName || "",
                       phoneNumber: profile.phoneNumber || "",
+                      deliveryAddress: profile.deliveryAddress || "",
+                      internalExtension: profile.internalExtension || "",
                     });
                     setError("");
                   }}
@@ -220,6 +289,26 @@ const ProfilePage = () => {
                 </div>
               )}
 
+              {profile?.internalExtension && (
+                <div className="profile-info-item">
+                  <span className="info-icon">☎️</span>
+                  <div>
+                    <span className="info-label">تلفن داخلی</span>
+                    <span className="info-value">{profile.internalExtension}</span>
+                  </div>
+                </div>
+              )}
+
+              {profile?.deliveryAddress && (
+                <div className="profile-info-item">
+                  <span className="info-icon">📍</span>
+                  <div>
+                    <span className="info-label">آدرس تحویل</span>
+                    <span className="info-value">{profile.deliveryAddress}</span>
+                  </div>
+                </div>
+              )}
+
               {profile?.createdAt && (
                 <div className="profile-info-item">
                   <span className="info-icon">📅</span>
@@ -234,8 +323,17 @@ const ProfilePage = () => {
             </div>
           )}
         </div>
+        )}
 
-        {/* Change Password Card */}
+        {/* Library activity tab: my borrows / downloads / favorites */}
+        {tab === "activity" && (
+        <div className="profile-card" style={{ padding: "1.5rem 2rem" }}>
+          <MyLibraryActivity />
+        </div>
+        )}
+
+        {/* Change Password tab */}
+        {tab === "password" && (
         <div className="profile-card">
           <div style={{ padding: "1.5rem 2rem 0.5rem" }}>
             <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--color-text)", margin: 0 }}>
@@ -291,6 +389,7 @@ const ProfilePage = () => {
             </div>
           </form>
         </div>
+        )}
       </div>
     </div>
   );

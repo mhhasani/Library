@@ -32,6 +32,8 @@ ehthumbs.db
 .env.local
 uploads/
 *.log
+library-files/
+*.sql
 
 # Docker
 docker-compose.override.yml

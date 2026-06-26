@@ -125,7 +125,7 @@ class DigitalBookServiceTest extends BaseIntegrationTest {
         assertThatThrownBy(() -> digitalBookService.uploadDigitalBook(
                 library.getId(), book.getId(), pdfFile, null))
                 .isInstanceOf(UnauthorizedException.class)
-                .hasMessageContaining("Only library admins");
+                .hasMessageContaining("فقط مدیر کتابخانه");
     }
 
     @Test
@@ -138,12 +138,12 @@ class DigitalBookServiceTest extends BaseIntegrationTest {
         assertThatThrownBy(() -> digitalBookService.uploadDigitalBook(
                 library.getId(), book.getId(), docFile, null))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("Only PDF files");
+                .hasMessageContaining("فقط فایل PDF");
     }
 
     @Test
-    @DisplayName("Should throw BadRequestException when PDF already exists for this book")
-    void uploadDigitalBook_duplicatePdf_throws() {
+    @DisplayName("Uploading a second PDF replaces the existing one — no exception thrown")
+    void uploadDigitalBook_duplicatePdf_replaces() {
         SecurityTestUtils.setSecurityContext(adminUser, "USER");
         digitalBookService.uploadDigitalBook(library.getId(), book.getId(), pdfFile, null);
 
@@ -151,10 +151,11 @@ class DigitalBookServiceTest extends BaseIntegrationTest {
                 "file", "another.pdf", "application/pdf", "different pdf content".getBytes());
         when(storageService.store(any(), anyString())).thenReturn("digital-books/other-uuid.pdf");
 
-        assertThatThrownBy(() -> digitalBookService.uploadDigitalBook(
-                library.getId(), book.getId(), pdfFile2, null))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("PDF version already exists");
+        // Second upload should succeed (replaces previous)
+        assertThatNoException().isThrownBy(() ->
+                digitalBookService.uploadDigitalBook(library.getId(), book.getId(), pdfFile2, null));
+        // Still only one digital version for this book
+        assertThat(digitalBookRepository.findByBookId(book.getId())).hasSize(1);
     }
 
     @Test
@@ -247,7 +248,7 @@ class DigitalBookServiceTest extends BaseIntegrationTest {
         SecurityTestUtils.setSecurityContext(memberUser, "USER");
         assertThatThrownBy(() -> digitalBookService.downloadDigitalBook(uploaded.getId()))
                 .isInstanceOf(UnauthorizedException.class)
-                .hasMessageContaining("approved digital borrow");
+                .hasMessageContaining("دانلود تأییدشده");
     }
 
     @Test

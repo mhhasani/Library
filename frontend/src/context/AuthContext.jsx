@@ -87,7 +87,7 @@ export const AuthProvider = ({ children }) => {
       const accessToken = authData?.accessToken || authData?.token;
 
       if (!accessToken) {
-        throw new Error("No access token received from server");
+        throw new Error("پاسخ نامعتبر از سرور دریافت شد");
       }
 
       localStorage.setItem("token", accessToken);

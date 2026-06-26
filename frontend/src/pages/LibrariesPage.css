@@ -274,3 +274,6 @@
   .libraries-header { padding: 2rem 1.25rem; }
   .libraries-main-title { font-size: 1.6rem; }
 }
+
+.libraries-search { margin: 0 auto 1.75rem; display: flex; justify-content: center; }
+.libraries-search .gsb { margin-top: 0; }

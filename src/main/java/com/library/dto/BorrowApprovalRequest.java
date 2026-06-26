@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Request to approve or reject a borrow")
 public class BorrowApprovalRequest {
 
-    @NotBlank(message = "Action cannot be blank")
+    @NotBlank(message = "عملیات را مشخص کنید")
     @Schema(description = "Action: APPROVE or REJECT", example = "APPROVE")
     private String action;
 

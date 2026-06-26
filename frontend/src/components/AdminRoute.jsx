@@ -13,7 +13,7 @@ const AdminRoute = ({ children }) => {
     return <Navigate to="/login" />;
   }
 
-  if (user?.systemRole !== "SYSTEM_ADMIN") {
+  if (!["SYSTEM_ADMIN", "SUPER_ADMIN"].includes(user?.systemRole)) {
     return (
       <div style={{ padding: "3rem", textAlign: "center", color: "var(--color-danger)", fontSize: "1rem" }}>
         شما مجوز دسترسی به این صفحه را ندارید.

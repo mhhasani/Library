@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
+
+    <changeSet id="22" author="system">
+        <comment>User-submitted library creation requests reviewed by system admins.</comment>
+        <createTable tableName="library_requests">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="requester_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_libreq_requester" references="users(id)"/>
+            </column>
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="text"/>
+            <column name="auto_membership_approval" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="default_borrow_duration_days" type="int" defaultValueNumeric="14">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="varchar(20)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reviewed_by" type="bigint">
+                <constraints foreignKeyName="fk_libreq_reviewer" references="users(id)"/>
+            </column>
+            <column name="rejection_reason" type="text"/>
+            <column name="created_library_id" type="bigint">
+                <constraints foreignKeyName="fk_libreq_created_library" references="libraries(id)"/>
+            </column>
+            <column name="created_at" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="library_requests" indexName="idx_libreq_requester">
+            <column name="requester_id"/>
+        </createIndex>
+        <createIndex tableName="library_requests" indexName="idx_libreq_status">
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

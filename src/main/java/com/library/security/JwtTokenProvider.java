@@ -63,11 +63,11 @@ public class JwtTokenProvider {
                     .parseSignedClaims(token)
                     .getPayload();
         } catch (SignatureException e) {
-            log.error("Invalid JWT signature");
-            throw new RuntimeException("Invalid JWT signature", e);
+            log.error("نشست شما نامعتبر است؛ لطفاً دوباره وارد شوید");
+            throw new RuntimeException("نشست شما نامعتبر است؛ لطفاً دوباره وارد شوید", e);
         } catch (Exception e) {
-            log.error("Invalid JWT token");
-            throw new RuntimeException("Invalid JWT token", e);
+            log.error("نشست شما نامعتبر است؛ لطفاً دوباره وارد شوید");
+            throw new RuntimeException("نشست شما نامعتبر است؛ لطفاً دوباره وارد شوید", e);
         }
     }
 

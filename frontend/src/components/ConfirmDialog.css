@@ -1,0 +1,42 @@
+.cd-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 20, 40, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1300;
+  padding: 1rem;
+  animation: cdFade 0.18s ease;
+}
+@keyframes cdFade { from { opacity: 0; } to { opacity: 1; } }
+
+.cd-box {
+  background: var(--color-surface, #fff);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 400px;
+  padding: 1.5rem 1.5rem 1.25rem;
+  box-shadow: 0 16px 40px rgba(16, 24, 40, 0.22);
+  animation: cdPop 0.18s ease;
+}
+@keyframes cdPop { from { transform: translateY(8px) scale(0.98); } to { transform: none; } }
+
+.cd-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text, #111827);
+  margin: 0 0 0.6rem;
+}
+.cd-message {
+  font-size: 0.9rem;
+  line-height: 1.85;
+  color: var(--color-text-muted, #6b7280);
+  margin: 0 0 1.25rem;
+}
+.cd-actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-start;
+}

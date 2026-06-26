@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { adminAPI } from "../../services/api";
+import { statsAPI } from "../../services/api";
 import { toPersianNum } from "../../utils/persian";
 import "./SystemDashboard.css";
 
@@ -13,16 +13,12 @@ const SystemDashboard = () => {
     const load = async () => {
       try {
         setLoading(true);
-        const [usersRes, librariesRes] = await Promise.all([
-          adminAPI.getUsers(),
-          adminAPI.getLibraries(),
-        ]);
-        const users = usersRes.data?.data || usersRes.data || [];
-        const libraries = librariesRes.data?.data || librariesRes.data || [];
+        const res = await statsAPI.getStats();
+        const data = res.data?.data || {};
         setStats({
-          totalUsers: users.length,
-          activeUsers: users.filter((u) => u.accountStatus === "ACTIVE").length,
-          totalLibraries: libraries.length,
+          totalUsers: data.totalUsers || 0,
+          activeUsers: data.activeUsers || 0,
+          totalLibraries: data.totalLibraries || 0,
         });
         setError("");
       } catch (err) {

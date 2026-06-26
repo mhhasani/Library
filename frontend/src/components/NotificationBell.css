@@ -1,0 +1,124 @@
+.nb-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.nb-btn {
+  position: relative;
+  background: transparent;
+  border: none;
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0.3rem;
+  line-height: 1;
+  border-radius: 10px;
+  transition: background 0.15s ease;
+}
+.nb-btn:hover { background: rgba(255, 255, 255, 0.12); }
+
+.nb-badge {
+  position: absolute;
+  top: -2px;
+  left: -4px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nb-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  width: 340px;
+  max-width: min(340px, 92vw);
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(16, 24, 40, 0.18);
+  z-index: 1200;
+  overflow: hidden;
+}
+
+/* Open toward the page interior depending on where the bell sits */
+.nb-dropdown--start { left: 0; right: auto; }
+.nb-dropdown--end   { right: 0; left: auto; }
+
+.nb-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #111827;
+  border-bottom: 1px solid #f3f4f6;
+}
+.nb-markall {
+  background: transparent;
+  border: none;
+  color: var(--color-primary, #1B3560);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.nb-list {
+  max-height: 380px;
+  overflow-y: auto;
+}
+.nb-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+.nb-loading {
+  padding: 0.75rem 1rem;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.8rem;
+}
+
+.nb-item {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  text-align: right;
+  font-family: inherit;
+  transition: background 0.12s ease;
+}
+.nb-item:hover { background: #f9fafb; }
+.nb-item--unread { background: rgba(27, 53, 96, 0.04); }
+
+.nb-item-icon { font-size: 1.1rem; line-height: 1.4; }
+.nb-item-body { display: flex; flex-direction: column; gap: 0.2rem; flex: 1; min-width: 0; }
+.nb-item-title { font-size: 0.83rem; font-weight: 700; color: #1f2937; }
+.nb-item-msg {
+  font-size: 0.78rem;
+  color: #6b7280;
+  line-height: 1.6;
+}
+.nb-item-time { font-size: 0.7rem; color: #9ca3af; }
+
+.nb-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #dc2626;
+  margin-top: 6px;
+  flex-shrink: 0;
+}

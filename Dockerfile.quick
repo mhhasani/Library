@@ -4,7 +4,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf 
 RUN groupadd --system --gid 1001 appgroup && \
     useradd --system --uid 1001 --gid appgroup appuser
 COPY target/library-management-system-1.0.0.jar app.jar
-RUN chown appuser:appgroup app.jar
+# storage path owned by appuser so a fresh named volume here is writable (avoids upload AccessDenied)
+RUN mkdir -p /data/library-files && chown -R appuser:appgroup /data app.jar
 USER appuser
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

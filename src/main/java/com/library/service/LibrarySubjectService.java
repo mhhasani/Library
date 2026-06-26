@@ -40,7 +40,7 @@ public class LibrarySubjectService {
 
     public List<LibrarySubjectDTO> getSubjects(Long libraryId) {
         libraryRepository.findById(libraryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Library not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("کتابخانه پیدا نشد"));
         return subjectRepository.findByLibraryIdOrderByNameAsc(libraryId)
                 .stream().map(this::toDTO).collect(Collectors.toList());
     }
@@ -48,15 +48,15 @@ public class LibrarySubjectService {
     public LibrarySubjectDTO createSubject(Long libraryId, String name) {
         requireAdmin(libraryId);
         Library library = libraryRepository.findById(libraryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Library not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("کتابخانه پیدا نشد"));
 
         if (name == null || name.isBlank()) {
-            throw new BadRequestException("Subject name cannot be empty");
+            throw new BadRequestException("نام موضوع را وارد کنید");
         }
         name = name.trim();
 
         if (subjectRepository.existsByLibraryIdAndName(libraryId, name)) {
-            throw new BadRequestException("Subject already exists: " + name);
+            throw new BadRequestException("این موضوع از قبل وجود دارد: " + name);
         }
 
         LibrarySubject subject = LibrarySubject.builder()
@@ -71,9 +71,9 @@ public class LibrarySubjectService {
     public void deleteSubject(Long libraryId, Long subjectId) {
         requireAdmin(libraryId);
         LibrarySubject subject = subjectRepository.findById(subjectId)
-                .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("موضوع پیدا نشد"));
         if (!subject.getLibrary().getId().equals(libraryId)) {
-            throw new BadRequestException("Subject does not belong to this library");
+            throw new BadRequestException("این موضوع مربوط به این کتابخانه نیست");
         }
         // Remove from book_subjects join table first (clears Hibernate L1 cache via clearAutomatically)
         bookRepository.removeSubjectFromAllBooks(subjectId);
@@ -84,9 +84,9 @@ public class LibrarySubjectService {
     private void requireAdmin(Long libraryId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
-                .orElseThrow(() -> new UnauthorizedException("Not a member of this library"));
+                .orElseThrow(() -> new UnauthorizedException("شما عضو این کتابخانه نیستید"));
         if (membership.getRole() != LibraryMembershipRole.ADMIN) {
-            throw new UnauthorizedException("Only library admins can manage subjects");
+            throw new UnauthorizedException("فقط مدیر کتابخانه می‌تواند موضوع‌ها را مدیریت کند");
         }
     }
 

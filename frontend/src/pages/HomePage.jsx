@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { statsAPI } from "../services/api";
+import GlobalSearchBar from "../components/GlobalSearchBar";
 import "./HomePage.css";
 
 const features = [
@@ -137,6 +138,8 @@ const HomePage = () => {
               سامانه یکپارچه مدیریت کتابخانه‌های نیروهای مسلح — منابع علمی،
               نظامی و تخصصی را جستجو، امانت و مطالعه کنید.
             </p>
+
+            <GlobalSearchBar />
 
             <div className="hero-actions">
               <Link to="/libraries" className="btn btn-accent btn-lg hero-cta">

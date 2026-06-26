@@ -24,4 +24,7 @@ public class StatsDTO {
 
     @Schema(description = "Total number of active borrows")
     private long activeBorrows;
+
+    @Schema(description = "Total number of users with ACTIVE account status")
+    private long activeUsers;
 }

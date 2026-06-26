@@ -42,8 +42,11 @@ public class LibraryService {
 
     public LibraryDTO createLibrary(LibraryRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        User owner = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new UnauthorizedException("Current user not found"));
+        // A system admin may assign a different user as the owner/admin of the new library
+        Long ownerId = (request.getOwnerUserId() != null && SecurityUtils.hasRole("SYSTEM_ADMIN"))
+                ? request.getOwnerUserId() : currentUserId;
+        User owner = userRepository.findById(ownerId)
+                .orElseThrow(() -> new ResourceNotFoundException("کاربر مالک پیدا نشد"));
 
         Library library = Library.builder()
                 .name(request.getName())
@@ -78,7 +81,7 @@ public class LibraryService {
     public LibraryDTO getLibraryById(Long libraryId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         Library library = libraryRepository.findById(libraryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Library not found with id: " + libraryId));
+                .orElseThrow(() -> new ResourceNotFoundException("کتابخانه‌ای با این شناسه پیدا نشد: " + libraryId));
 
         LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
                 .orElse(null);
@@ -107,23 +110,46 @@ public class LibraryService {
                 .collect(Collectors.toList());
     }
 
+    /** Paginated + searchable libraries for the system-admin table (search by name/description/owner). */
+    public org.springframework.data.domain.Page<LibraryDTO> getAllLibrariesForAdminPaged(
+            String search, org.springframework.data.domain.Pageable pageable) {
+        final String q = (search != null && !search.isBlank()) ? search.trim().toLowerCase() : null;
+        org.springframework.data.jpa.domain.Specification<Library> spec = (root, cq, cb) -> {
+            if (q == null) return cb.conjunction();
+            String pat = "%" + q + "%";
+            var owner = root.join("owner");
+            return cb.or(
+                cb.like(cb.lower(root.get("name")), pat),
+                cb.like(cb.lower(cb.coalesce(root.get("description"), "")), pat),
+                cb.like(cb.lower(cb.coalesce(owner.get("firstName"), "")), pat),
+                cb.like(cb.lower(cb.coalesce(owner.get("lastName"), "")), pat),
+                cb.like(cb.lower(owner.get("email")), pat)
+            );
+        };
+        return libraryRepository.findAll(spec, pageable).map(lib -> mapToLibraryDTO(lib, null));
+    }
+
     public LibraryDTO updateLibrary(Long libraryId, LibraryRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         Library library = libraryRepository.findById(libraryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Library not found with id: " + libraryId));
+                .orElseThrow(() -> new ResourceNotFoundException("کتابخانه‌ای با این شناسه پیدا نشد: " + libraryId));
 
-        // Check if user is library admin
+        // A library ADMIN, the owner, or a system admin may edit the library
+        boolean isSystemAdmin = SecurityUtils.hasRole("SYSTEM_ADMIN");
         LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
-                .orElseThrow(() -> new UnauthorizedException("User is not a member of this library"));
-
-        if (membership.getRole() != LibraryMembershipRole.ADMIN) {
-            throw new UnauthorizedException("Only library admins can update library details");
+                .orElse(null);
+        boolean isLibraryAdmin = membership != null && membership.getRole() == LibraryMembershipRole.ADMIN;
+        if (!isSystemAdmin && !isLibraryAdmin) {
+            throw new UnauthorizedException("فقط مدیر کتابخانه می‌تواند اطلاعات کتابخانه را ویرایش کند");
         }
 
         library.setName(request.getName());
         library.setDescription(request.getDescription());
         library.setAutoMembershipApproval(request.getAutoMembershipApproval());
         library.setDefaultBorrowDurationDays(request.getDefaultBorrowDurationDays());
+        if (request.getIsActive() != null) {
+            library.setIsActive(request.getIsActive());
+        }
         library.setUpdatedAt(LocalDateTime.now());
 
         library = libraryRepository.save(library);
@@ -132,13 +158,44 @@ public class LibraryService {
         return mapToLibraryDTO(library, membership);
     }
 
+    /**
+     * Promote a member to ADMIN or demote an ADMIN to MEMBER.
+     * Allowed only for the library owner or a system admin. The owner's role cannot be changed.
+     */
+    public LibraryDTO setMemberRole(Long libraryId, Long targetUserId, LibraryMembershipRole newRole) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        Library library = libraryRepository.findById(libraryId)
+                .orElseThrow(() -> new ResourceNotFoundException("کتابخانه‌ای با این شناسه پیدا نشد: " + libraryId));
+
+        boolean isOwner = library.getOwner().getId().equals(currentUserId);
+        boolean isSystemAdmin = SecurityUtils.hasRole("SYSTEM_ADMIN");
+        if (!isOwner && !isSystemAdmin) {
+            throw new UnauthorizedException("فقط مالک کتابخانه یا مدیر سیستم می‌تواند نقش اعضا را تغییر دهد");
+        }
+        if (library.getOwner().getId().equals(targetUserId)) {
+            throw new BadRequestException("نقش مالک کتابخانه قابل تغییر نیست");
+        }
+
+        LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(targetUserId, libraryId)
+                .orElseThrow(() -> new ResourceNotFoundException("این کاربر عضو این کتابخانه نیست"));
+        if (membership.getStatus() != MembershipStatus.APPROVED) {
+            throw new BadRequestException("فقط اعضای تأییدشده را می‌توان ارتقا/تنزل داد");
+        }
+
+        membership.setRole(newRole);
+        membership.setUpdatedAt(LocalDateTime.now());
+        membershipRepository.save(membership);
+        log.info("Member {} role set to {} in library {}", targetUserId, newRole, libraryId);
+        return mapToLibraryDTO(library, null);
+    }
+
     public void deleteLibrary(Long libraryId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         Library library = libraryRepository.findById(libraryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Library not found with id: " + libraryId));
+                .orElseThrow(() -> new ResourceNotFoundException("کتابخانه‌ای با این شناسه پیدا نشد: " + libraryId));
 
-        if (!library.getOwner().getId().equals(currentUserId)) {
-            throw new UnauthorizedException("Only library owner can delete the library");
+        if (!library.getOwner().getId().equals(currentUserId) && !SecurityUtils.hasRole("SYSTEM_ADMIN")) {
+            throw new UnauthorizedException("فقط مالک کتابخانه می‌تواند کتابخانه را حذف کند");
         }
 
         library.setIsActive(false);
@@ -150,14 +207,14 @@ public class LibraryService {
     public void requestMembership(Long libraryId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         User user = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new UnauthorizedException("Current user not found"));
+                .orElseThrow(() -> new UnauthorizedException("کاربر فعلی پیدا نشد"));
 
         Library library = libraryRepository.findById(libraryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Library not found with id: " + libraryId));
+                .orElseThrow(() -> new ResourceNotFoundException("کتابخانه‌ای با این شناسه پیدا نشد: " + libraryId));
 
         // Check if membership already exists
         if (membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId).isPresent()) {
-            throw new BadRequestException("User is already a member or has a pending request");
+            throw new BadRequestException("شما از قبل عضو هستید یا درخواست در انتظار دارید");
         }
 
         LibraryMembership membership = LibraryMembership.builder()
@@ -179,14 +236,14 @@ public class LibraryService {
         
         // Check if current user is library admin
         LibraryMembership adminMembership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
-                .orElseThrow(() -> new UnauthorizedException("User is not a member of this library"));
+                .orElseThrow(() -> new UnauthorizedException("شما عضو این کتابخانه نیستید"));
 
         if (adminMembership.getRole() != LibraryMembershipRole.ADMIN) {
-            throw new UnauthorizedException("Only library admins can approve memberships");
+            throw new UnauthorizedException("فقط مدیر کتابخانه می‌تواند عضویت‌ها را تأیید کند");
         }
 
         LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(userId, libraryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Membership not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("عضویت پیدا نشد"));
 
         membership.setStatus(MembershipStatus.APPROVED);
         membership.setApprovedBy(userRepository.findById(currentUserId).orElseThrow());
@@ -199,14 +256,14 @@ public class LibraryService {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         
         LibraryMembership adminMembership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
-                .orElseThrow(() -> new UnauthorizedException("User is not a member of this library"));
+                .orElseThrow(() -> new UnauthorizedException("شما عضو این کتابخانه نیستید"));
 
         if (adminMembership.getRole() != LibraryMembershipRole.ADMIN) {
-            throw new UnauthorizedException("Only library admins can reject memberships");
+            throw new UnauthorizedException("فقط مدیر کتابخانه می‌تواند عضویت‌ها را رد کند");
         }
 
         LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(userId, libraryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Membership not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("عضویت پیدا نشد"));
 
         membership.setStatus(MembershipStatus.REJECTED);
         membership.setRejectionReason(rejectionReason);
@@ -218,13 +275,54 @@ public class LibraryService {
     public List<MembershipDTO> getLibraryMembers(Long libraryId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         LibraryMembership adminMembership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
-                .orElseThrow(() -> new UnauthorizedException("User is not a member of this library"));
+                .orElseThrow(() -> new UnauthorizedException("شما عضو این کتابخانه نیستید"));
         if (adminMembership.getRole() != LibraryMembershipRole.ADMIN) {
-            throw new UnauthorizedException("Only library admins can view member list");
+            throw new UnauthorizedException("فقط مدیر کتابخانه می‌تواند فهرست اعضا را ببیند");
         }
         return membershipRepository.findByLibraryId(libraryId).stream()
                 .map(this::mapToMembershipDTO)
                 .collect(Collectors.toList());
+    }
+
+    private void requireLibraryAdmin(Long libraryId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        LibraryMembership m = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
+                .orElseThrow(() -> new UnauthorizedException("شما عضو این کتابخانه نیستید"));
+        if (m.getRole() != LibraryMembershipRole.ADMIN && !SecurityUtils.hasRole("SYSTEM_ADMIN")) {
+            throw new UnauthorizedException("فقط مدیر کتابخانه می‌تواند فهرست اعضا را ببیند");
+        }
+    }
+
+    /** Pending membership requests (small list, no pagination). */
+    public List<MembershipDTO> getPendingMembers(Long libraryId) {
+        requireLibraryAdmin(libraryId);
+        return membershipRepository.findByLibraryIdAndStatus(libraryId, MembershipStatus.PENDING).stream()
+                .map(this::mapToMembershipDTO)
+                .collect(Collectors.toList());
+    }
+
+    /** Paginated + searchable non-pending members (search by name/email/role). */
+    public org.springframework.data.domain.Page<MembershipDTO> getMembersPaged(
+            Long libraryId, String search, org.springframework.data.domain.Pageable pageable) {
+        requireLibraryAdmin(libraryId);
+        final String q = (search != null && !search.isBlank()) ? search.trim().toLowerCase() : null;
+        org.springframework.data.jpa.domain.Specification<LibraryMembership> spec = (root, cq, cb) -> {
+            java.util.List<jakarta.persistence.criteria.Predicate> ps = new java.util.ArrayList<>();
+            ps.add(cb.equal(root.get("library").get("id"), libraryId));
+            ps.add(cb.notEqual(root.get("status"), MembershipStatus.PENDING));
+            if (q != null) {
+                var user = root.join("user");
+                String pat = "%" + q + "%";
+                ps.add(cb.or(
+                    cb.like(cb.lower(user.get("email")), pat),
+                    cb.like(cb.lower(cb.coalesce(user.get("firstName"), "")), pat),
+                    cb.like(cb.lower(cb.coalesce(user.get("lastName"), "")), pat),
+                    cb.like(cb.lower(user.get("phoneNumber")), pat)
+                ));
+            }
+            return cb.and(ps.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+        return membershipRepository.findAll(spec, pageable).map(this::mapToMembershipDTO);
     }
 
     private MembershipDTO mapToMembershipDTO(LibraryMembership m) {

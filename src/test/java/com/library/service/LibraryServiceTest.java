@@ -156,7 +156,7 @@ class LibraryServiceTest extends BaseIntegrationTest {
     void testGetLibraryNotFound() {
         assertThatThrownBy(() -> libraryService.getLibraryById(999L))
                 .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("Library not found");
+                .hasMessageContaining("کتابخانه");
     }
 
     @Test
@@ -220,7 +220,7 @@ class LibraryServiceTest extends BaseIntegrationTest {
 
         assertThatThrownBy(() -> libraryService.updateLibrary(library.getId(), updateRequest))
                 .isInstanceOf(UnauthorizedException.class)
-                .hasMessageContaining("Only library admins");
+                .hasMessageContaining("فقط مدیر کتابخانه");
     }
 
     @Test
@@ -240,7 +240,7 @@ class LibraryServiceTest extends BaseIntegrationTest {
     void testDeleteLibraryNonOwner() {
         assertThatThrownBy(() -> libraryService.deleteLibrary(library.getId()))
                 .isInstanceOf(UnauthorizedException.class)
-                .hasMessageContaining("Only library owner can delete");
+                .hasMessageContaining("فقط مالک کتابخانه");
     }
 
     @Test
@@ -268,7 +268,7 @@ class LibraryServiceTest extends BaseIntegrationTest {
         // Second request should fail
         assertThatThrownBy(() -> libraryService.requestMembership(library.getId()))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("already a member");
+                .hasMessageContaining("از قبل عضو");
     }
 
     @Test

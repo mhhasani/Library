@@ -27,7 +27,7 @@ public class FileController {
     @Operation(summary = "Serve a file (cover images are public)")
     public ResponseEntity<Resource> serveFile(@PathVariable Long fileId) {
         FileResource fileResource = fileResourceRepository.findById(fileId)
-                .orElseThrow(() -> new ResourceNotFoundException("File not found: " + fileId));
+                .orElseThrow(() -> new ResourceNotFoundException("فایل پیدا نشد: " + fileId));
 
         Resource resource = storageService.load(fileResource.getFilePath());
 

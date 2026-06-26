@@ -2,6 +2,7 @@ package com.library.service;
 
 import com.library.BaseIntegrationTest;
 import com.library.dto.BorrowDTO;
+import com.library.dto.PhysicalApprovalRequest;
 import com.library.entity.*;
 import com.library.entity.enums.*;
 import com.library.exception.BadRequestException;
@@ -133,11 +134,10 @@ class ReservationServiceTest extends BaseIntegrationTest {
 
         // Admin approves the reservation
         SecurityTestUtils.setSecurityContext(adminUser, "USER");
-        BorrowDTO approved = borrowService.approveBorrowRequest(library.getId(), reservation.getId());
+        BorrowDTO approved = borrowService.approvePhysicalBorrow(library.getId(), reservation.getId(), PhysicalApprovalRequest.builder().build());
 
         assertThat(approved.getStatus()).isEqualTo(BorrowStatus.APPROVED);
         assertThat(approved.getBookCopyId()).isNotNull();
-        assertThat(approved.getBorrowDate()).isNotNull();
     }
 
     @Test
@@ -149,7 +149,7 @@ class ReservationServiceTest extends BaseIntegrationTest {
         // bookCopy is still BORROWED
         SecurityTestUtils.setSecurityContext(adminUser, "USER");
 
-        assertThatThrownBy(() -> borrowService.approveBorrowRequest(library.getId(), reservation.getId()))
+        assertThatThrownBy(() -> borrowService.approvePhysicalBorrow(library.getId(), reservation.getId(), PhysicalApprovalRequest.builder().build()))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("موجود");
     }

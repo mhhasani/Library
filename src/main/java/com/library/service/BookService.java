@@ -63,14 +63,14 @@ public class BookService {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         
         Library library = libraryRepository.findById(libraryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Library not found with id: " + libraryId));
+                .orElseThrow(() -> new ResourceNotFoundException("کتابخانه‌ای با این شناسه پیدا نشد: " + libraryId));
 
         // Check if user is library admin
         LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
-                .orElseThrow(() -> new UnauthorizedException("User is not a member of this library"));
+                .orElseThrow(() -> new UnauthorizedException("شما عضو این کتابخانه نیستید"));
 
         if (membership.getRole() != LibraryMembershipRole.ADMIN) {
-            throw new UnauthorizedException("Only library admins can create books");
+            throw new UnauthorizedException("فقط مدیر کتابخانه می‌تواند کتاب اضافه کند");
         }
 
         List<LibrarySubject> subjects = resolveSubjects(libraryId, request.getSubjectIds());
@@ -96,23 +96,23 @@ public class BookService {
 
     private void requireApprovedMembership(Long currentUserId, Long libraryId) {
         LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
-                .orElseThrow(() -> new UnauthorizedException("User is not a member of this library"));
+                .orElseThrow(() -> new UnauthorizedException("شما عضو این کتابخانه نیستید"));
         if (!membership.getStatus().equals(MembershipStatus.APPROVED)) {
-            throw new UnauthorizedException("User membership is not approved");
+            throw new UnauthorizedException("عضویت شما هنوز تأیید نشده است");
         }
     }
 
     public BookDTO getBookById(Long libraryId, Long bookId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         libraryRepository.findById(libraryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Library not found with id: " + libraryId));
+                .orElseThrow(() -> new ResourceNotFoundException("کتابخانه‌ای با این شناسه پیدا نشد: " + libraryId));
         requireApprovedMembership(currentUserId, libraryId);
 
         Book book = bookRepository.findById(bookId)
-                .orElseThrow(() -> new ResourceNotFoundException("Book not found with id: " + bookId));
+                .orElseThrow(() -> new ResourceNotFoundException("کتابی با این شناسه پیدا نشد: " + bookId));
 
         if (!book.getLibrary().getId().equals(libraryId)) {
-            throw new BadRequestException("Book does not belong to this library");
+            throw new BadRequestException("این کتاب مربوط به این کتابخانه نیست");
         }
 
         return mapToBookDTO(book);
@@ -121,7 +121,7 @@ public class BookService {
     public Page<BookDTO> getLibraryBooks(Long libraryId, Pageable pageable) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         libraryRepository.findById(libraryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Library not found with id: " + libraryId));
+                .orElseThrow(() -> new ResourceNotFoundException("کتابخانه‌ای با این شناسه پیدا نشد: " + libraryId));
         requireApprovedMembership(currentUserId, libraryId);
 
         return bookRepository.findByLibraryId(libraryId, pageable)
@@ -132,11 +132,32 @@ public class BookService {
         return advancedSearchBooks(libraryId, query, null, null, null, pageable);
     }
 
+    /** Public cross-library search over all ACTIVE libraries (no membership required). */
+    public Page<BookDTO> globalSearch(String query, Pageable pageable) {
+        String normalizedQuery = (query != null && !query.isBlank()) ? query.trim().toLowerCase() : null;
+
+        Specification<Book> spec = (root, cq, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.isTrue(root.get("library").get("isActive")));
+            if (normalizedQuery != null) {
+                String pattern = "%" + normalizedQuery + "%";
+                predicates.add(cb.or(
+                    cb.like(cb.lower(root.get("title")), pattern),
+                    cb.like(cb.lower(root.get("author")), pattern),
+                    cb.like(cb.lower(cb.coalesce(root.get("publisher"), "")), pattern)
+                ));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        return bookRepository.findAll(spec, pageable).map(this::mapToBookDTO);
+    }
+
     public Page<BookDTO> advancedSearchBooks(Long libraryId, String query, Long subjectId,
                                               Integer yearFrom, Integer yearTo, Pageable pageable) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         libraryRepository.findById(libraryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Library not found with id: " + libraryId));
+                .orElseThrow(() -> new ResourceNotFoundException("کتابخانه‌ای با این شناسه پیدا نشد: " + libraryId));
         requireApprovedMembership(currentUserId, libraryId);
 
         String normalizedQuery = (query != null && !query.isBlank()) ? query.trim().toLowerCase() : null;
@@ -173,9 +194,9 @@ public class BookService {
         if (subjectIds == null || subjectIds.isEmpty()) return Collections.emptyList();
         return subjectIds.stream().map(id -> {
             LibrarySubject subject = subjectRepository.findById(id)
-                    .orElseThrow(() -> new ResourceNotFoundException("Subject not found with id: " + id));
+                    .orElseThrow(() -> new ResourceNotFoundException("موضوعی با این شناسه پیدا نشد: " + id));
             if (!subject.getLibrary().getId().equals(libraryId)) {
-                throw new BadRequestException("Subject does not belong to this library");
+                throw new BadRequestException("این موضوع مربوط به این کتابخانه نیست");
             }
             return subject;
         }).collect(Collectors.toList());
@@ -185,20 +206,20 @@ public class BookService {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         
         Library library = libraryRepository.findById(libraryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Library not found with id: " + libraryId));
+                .orElseThrow(() -> new ResourceNotFoundException("کتابخانه‌ای با این شناسه پیدا نشد: " + libraryId));
 
         LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
-                .orElseThrow(() -> new UnauthorizedException("User is not a member of this library"));
+                .orElseThrow(() -> new UnauthorizedException("شما عضو این کتابخانه نیستید"));
 
         if (membership.getRole() != LibraryMembershipRole.ADMIN) {
-            throw new UnauthorizedException("Only library admins can update books");
+            throw new UnauthorizedException("فقط مدیر کتابخانه می‌تواند کتاب‌ها را ویرایش کند");
         }
 
         Book book = bookRepository.findById(bookId)
-                .orElseThrow(() -> new ResourceNotFoundException("Book not found with id: " + bookId));
+                .orElseThrow(() -> new ResourceNotFoundException("کتابی با این شناسه پیدا نشد: " + bookId));
 
         if (!book.getLibrary().getId().equals(libraryId)) {
-            throw new BadRequestException("Book does not belong to this library");
+            throw new BadRequestException("این کتاب مربوط به این کتابخانه نیست");
         }
 
         book.setTitle(request.getTitle());
@@ -220,20 +241,20 @@ public class BookService {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         
         Library library = libraryRepository.findById(libraryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Library not found with id: " + libraryId));
+                .orElseThrow(() -> new ResourceNotFoundException("کتابخانه‌ای با این شناسه پیدا نشد: " + libraryId));
 
         LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
-                .orElseThrow(() -> new UnauthorizedException("User is not a member of this library"));
+                .orElseThrow(() -> new UnauthorizedException("شما عضو این کتابخانه نیستید"));
 
         if (membership.getRole() != LibraryMembershipRole.ADMIN) {
-            throw new UnauthorizedException("Only library admins can delete books");
+            throw new UnauthorizedException("فقط مدیر کتابخانه می‌تواند کتاب حذف کند");
         }
 
         Book book = bookRepository.findById(bookId)
-                .orElseThrow(() -> new ResourceNotFoundException("Book not found with id: " + bookId));
+                .orElseThrow(() -> new ResourceNotFoundException("کتابی با این شناسه پیدا نشد: " + bookId));
 
         if (!book.getLibrary().getId().equals(libraryId)) {
-            throw new BadRequestException("Book does not belong to this library");
+            throw new BadRequestException("این کتاب مربوط به این کتابخانه نیست");
         }
 
         bookRepository.delete(book);
@@ -244,20 +265,20 @@ public class BookService {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         
         Library library = libraryRepository.findById(libraryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Library not found with id: " + libraryId));
+                .orElseThrow(() -> new ResourceNotFoundException("کتابخانه‌ای با این شناسه پیدا نشد: " + libraryId));
 
         LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
-                .orElseThrow(() -> new UnauthorizedException("User is not a member of this library"));
+                .orElseThrow(() -> new UnauthorizedException("شما عضو این کتابخانه نیستید"));
 
         if (membership.getRole() != LibraryMembershipRole.ADMIN) {
-            throw new UnauthorizedException("Only library admins can add book copies");
+            throw new UnauthorizedException("فقط مدیر کتابخانه می‌تواند نسخه اضافه کند");
         }
 
         Book book = bookRepository.findById(bookId)
-                .orElseThrow(() -> new ResourceNotFoundException("Book not found with id: " + bookId));
+                .orElseThrow(() -> new ResourceNotFoundException("کتابی با این شناسه پیدا نشد: " + bookId));
 
         if (!book.getLibrary().getId().equals(libraryId)) {
-            throw new BadRequestException("Book does not belong to this library");
+            throw new BadRequestException("این کتاب مربوط به این کتابخانه نیست");
         }
 
         List<BookCopy> existingCopies = bookCopyRepository.findByBookId(bookId);
@@ -276,6 +297,56 @@ public class BookService {
         }
 
         log.info("Added {} copies for book {} in library {}", numberOfCopies, bookId, libraryId);
+    }
+
+    /**
+     * Set the total number of physical copies to {@code targetCount}. Increases by adding new copies
+     * or decreases by removing AVAILABLE copies — never below the number currently on loan.
+     */
+    public BookDTO setBookCopyCount(Long libraryId, Long bookId, int targetCount) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        libraryRepository.findById(libraryId)
+                .orElseThrow(() -> new ResourceNotFoundException("کتابخانه‌ای با این شناسه پیدا نشد: " + libraryId));
+        LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
+                .orElseThrow(() -> new UnauthorizedException("شما عضو این کتابخانه نیستید"));
+        if (membership.getRole() != LibraryMembershipRole.ADMIN && !SecurityUtils.hasRole("SYSTEM_ADMIN")) {
+            throw new UnauthorizedException("فقط مدیر کتابخانه می‌تواند تعداد نسخه‌ها را تغییر دهد");
+        }
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new ResourceNotFoundException("کتابی با این شناسه پیدا نشد: " + bookId));
+        if (!book.getLibrary().getId().equals(libraryId)) {
+            throw new BadRequestException("این کتاب مربوط به این کتابخانه نیست");
+        }
+        if (targetCount < 0) {
+            throw new BadRequestException("تعداد نسخه نامعتبر است");
+        }
+
+        List<BookCopy> all = bookCopyRepository.findByBookId(bookId);
+        int total = all.size();
+        long onLoan = all.stream().filter(c -> c.getStatus() != BookCopyStatus.AVAILABLE).count();
+
+        if (targetCount < onLoan) {
+            throw new BadRequestException(String.format(
+                    "در حال حاضر %d نسخه از این کتاب در امانت است؛ تعداد نسخه‌ها نمی‌تواند کمتر از %d باشد.",
+                    onLoan, onLoan));
+        }
+
+        if (targetCount > total) {
+            addBookCopies(libraryId, bookId, targetCount - total);
+        } else if (targetCount < total) {
+            int toRemove = total - targetCount;
+            // remove AVAILABLE copies with the highest copy numbers first
+            List<BookCopy> removable = all.stream()
+                    .filter(c -> c.getStatus() == BookCopyStatus.AVAILABLE)
+                    .sorted((a, b) -> Integer.compare(b.getCopyNumber(), a.getCopyNumber()))
+                    .limit(toRemove)
+                    .collect(Collectors.toList());
+            bookCopyRepository.deleteAll(removable);
+            log.info("Removed {} available copies for book {} in library {}", removable.size(), bookId, libraryId);
+        }
+
+        Book refreshed = bookRepository.findById(bookId).orElseThrow();
+        return mapToBookDTO(refreshed);
     }
 
     public BookDTO mapToBookDTO(Book book) {
@@ -300,6 +371,7 @@ public class BookService {
         return BookDTO.builder()
                 .id(book.getId())
                 .libraryId(book.getLibrary().getId())
+                .libraryName(book.getLibrary().getName())
                 .title(book.getTitle())
                 .author(book.getAuthor())
                 .publisher(book.getPublisher())

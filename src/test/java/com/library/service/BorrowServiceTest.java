@@ -5,6 +5,7 @@ import com.library.dto.BorrowDTO;
 import com.library.dto.BorrowRequest;
 import com.library.entity.*;
 import com.library.entity.enums.*;
+import com.library.dto.PhysicalApprovalRequest;
 import com.library.exception.BadRequestException;
 import com.library.exception.UnauthorizedException;
 import com.library.repository.*;
@@ -115,7 +116,7 @@ class BorrowServiceTest extends BaseIntegrationTest {
     @DisplayName("Should create physical borrow request successfully")
     void createPhysicalBorrow_success() {
         SecurityTestUtils.setSecurityContext(memberUser, "USER");
-        BorrowRequest req = BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).build();
+        BorrowRequest req = BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).deliveryAddress("تهران، خیابان آزادی ۱۲").build();
 
         BorrowDTO result = borrowService.createBorrowRequest(library.getId(), book.getId(), req);
 
@@ -132,30 +133,30 @@ class BorrowServiceTest extends BaseIntegrationTest {
         bookCopyRepository.save(bookCopy);
         SecurityTestUtils.setSecurityContext(memberUser, "USER");
 
-        BorrowRequest req = BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).build();
+        BorrowRequest req = BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).deliveryAddress("تهران، خیابان آزادی ۱۲").build();
         assertThatThrownBy(() -> borrowService.createBorrowRequest(library.getId(), book.getId(), req))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("No available copy");
+                .hasMessageContaining("نسخه‌ی موجودی");
     }
 
     @Test
     @DisplayName("Should throw BadRequestException when user already has active physical borrow")
     void createPhysicalBorrow_duplicate_throws() {
         SecurityTestUtils.setSecurityContext(memberUser, "USER");
-        BorrowRequest req = BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).build();
+        BorrowRequest req = BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).deliveryAddress("تهران، خیابان آزادی ۱۲").build();
 
         borrowService.createBorrowRequest(library.getId(), book.getId(), req);
 
         assertThatThrownBy(() -> borrowService.createBorrowRequest(library.getId(), book.getId(), req))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("already has an active physical borrow");
+                .hasMessageContaining("امانت فعال");
     }
 
     // ── Digital Borrow ───────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("Should create digital borrow with REQUESTED status when auto-approve is off")
-    void createDigitalBorrow_manualApproval() {
+    @DisplayName("Should create digital borrow and immediately approve it")
+    void createDigitalBorrow_immediatelyApproved() {
         FileResource fr = fileResourceRepository.save(FileResource.builder()
                 .originalFilename("book.pdf").storedFilename("uuid.pdf")
                 .filePath("digital-books/uuid.pdf")
@@ -172,13 +173,15 @@ class BorrowServiceTest extends BaseIntegrationTest {
         BorrowDTO result = borrowService.createBorrowRequest(library.getId(), book.getId(), req);
 
         assertThat(result.getBorrowType()).isEqualTo(BorrowType.DIGITAL);
-        assertThat(result.getStatus()).isEqualTo(BorrowStatus.REQUESTED);
+        assertThat(result.getStatus()).isEqualTo(BorrowStatus.APPROVED);
+        assertThat(result.getBorrowDate()).isNotNull();
+        assertThat(result.getDueDate()).isNotNull();
     }
 
     @Test
-    @DisplayName("Should auto-approve digital borrow when autoDigitalBorrowEnabled is true")
-    void createDigitalBorrow_autoApproved() {
-        book.setAutoDigitalBorrowEnabled(true);
+    @DisplayName("Digital borrow is always approved — borrowDate and dueDate are set")
+    void createDigitalBorrow_alwaysApproved_hasDates() {
+        book.setAutoDigitalBorrowEnabled(false);
         bookRepository.save(book);
 
         FileResource fr = fileResourceRepository.save(FileResource.builder()
@@ -209,7 +212,7 @@ class BorrowServiceTest extends BaseIntegrationTest {
 
         assertThatThrownBy(() -> borrowService.createBorrowRequest(library.getId(), book.getId(), req))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("no digital versions");
+                .hasMessageContaining("نسخه‌ی دیجیتال ندارد");
     }
 
     @Test
@@ -232,7 +235,7 @@ class BorrowServiceTest extends BaseIntegrationTest {
 
         assertThatThrownBy(() -> borrowService.createBorrowRequest(library.getId(), book.getId(), req))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("already has an active digital borrow");
+                .hasMessageContaining("دانلود فعال");
     }
 
     @Test
@@ -251,7 +254,7 @@ class BorrowServiceTest extends BaseIntegrationTest {
         SecurityTestUtils.setSecurityContext(memberUser, "USER");
 
         BorrowDTO physical = borrowService.createBorrowRequest(library.getId(), book.getId(),
-                BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).build());
+                BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).deliveryAddress("تهران، خیابان آزادی ۱۲").build());
         BorrowDTO digital = borrowService.createBorrowRequest(library.getId(), book.getId(),
                 BorrowRequest.builder().borrowType(BorrowType.DIGITAL).build());
 
@@ -266,14 +269,13 @@ class BorrowServiceTest extends BaseIntegrationTest {
     void approveBorrow_physical_marksCopyBorrowed() {
         SecurityTestUtils.setSecurityContext(memberUser, "USER");
         BorrowDTO created = borrowService.createBorrowRequest(library.getId(), book.getId(),
-                BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).build());
+                BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).deliveryAddress("تهران، خیابان آزادی ۱۲").build());
 
         SecurityTestUtils.setSecurityContext(adminUser, "USER");
-        BorrowDTO approved = borrowService.approveBorrowRequest(library.getId(), created.getId());
+        BorrowDTO approved = borrowService.approvePhysicalBorrow(library.getId(), created.getId(), PhysicalApprovalRequest.builder().build());
 
         assertThat(approved.getStatus()).isEqualTo(BorrowStatus.APPROVED);
-        assertThat(approved.getBorrowDate()).isNotNull();
-        assertThat(approved.getDueDate()).isNotNull();
+        assertThat(approved.getBookCopyId()).isNotNull();
 
         BookCopy copy = bookCopyRepository.findById(approved.getBookCopyId()).orElseThrow();
         assertThat(copy.getStatus()).isEqualTo(BookCopyStatus.BORROWED);
@@ -296,7 +298,7 @@ class BorrowServiceTest extends BaseIntegrationTest {
         // member1 and member2 both request — only 1 copy exists
         SecurityTestUtils.setSecurityContext(memberUser, "USER");
         BorrowDTO req1 = borrowService.createBorrowRequest(library.getId(), book.getId(),
-                BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).build());
+                BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).deliveryAddress("تهران، خیابان آزادی ۱۲").build());
 
         // member2 needs a different copy slot — create a second copy then request, then remove it
         BookCopy copy2 = bookCopyRepository.save(BookCopy.builder()
@@ -305,7 +307,7 @@ class BorrowServiceTest extends BaseIntegrationTest {
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
         SecurityTestUtils.setSecurityContext(member2, "USER");
         BorrowDTO req2 = borrowService.createBorrowRequest(library.getId(), book.getId(),
-                BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).build());
+                BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).deliveryAddress("تهران، خیابان آزادی ۱۲").build());
 
         // Remove the extra copy so only 1 remains after approval
         copy2.setStatus(BookCopyStatus.BORROWED);
@@ -313,7 +315,7 @@ class BorrowServiceTest extends BaseIntegrationTest {
 
         // Approve req1 — the original copy is taken; no more AVAILABLE copies
         SecurityTestUtils.setSecurityContext(adminUser, "USER");
-        borrowService.approveBorrowRequest(library.getId(), req1.getId());
+        borrowService.approvePhysicalBorrow(library.getId(), req1.getId(), PhysicalApprovalRequest.builder().build());
 
         Borrow pending2 = borrowRepository.findById(req2.getId()).orElseThrow();
         assertThat(pending2.getStatus()).isEqualTo(BorrowStatus.REJECTED);
@@ -324,7 +326,7 @@ class BorrowServiceTest extends BaseIntegrationTest {
     void rejectBorrow_success() {
         SecurityTestUtils.setSecurityContext(memberUser, "USER");
         BorrowDTO created = borrowService.createBorrowRequest(library.getId(), book.getId(),
-                BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).build());
+                BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).deliveryAddress("تهران، خیابان آزادی ۱۲").build());
 
         SecurityTestUtils.setSecurityContext(adminUser, "USER");
         BorrowDTO rejected = borrowService.rejectBorrowRequest(library.getId(), created.getId(), "Out of policy");
@@ -334,17 +336,16 @@ class BorrowServiceTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("Should return book and mark copy available again")
-    void returnBook_physical_marksCopyAvailable() {
+    @DisplayName("Librarian confirms physical return — copy becomes AVAILABLE again")
+    void confirmReturn_physical_marksCopyAvailable() {
         SecurityTestUtils.setSecurityContext(memberUser, "USER");
         BorrowDTO created = borrowService.createBorrowRequest(library.getId(), book.getId(),
-                BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).build());
+                BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).deliveryAddress("تهران، خیابان آزادی ۱۲").build());
 
         SecurityTestUtils.setSecurityContext(adminUser, "USER");
-        borrowService.approveBorrowRequest(library.getId(), created.getId());
-
-        SecurityTestUtils.setSecurityContext(memberUser, "USER");
-        BorrowDTO returned = borrowService.returnBook(library.getId(), created.getId());
+        borrowService.approvePhysicalBorrow(library.getId(), created.getId(), PhysicalApprovalRequest.builder().build());
+        // Simulate receipt confirmation then return confirmation by librarian
+        BorrowDTO returned = borrowService.confirmReturnByLibrarian(library.getId(), created.getId());
 
         assertThat(returned.getStatus()).isEqualTo(BorrowStatus.RETURNED);
         assertThat(returned.getReturnDate()).isNotNull();
@@ -363,7 +364,7 @@ class BorrowServiceTest extends BaseIntegrationTest {
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
         SecurityTestUtils.setSecurityContext(outsider, "USER");
 
-        BorrowRequest req = BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).build();
+        BorrowRequest req = BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).deliveryAddress("تهران، خیابان آزادی ۱۲").build();
         assertThatThrownBy(() -> borrowService.createBorrowRequest(library.getId(), book.getId(), req))
                 .isInstanceOf(UnauthorizedException.class);
     }

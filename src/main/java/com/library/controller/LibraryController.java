@@ -104,6 +104,38 @@ public class LibraryController {
         return ResponseEntity.ok(ApiResponse.success("Members retrieved successfully", members));
     }
 
+    @GetMapping("/{libraryId}/members/pending")
+    @Operation(summary = "Get pending membership requests", description = "Pending requests of a library (admin only)")
+    public ResponseEntity<ApiResponse<List<MembershipDTO>>> getPendingMembers(@PathVariable Long libraryId) {
+        return ResponseEntity.ok(ApiResponse.success("Pending members retrieved",
+                libraryService.getPendingMembers(libraryId)));
+    }
+
+    @GetMapping("/{libraryId}/members/search")
+    @Operation(summary = "Search/paginate library members", description = "Paginated, searchable non-pending members (admin only)")
+    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<MembershipDTO>>> searchMembers(
+            @PathVariable Long libraryId,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        var pageable = org.springframework.data.domain.PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by("createdAt").descending());
+        return ResponseEntity.ok(ApiResponse.success("Members retrieved",
+                libraryService.getMembersPaged(libraryId, search, pageable)));
+    }
+
+    @PatchMapping("/{libraryId}/members/{userId}/role")
+    @Operation(summary = "Set a member's role",
+            description = "Promote to ADMIN or demote to MEMBER (library owner or system admin only)")
+    public ResponseEntity<ApiResponse<com.library.dto.LibraryDTO>> setMemberRole(
+            @PathVariable Long libraryId,
+            @PathVariable Long userId,
+            @RequestParam com.library.entity.enums.LibraryMembershipRole role) {
+        log.info("Setting role {} for user {} in library {}", role, userId, libraryId);
+        return ResponseEntity.ok(ApiResponse.success("نقش عضو به‌روزرسانی شد",
+                libraryService.setMemberRole(libraryId, userId, role)));
+    }
+
     @PostMapping("/{libraryId}/membership/request")
     @Operation(summary = "Request library membership", description = "Request to join a library")
     public ResponseEntity<ApiResponse<Void>> requestMembership(@PathVariable Long libraryId) {

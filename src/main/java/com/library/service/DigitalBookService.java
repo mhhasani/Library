@@ -54,27 +54,33 @@ public class DigitalBookService {
 
         // Check admin
         var membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
-                .orElseThrow(() -> new UnauthorizedException("Not a member of this library"));
+                .orElseThrow(() -> new UnauthorizedException("شما عضو این کتابخانه نیستید"));
         if (membership.getRole() != LibraryMembershipRole.ADMIN) {
-            throw new UnauthorizedException("Only library admins can upload digital books");
+            throw new UnauthorizedException("فقط مدیر کتابخانه می‌تواند نسخه‌ی دیجیتال بارگذاری کند");
         }
 
         Book book = bookRepository.findById(bookId)
-                .orElseThrow(() -> new ResourceNotFoundException("Book not found: " + bookId));
+                .orElseThrow(() -> new ResourceNotFoundException("کتاب پیدا نشد: " + bookId));
         if (!book.getLibrary().getId().equals(libraryId)) {
-            throw new BadRequestException("Book does not belong to this library");
+            throw new BadRequestException("این کتاب مربوط به این کتابخانه نیست");
         }
 
         // Validate content type
         String contentType = file.getContentType() != null ? file.getContentType() : "";
         if (!ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase())) {
-            throw new BadRequestException("Only PDF files are accepted");
+            throw new BadRequestException("فقط فایل PDF پذیرفته می‌شود");
         }
 
-        // One PDF per book
-        if (digitalBookRepository.findByBookIdAndFileFormat(bookId, FORMAT).isPresent()) {
-            throw new BadRequestException("A PDF version already exists for this book. Delete it first.");
-        }
+        // One PDF per book: uploading again replaces (updates) the existing version.
+        digitalBookRepository.findByBookIdAndFileFormat(bookId, FORMAT).ifPresent(existing -> {
+            FileResource oldFile = existing.getFileResource();
+            digitalBookRepository.delete(existing);
+            digitalBookRepository.flush();
+            if (oldFile != null && digitalBookRepository.countByFileResourceId(oldFile.getId()) == 0) {
+                storageService.delete(oldFile.getFilePath());
+                fileResourceRepository.delete(oldFile);
+            }
+        });
 
         // Compute checksum for deduplication
         String checksum = computeChecksum(file);
@@ -82,7 +88,7 @@ public class DigitalBookService {
                 .orElseGet(() -> {
                     String storedPath = storageService.store(file, "digital-books");
                     User uploader = userRepository.findById(currentUserId)
-                            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                            .orElseThrow(() -> new ResourceNotFoundException("کاربر پیدا نشد"));
                     return fileResourceRepository.save(FileResource.builder()
                             .originalFilename(file.getOriginalFilename())
                             .storedFilename(storedPath.substring(storedPath.lastIndexOf("/") + 1))
@@ -110,12 +116,12 @@ public class DigitalBookService {
     public List<DigitalBookDTO> listDigitalBooks(Long libraryId, Long bookId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
-                .orElseThrow(() -> new UnauthorizedException("Not a member of this library"));
+                .orElseThrow(() -> new UnauthorizedException("شما عضو این کتابخانه نیستید"));
 
         Book book = bookRepository.findById(bookId)
-                .orElseThrow(() -> new ResourceNotFoundException("Book not found: " + bookId));
+                .orElseThrow(() -> new ResourceNotFoundException("کتاب پیدا نشد: " + bookId));
         if (!book.getLibrary().getId().equals(libraryId)) {
-            throw new BadRequestException("Book does not belong to this library");
+            throw new BadRequestException("این کتاب مربوط به این کتابخانه نیست");
         }
 
         return digitalBookRepository.findByBookId(bookId).stream()
@@ -127,7 +133,7 @@ public class DigitalBookService {
         Long currentUserId = SecurityUtils.getCurrentUserId();
 
         DigitalBook digitalBook = digitalBookRepository.findById(digitalBookId)
-                .orElseThrow(() -> new ResourceNotFoundException("Digital book not found: " + digitalBookId));
+                .orElseThrow(() -> new ResourceNotFoundException("نسخه‌ی دیجیتال پیدا نشد: " + digitalBookId));
 
         Long bookId = digitalBook.getBook().getId();
         Long libraryId = digitalBook.getBook().getLibrary().getId();
@@ -143,7 +149,7 @@ public class DigitalBookService {
                             currentUserId, bookId, com.library.entity.enums.BorrowType.DIGITAL).stream()
                     .anyMatch(b -> b.getStatus() == BorrowStatus.APPROVED && b.getReturnDate() == null);
             if (!hasAccess) {
-                throw new UnauthorizedException("You do not have an approved digital borrow for this book");
+                throw new UnauthorizedException("شما دانلود تأییدشده‌ای برای این کتاب ندارید");
             }
         }
 
@@ -154,15 +160,15 @@ public class DigitalBookService {
         Long currentUserId = SecurityUtils.getCurrentUserId();
 
         var membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
-                .orElseThrow(() -> new UnauthorizedException("Not a member of this library"));
+                .orElseThrow(() -> new UnauthorizedException("شما عضو این کتابخانه نیستید"));
         if (membership.getRole() != LibraryMembershipRole.ADMIN) {
-            throw new UnauthorizedException("Only library admins can delete digital books");
+            throw new UnauthorizedException("فقط مدیر کتابخانه می‌تواند نسخه‌ی دیجیتال را حذف کند");
         }
 
         DigitalBook digitalBook = digitalBookRepository.findById(digitalBookId)
-                .orElseThrow(() -> new ResourceNotFoundException("Digital book not found: " + digitalBookId));
+                .orElseThrow(() -> new ResourceNotFoundException("نسخه‌ی دیجیتال پیدا نشد: " + digitalBookId));
         if (!digitalBook.getBook().getId().equals(bookId)) {
-            throw new BadRequestException("Digital book does not belong to this book");
+            throw new BadRequestException("این نسخه‌ی دیجیتال مربوط به این کتاب نیست");
         }
 
         // Only delete file if no other digital book references it
@@ -180,13 +186,13 @@ public class DigitalBookService {
 
     public String getContentType(Long digitalBookId) {
         DigitalBook digitalBook = digitalBookRepository.findById(digitalBookId)
-                .orElseThrow(() -> new ResourceNotFoundException("Digital book not found: " + digitalBookId));
+                .orElseThrow(() -> new ResourceNotFoundException("نسخه‌ی دیجیتال پیدا نشد: " + digitalBookId));
         return digitalBook.getFileResource().getContentType();
     }
 
     public String getOriginalFilename(Long digitalBookId) {
         DigitalBook digitalBook = digitalBookRepository.findById(digitalBookId)
-                .orElseThrow(() -> new ResourceNotFoundException("Digital book not found: " + digitalBookId));
+                .orElseThrow(() -> new ResourceNotFoundException("نسخه‌ی دیجیتال پیدا نشد: " + digitalBookId));
         return digitalBook.getFileResource().getOriginalFilename();
     }
 
@@ -208,7 +214,7 @@ public class DigitalBookService {
             byte[] hash = digest.digest(file.getBytes());
             return HexFormat.of().formatHex(hash);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to compute file checksum", e);
+            throw new RuntimeException("محاسبه‌ی شناسه‌ی فایل ناموفق بود", e);
         }
     }
 }

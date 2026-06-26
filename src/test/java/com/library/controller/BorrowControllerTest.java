@@ -204,7 +204,7 @@ class BorrowControllerTest extends BaseIntegrationTest {
                 .status(BorrowStatus.APPROVED)
                 .build();
 
-        when(borrowService.getLibraryBorrows(1L, null)).thenReturn(java.util.Arrays.asList(activeBorrow));
+        when(borrowService.getLibraryBorrows(1L, null, null)).thenReturn(java.util.Arrays.asList(activeBorrow));
 
         mockMvc.perform(get("/v1/libraries/1/borrows/admin/all"))
                 .andExpect(status().isOk())
@@ -217,7 +217,7 @@ class BorrowControllerTest extends BaseIntegrationTest {
     @WithMockUser(username = "admin@library.com", roles = "USER")
     @DisplayName("Should get filtered library borrows by status")
     void testGetLibraryAdminBorrowsFilteredByStatus() throws Exception {
-        when(borrowService.getLibraryBorrows(1L, BorrowStatus.APPROVED))
+        when(borrowService.getLibraryBorrows(1L, BorrowStatus.APPROVED, null))
                 .thenReturn(java.util.Arrays.asList(borrowDTO));
 
         mockMvc.perform(get("/v1/libraries/1/borrows/admin/all")
@@ -231,7 +231,7 @@ class BorrowControllerTest extends BaseIntegrationTest {
     @DisplayName("Should return 401 when non-admin requests all borrows")
     void testGetLibraryAdminBorrowsUnauthorized() throws Exception {
         doThrow(new UnauthorizedException("Only library admins can view all borrows"))
-                .when(borrowService).getLibraryBorrows(1L, null);
+                .when(borrowService).getLibraryBorrows(1L, null, null);
 
         mockMvc.perform(get("/v1/libraries/1/borrows/admin/all"))
                 .andExpect(status().isUnauthorized());

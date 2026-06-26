@@ -94,7 +94,7 @@ class LibrarySubjectServiceTest extends BaseIntegrationTest {
 
         assertThatThrownBy(() -> subjectService.createSubject(library.getId(), "تاریخ"))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("already exists");
+                .hasMessageContaining("از قبل وجود دارد");
     }
 
     @Test

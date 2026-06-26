@@ -154,7 +154,7 @@ class BookServiceTest extends BaseIntegrationTest {
         
         assertThatThrownBy(() -> bookService.createBook(library.getId(), bookRequest))
                 .isInstanceOf(UnauthorizedException.class)
-                .hasMessageContaining("Only library admins can create books");
+                .hasMessageContaining("فقط مدیر کتابخانه");
     }
 
     @Test
@@ -164,7 +164,7 @@ class BookServiceTest extends BaseIntegrationTest {
         
         assertThatThrownBy(() -> bookService.createBook(999L, bookRequest))
                 .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("Library not found");
+                .hasMessageContaining("کتابخانه");
     }
 
     @Test
@@ -190,7 +190,7 @@ class BookServiceTest extends BaseIntegrationTest {
         
         assertThatThrownBy(() -> bookService.getBookById(library.getId(), 999L))
                 .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("Book not found");
+                .hasMessageContaining("کتابی با این شناسه");
     }
 
     @Test
@@ -228,7 +228,7 @@ class BookServiceTest extends BaseIntegrationTest {
         Long bookId = createdBook.getId();
         assertThatThrownBy(() -> bookService.getBookById(otherLibraryId, bookId))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("Book does not belong to this library");
+                .hasMessageContaining("این کتاب مربوط به این کتابخانه نیست");
     }
 
     @Test
@@ -251,7 +251,7 @@ class BookServiceTest extends BaseIntegrationTest {
         Long libId = library.getId();
         assertThatThrownBy(() -> bookService.getLibraryBooks(libId, PageRequest.of(0, 10)))
                 .isInstanceOf(UnauthorizedException.class)
-                .hasMessageContaining("not a member");
+                .hasMessageContaining("عضو");
     }
 
     @Test

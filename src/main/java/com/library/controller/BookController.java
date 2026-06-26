@@ -44,7 +44,7 @@ public class BookController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
-                    description = "Unauthorized"
+                    description = "دسترسی غیرمجاز"
             )
     })
     public ResponseEntity<ApiResponse<BookDTO>> createBook(
@@ -125,5 +125,16 @@ public class BookController {
                 ApiResponse.success("Book copies added successfully"),
                 HttpStatus.CREATED
         );
+    }
+
+    @PutMapping("/{bookId}/copies/count")
+    @Operation(summary = "Set total physical copies",
+            description = "Set the exact number of physical copies (cannot go below copies currently on loan)")
+    public ResponseEntity<ApiResponse<BookDTO>> setBookCopyCount(
+            @PathVariable Long libraryId,
+            @PathVariable Long bookId,
+            @RequestParam int count) {
+        BookDTO book = bookService.setBookCopyCount(libraryId, bookId, count);
+        return ResponseEntity.ok(ApiResponse.success("تعداد نسخه‌ها به‌روزرسانی شد", book));
     }
 }

@@ -10,11 +10,16 @@ const api = axios.create({
   },
 });
 
-// Add token to requests
+// Add token to requests + prevent stale cached GET responses
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  // Bust browser/proxy caching of GETs so fresh data always loads after mutations
+  if ((config.method || "get").toLowerCase() === "get") {
+    config.headers["Cache-Control"] = "no-cache";
+    config.params = { ...(config.params || {}), _t: Date.now() };
   }
   return config;
 });
@@ -146,6 +151,8 @@ export const bookAPI = {
     api.post(`/v1/libraries/${libraryId}/books/${bookId}/copies`, {
       numberOfCopies,
     }),
+  setCopyCount: (libraryId, bookId, count) =>
+    api.put(`/v1/libraries/${libraryId}/books/${bookId}/copies/count`, null, { params: { count } }),
   uploadCoverImage: (libraryId, bookId, file, onProgress) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -186,15 +193,52 @@ export const bookAPI = {
 export const borrowAPI = {
   getBorrows: (libraryId, params) =>
     api.get(`/v1/libraries/${libraryId}/borrows`, { params }),
-  getPendingBorrows: (libraryId) =>
-    api.get(`/v1/libraries/${libraryId}/borrows/pending`),
+  getPendingBorrows: (libraryId, type) =>
+    api.get(`/v1/libraries/${libraryId}/borrows/pending`, {
+      params: type ? { type } : undefined,
+    }),
   createBorrow: (libraryId, borrowData) =>
     api.post(`/v1/libraries/${libraryId}/borrows/${borrowData.bookId}`, {
       borrowType: borrowData.borrowType,
       bookCopyId: borrowData.bookCopyId,
+      deliveryAddress: borrowData.deliveryAddress,
+      deliveryExtension: borrowData.deliveryExtension,
+      requestedDurationDays: borrowData.requestedDurationDays,
+      saveToProfile: borrowData.saveToProfile,
+    }),
+  updateRequest: (libraryId, borrowId, data) =>
+    api.put(`/v1/libraries/${libraryId}/borrows/${borrowId}/request`, {
+      borrowType: "PHYSICAL",
+      ...data,
     }),
   approveBorrow: (libraryId, borrowId) =>
     api.post(`/v1/libraries/${libraryId}/borrows/${borrowId}/approve`),
+  approvePhysical: (libraryId, borrowId, data) =>
+    api.post(`/v1/libraries/${libraryId}/borrows/${borrowId}/approve-physical`, data),
+  updateDelivery: (libraryId, borrowId, data) =>
+    api.patch(`/v1/libraries/${libraryId}/borrows/${borrowId}/delivery`, data),
+  confirmReceipt: (libraryId, borrowId) =>
+    api.post(`/v1/libraries/${libraryId}/borrows/${borrowId}/confirm-receipt`),
+  confirmReturn: (libraryId, borrowId) =>
+    api.post(`/v1/libraries/${libraryId}/borrows/${borrowId}/confirm-return`),
+  confirmHandover: (libraryId, borrowId) =>
+    api.post(`/v1/libraries/${libraryId}/borrows/${borrowId}/confirm-handover`),
+  cancelReturnRequest: (libraryId, borrowId) =>
+    api.post(`/v1/libraries/${libraryId}/borrows/${borrowId}/cancel-return-request`),
+  searchLibraryBorrows: (libraryId, params) =>
+    api.get(`/v1/libraries/${libraryId}/borrows/admin/search`, { params }),
+  cancelByUser: (libraryId, borrowId) =>
+    api.post(`/v1/libraries/${libraryId}/borrows/${borrowId}/cancel`),
+  cancelByLibrarian: (libraryId, borrowId) =>
+    api.post(`/v1/libraries/${libraryId}/borrows/${borrowId}/cancel-admin`),
+  requestReturn: (libraryId, borrowId, data) =>
+    api.post(`/v1/libraries/${libraryId}/borrows/${borrowId}/request-return`, data),
+  scheduleReturnPickup: (libraryId, borrowId, data) =>
+    api.patch(`/v1/libraries/${libraryId}/borrows/${borrowId}/return-schedule`, data),
+  getBorrowerSummary: (libraryId, userId) =>
+    api.get(`/v1/libraries/${libraryId}/borrows/user/${userId}/summary`),
+  getBorrowEvents: (libraryId, borrowId) =>
+    api.get(`/v1/libraries/${libraryId}/borrows/${borrowId}/events`),
   rejectBorrow: (libraryId, borrowId, reason) =>
     api.post(`/v1/libraries/${libraryId}/borrows/${borrowId}/reject`, null, {
       params: reason ? { reason } : undefined,
@@ -203,6 +247,38 @@ export const borrowAPI = {
     api.post(`/v1/libraries/${libraryId}/borrows/${borrowId}/return`),
   reserveBook: (libraryId, bookId) =>
     api.post(`/v1/libraries/${libraryId}/borrows/${bookId}/reserve`),
+};
+
+// Library creation requests
+export const libraryRequestAPI = {
+  submit: (data) => api.post("/v1/library-requests", data),
+  mine: () => api.get("/v1/library-requests/mine"),
+  all: (status) => api.get("/v1/library-requests", { params: status ? { status } : undefined }),
+  approve: (id, override) => api.post(`/v1/library-requests/${id}/approve`, override || {}),
+  reject: (id, reason) =>
+    api.post(`/v1/library-requests/${id}/reject`, null, { params: reason ? { reason } : undefined }),
+};
+
+// Public cross-library book search
+export const searchAPI = {
+  global: (query) => api.get("/v1/books/search", { params: { query, size: 24 } }),
+};
+
+// Current-user cross-library views (borrows, downloads, favorites)
+export const meAPI = {
+  borrows: (params) => api.get("/v1/me/borrows", { params }),
+  toggleFavorite: (bookId) => api.post(`/v1/me/favorites/${bookId}`),
+  favoriteIds: () => api.get("/v1/me/favorites/ids"),
+  favorites: (params) => api.get("/v1/me/favorites", { params }),
+};
+
+// Notification endpoints
+export const notificationAPI = {
+  list: () => api.get("/v1/notifications"),
+  listPaged: (params) => api.get("/v1/notifications/paged", { params }),
+  unreadCount: () => api.get("/v1/notifications/unread-count"),
+  markRead: (id) => api.post(`/v1/notifications/${id}/read`),
+  markAllRead: () => api.post("/v1/notifications/read-all"),
 };
 
 // Library endpoints
@@ -224,15 +300,14 @@ export const libraryAPI = {
 
 // Admin endpoints
 export const adminAPI = {
-  getUsers: (status) =>
-    api.get("/v1/admin/users", {
-      params: status ? { status } : undefined,
-    }),
+  // params: { status?, search?, page?, size? } → Page<UserDTO>
+  getUsers: (params) => api.get("/v1/admin/users", { params }),
   updateUserStatus: (userId, status) =>
     api.patch(`/v1/admin/users/${userId}/status`, { status }),
   updateUserRole: (userId, role) =>
     api.patch(`/v1/admin/users/${userId}/role`, { role }),
-  getLibraries: () => api.get("/v1/admin/libraries"),
+  // params: { search?, page?, size? } → Page<LibraryDTO>
+  getLibraries: (params) => api.get("/v1/admin/libraries", { params }),
 };
 
 // Library stats endpoints (admin)
@@ -249,16 +324,22 @@ export const libraryStatsAPI = {
 export const libraryAdminAPI = {
   getMembers: (libraryId) =>
     api.get(`/v1/libraries/${libraryId}/members`),
+  getPendingMembers: (libraryId) =>
+    api.get(`/v1/libraries/${libraryId}/members/pending`),
+  searchMembers: (libraryId, params) =>
+    api.get(`/v1/libraries/${libraryId}/members/search`, { params }),
   approveMembership: (libraryId, userId) =>
     api.post(`/v1/libraries/${libraryId}/membership/${userId}/approve`),
   rejectMembership: (libraryId, userId, reason) =>
     api.post(`/v1/libraries/${libraryId}/membership/${userId}/reject`, null, {
       params: reason ? { reason } : undefined,
     }),
-  getAllBorrows: (libraryId, status) =>
+  getAllBorrows: (libraryId, status, type) =>
     api.get(`/v1/libraries/${libraryId}/borrows/admin/all`, {
-      params: status ? { status } : undefined,
+      params: { ...(status ? { status } : {}), ...(type ? { type } : {}) },
     }),
+  setMemberRole: (libraryId, userId, role) =>
+    api.patch(`/v1/libraries/${libraryId}/members/${userId}/role`, null, { params: { role } }),
 };
 
 // User profile endpoints

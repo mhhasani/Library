@@ -1,9 +1,21 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { adminAPI } from "../../services/api";
 import { toPersian, toPersianNum } from "../../utils/persian";
+import { useDebounce } from "../../hooks/useDebounce";
+import Pagination from "../../components/Pagination";
+import { useAuth } from "../../context/AuthContext";
 import "./SystemUsersPage.css";
 
-const ROLE_LABELS = { SYSTEM_ADMIN: "مدیر سیستم", USER: "کاربر عادی" };
+const ROLE_LABELS = {
+  SUPER_ADMIN: "ادمین اصلی",
+  SYSTEM_ADMIN: "مدیر سیستم",
+  USER: "کاربر عادی",
+};
+const ROLE_CLASS = {
+  SUPER_ADMIN: "badge-danger",
+  SYSTEM_ADMIN: "badge-warning",
+  USER: "badge-info",
+};
 const STATUS_LABELS = {
   ACTIVE: "فعال",
   SUSPENDED: "معلق",
@@ -24,12 +36,19 @@ const STATUS_FILTERS = [
 ];
 
 const SystemUsersPage = () => {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [statusFilter, setStatusFilter] = useState("ACTIVE");
   const [actionLoading, setActionLoading] = useState({});
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const debouncedSearch = useDebounce(search, 400);
+
+  const isSuperAdmin = currentUser?.systemRole === "SUPER_ADMIN";
 
   const showSuccess = (msg) => {
     setSuccessMsg(msg);
@@ -39,17 +58,29 @@ const SystemUsersPage = () => {
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await adminAPI.getUsers(statusFilter || undefined);
-      setUsers(res.data?.data || res.data || []);
+      const res = await adminAPI.getUsers({
+        status: statusFilter || undefined,
+        search: debouncedSearch || undefined,
+        page,
+        size: 12,
+      });
+      const d = res.data?.data || res.data;
+      setUsers(d?.content || []);
+      setTotalPages(d?.totalPages ?? 0);
       setError("");
     } catch (err) {
       setError("خطا در بارگذاری کاربران");
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, debouncedSearch, page]);
 
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+  useEffect(() => {
+    setPage(0);
+  }, [statusFilter, debouncedSearch]);
 
   const handleToggleStatus = async (user) => {
     const newStatus = user.accountStatus === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
@@ -57,7 +88,7 @@ const SystemUsersPage = () => {
       setActionLoading((p) => ({ ...p, [user.id]: "status" }));
       await adminAPI.updateUserStatus(user.id, newStatus);
       showSuccess(
-        `وضعیت ${user.email} به «${STATUS_LABELS[newStatus]}» تغییر کرد`
+        `وضعیت ${user.email} به «${STATUS_LABELS[newStatus]}» تغییر کرد`,
       );
       fetchUsers();
     } catch (err) {
@@ -70,12 +101,9 @@ const SystemUsersPage = () => {
   const handleToggleRole = async (user) => {
     const newRole =
       user.systemRole === "SYSTEM_ADMIN" ? "USER" : "SYSTEM_ADMIN";
-    const label =
-      newRole === "SYSTEM_ADMIN" ? "مدیر سیستم" : "کاربر عادی";
+    const label = newRole === "SYSTEM_ADMIN" ? "مدیر سیستم" : "کاربر عادی";
     if (
-      !window.confirm(
-        `آیا نقش ${user.email} را به «${label}» تغییر می‌دهید؟`
-      )
+      !window.confirm(`آیا نقش ${user.email} را به «${label}» تغییر می‌دهید؟`)
     )
       return;
     try {
@@ -100,7 +128,6 @@ const SystemUsersPage = () => {
       {error && <div className="error-message">{error}</div>}
       {successMsg && <div className="success-message">{successMsg}</div>}
 
-      {/* Toolbar */}
       <div className="ap-toolbar">
         <div className="su-filter-group">
           {STATUS_FILTERS.map((f) => (
@@ -113,9 +140,16 @@ const SystemUsersPage = () => {
             </button>
           ))}
         </div>
-        <span className="su-count">
-          {toPersianNum(users.length)} کاربر
-        </span>
+        <span className="su-count">{toPersianNum(users.length)} کاربر</span>
+      </div>
+
+      <div className="abr-toolbar">
+        <input
+          className="abr-search"
+          placeholder="🔍 جستجوی کاربر بر اساس نام، ایمیل یا تلفن..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
       {loading ? (
@@ -143,30 +177,28 @@ const SystemUsersPage = () => {
             <tbody>
               {users.map((u) => (
                 <tr key={u.id}>
-                  <td style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{toPersian(u.id)}</td>
+                  <td style={{ fontSize: "0.75rem", color: "#9ca3af" }}>
+                    {toPersian(u.id)}
+                  </td>
                   <td style={{ fontWeight: 500 }}>{u.email}</td>
                   <td>
                     {u.firstName || u.lastName
                       ? `${u.firstName || ""} ${u.lastName || ""}`.trim()
                       : "—"}
                   </td>
-                  <td style={{ fontSize: "0.82rem" }}>{u.phoneNumber || "—"}</td>
+                  <td style={{ fontSize: "0.82rem" }}>
+                    {u.phoneNumber || "—"}
+                  </td>
                   <td>
                     <span
-                      className={`badge ${
-                        u.systemRole === "SYSTEM_ADMIN"
-                          ? "badge-warning"
-                          : "badge-info"
-                      }`}
+                      className={`badge ${ROLE_CLASS[u.systemRole] || "badge-info"}`}
                     >
                       {ROLE_LABELS[u.systemRole] || u.systemRole}
                     </span>
                   </td>
                   <td>
                     <span
-                      className={`badge ${
-                        STATUS_CLASS[u.accountStatus] || "badge-muted"
-                      }`}
+                      className={`badge ${STATUS_CLASS[u.accountStatus] || "badge-muted"}`}
                     >
                       {STATUS_LABELS[u.accountStatus] || u.accountStatus}
                     </span>
@@ -196,28 +228,31 @@ const SystemUsersPage = () => {
                           {actionLoading[u.id] === "status"
                             ? "..."
                             : u.accountStatus === "ACTIVE"
-                            ? "تعلیق"
-                            : "فعال‌سازی"}
+                              ? "تعلیق"
+                              : "فعال‌سازی"}
                         </button>
                       )}
-                      <button
-                        className="btn btn-sm btn-outline su-btn-role"
-                        onClick={() => handleToggleRole(u)}
-                        disabled={!!actionLoading[u.id]}
-                        title="تغییر نقش"
-                      >
-                        {actionLoading[u.id] === "role"
-                          ? "..."
-                          : u.systemRole === "SYSTEM_ADMIN"
-                          ? "↓ کاربر"
-                          : "↑ ادمین"}
-                      </button>
+                      {isSuperAdmin && u.systemRole !== "SUPER_ADMIN" && (
+                        <button
+                          className="btn btn-sm btn-outline su-btn-role"
+                          onClick={() => handleToggleRole(u)}
+                          disabled={!!actionLoading[u.id]}
+                          title="تغییر نقش"
+                        >
+                          {actionLoading[u.id] === "role"
+                            ? "..."
+                            : u.systemRole === "SYSTEM_ADMIN"
+                              ? "↓ کاربر"
+                              : "↑ ادمین"}
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <Pagination page={page} totalPages={totalPages} onChange={setPage} />
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { NavLink, Link, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import NotificationBell from "../components/NotificationBell";
 import "./AdminLayout.css";
 
 const AdminLayout = ({ title, subtitle, navItems, backTo = "/" }) => {
@@ -19,10 +20,11 @@ const AdminLayout = ({ title, subtitle, navItems, backTo = "/" }) => {
       <aside className={`admin-sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="sidebar-header">
           <span className="sidebar-logo-icon">📚</span>
-          <div>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div className="sidebar-title">{title}</div>
             {subtitle && <div className="sidebar-subtitle">{subtitle}</div>}
           </div>
+          <NotificationBell align="end" />
         </div>
 
         <nav className="sidebar-nav">
@@ -84,6 +86,9 @@ const AdminLayout = ({ title, subtitle, navItems, backTo = "/" }) => {
           {subtitle && (
             <span className="topbar-library">{subtitle}</span>
           )}
+          <div style={{ marginInlineStart: "auto" }}>
+            <NotificationBell />
+          </div>
         </div>
 
         <div className="admin-content">

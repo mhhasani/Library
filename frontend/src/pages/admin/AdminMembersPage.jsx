@@ -1,8 +1,13 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { libraryAdminAPI } from "../../services/api";
+import { libraryAdminAPI, libraryAPI } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
 import { toPersianNum } from "../../utils/persian";
+import { useClientTable } from "../../hooks/useClientTable";
+import Pagination from "../../components/Pagination";
 import "./AdminMembersPage.css";
+
+const MEMBER_SEARCH_FIELDS = ["userEmail", "userName", (m) => m.role];
 
 const ROLE_LABEL = { ADMIN: "مدیر", MEMBER: "عضو" };
 const STATUS_LABEL = { PENDING: "در انتظار", APPROVED: "تأیید شده", REJECTED: "رد شده" };
@@ -14,8 +19,10 @@ const STATUS_CLASS = {
 
 const AdminMembersPage = () => {
   const { libraryId } = useParams();
+  const { user } = useAuth();
 
   const [members, setMembers] = useState([]);
+  const [ownerId, setOwnerId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -36,6 +43,11 @@ const AdminMembersPage = () => {
       setLoading(true);
       const res = await libraryAdminAPI.getMembers(libraryId);
       setMembers(res.data?.data || res.data || []);
+      try {
+        const libRes = await libraryAPI.getLibrary(libraryId);
+        const lib = libRes.data?.data || libRes.data;
+        setOwnerId(lib?.ownerId ?? null);
+      } catch { /* ignore */ }
       setError("");
     } catch (err) {
       setError("خطا در بارگذاری اعضا");
@@ -45,6 +57,24 @@ const AdminMembersPage = () => {
   }, [libraryId]);
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
+
+  const isSystemAdmin = user?.systemRole === "SYSTEM_ADMIN";
+  const canManageRoles = isSystemAdmin || (ownerId != null && user?.id === ownerId);
+
+  const handleSetRole = async (member, role) => {
+    try {
+      setActionLoading((p) => ({ ...p, [member.userId]: "role" }));
+      await libraryAdminAPI.setMemberRole(libraryId, member.userId, role);
+      showSuccess(role === "ADMIN"
+        ? `«${member.userName?.trim() || member.userEmail}» به مدیر ارتقا یافت`
+        : `«${member.userName?.trim() || member.userEmail}» به عضو تغییر یافت`);
+      fetchMembers();
+    } catch (err) {
+      setError(err.response?.data?.message || "خطا در تغییر نقش");
+    } finally {
+      setActionLoading((p) => ({ ...p, [member.userId]: null }));
+    }
+  };
 
   const handleApprove = async (member) => {
     try {
@@ -77,6 +107,7 @@ const AdminMembersPage = () => {
 
   const pending = members.filter((m) => m.status === "PENDING");
   const rest = members.filter((m) => m.status !== "PENDING");
+  const restTable = useClientTable(rest, MEMBER_SEARCH_FIELDS, 10);
 
   if (loading) return <div className="loading">در حال بارگذاری اعضا...</div>;
 
@@ -147,11 +178,21 @@ const AdminMembersPage = () => {
       {/* All members */}
       <div className="ap-card">
         <h2 className="amm-section-title">👥 همه اعضا ({toPersianNum(rest.length)})</h2>
+        <div className="abr-toolbar">
+          <input
+            className="abr-search"
+            placeholder="🔍 جستجوی عضو بر اساس نام، ایمیل یا نقش..."
+            value={restTable.query}
+            onChange={(e) => restTable.setQuery(e.target.value)}
+          />
+        </div>
         {rest.length === 0 ? (
           <div className="empty-state">
             <span className="empty-icon">👥</span>
             <p>هنوز عضوی تأیید نشده است</p>
           </div>
+        ) : restTable.pageItems.length === 0 ? (
+          <div className="empty-state"><span className="empty-icon">🔍</span><p>عضوی مطابق جستجو یافت نشد</p></div>
         ) : (
           <div className="table-wrapper">
             <table className="modern-table">
@@ -166,14 +207,18 @@ const AdminMembersPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {rest.map((m) => (
+                {restTable.pageItems.map((m) => (
                   <tr key={m.id}>
                     <td>{m.userEmail}</td>
                     <td>{m.userName?.trim() || "—"}</td>
                     <td>
-                      <span className="badge badge-info">
-                        {ROLE_LABEL[m.role] || m.role}
-                      </span>
+                      {m.userId === ownerId ? (
+                        <span className="badge badge-success">👑 مالک</span>
+                      ) : (
+                        <span className={`badge ${m.role === "ADMIN" ? "badge-warning" : "badge-info"}`}>
+                          {ROLE_LABEL[m.role] || m.role}
+                        </span>
+                      )}
                     </td>
                     <td>
                       <span className={`badge ${STATUS_CLASS[m.status] || "badge-muted"}`}>
@@ -186,21 +231,44 @@ const AdminMembersPage = () => {
                         : "—"}
                     </td>
                     <td>
-                      {m.status === "APPROVED" && m.role !== "ADMIN" && (
-                        <button
-                          className="btn btn-outline btn-sm"
-                          onClick={() => { setRejectTarget(m); setRejectReason(""); }}
-                          disabled={!!actionLoading[m.userId]}
-                          style={{ fontSize: "0.78rem", color: "#dc2626", borderColor: "#dc2626" }}
-                        >
-                          لغو عضویت
-                        </button>
-                      )}
+                      <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                        {canManageRoles && m.status === "APPROVED" && m.userId !== ownerId && m.role !== "ADMIN" && (
+                          <button
+                            className="btn btn-outline btn-sm"
+                            onClick={() => handleSetRole(m, "ADMIN")}
+                            disabled={!!actionLoading[m.userId]}
+                            style={{ fontSize: "0.78rem", color: "#16a34a", borderColor: "#16a34a" }}
+                          >
+                            {actionLoading[m.userId] === "role" ? "..." : "⬆️ ارتقا به مدیر"}
+                          </button>
+                        )}
+                        {canManageRoles && m.status === "APPROVED" && m.userId !== ownerId && m.role === "ADMIN" && (
+                          <button
+                            className="btn btn-outline btn-sm"
+                            onClick={() => handleSetRole(m, "MEMBER")}
+                            disabled={!!actionLoading[m.userId]}
+                            style={{ fontSize: "0.78rem" }}
+                          >
+                            {actionLoading[m.userId] === "role" ? "..." : "⬇️ تنزل به عضو"}
+                          </button>
+                        )}
+                        {m.status === "APPROVED" && m.role !== "ADMIN" && (
+                          <button
+                            className="btn btn-outline btn-sm"
+                            onClick={() => { setRejectTarget(m); setRejectReason(""); }}
+                            disabled={!!actionLoading[m.userId]}
+                            style={{ fontSize: "0.78rem", color: "#dc2626", borderColor: "#dc2626" }}
+                          >
+                            لغو عضویت
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            <Pagination page={restTable.page} totalPages={restTable.totalPages} onChange={restTable.setPage} />
           </div>
         )}
       </div>

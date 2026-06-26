@@ -32,6 +32,12 @@ public class UserDTO {
     @Schema(description = "Phone number", example = "+1234567890")
     private String phoneNumber;
 
+    @Schema(description = "Default delivery address for physical book delivery")
+    private String deliveryAddress;
+
+    @Schema(description = "Internal phone extension", example = "112")
+    private String internalExtension;
+
     @Schema(description = "System role", example = "USER")
     private SystemRole systemRole;
 

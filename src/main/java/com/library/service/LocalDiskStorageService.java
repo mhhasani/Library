@@ -26,7 +26,7 @@ public class LocalDiskStorageService implements StorageService {
     @Override
     public String store(MultipartFile file, String subDirectory) {
         if (file == null || file.isEmpty()) {
-            throw new BadRequestException("File is empty");
+            throw new BadRequestException("فایل خالی است");
         }
 
         String originalFilename = file.getOriginalFilename();
@@ -46,7 +46,7 @@ public class LocalDiskStorageService implements StorageService {
             return relativePath;
         } catch (IOException e) {
             log.error("Failed to store file: {}", e.getMessage());
-            throw new RuntimeException("Failed to store file", e);
+            throw new RuntimeException("ذخیره‌ی فایل ناموفق بود", e);
         }
     }
 
@@ -58,9 +58,9 @@ public class LocalDiskStorageService implements StorageService {
             if (resource.exists() && resource.isReadable()) {
                 return resource;
             }
-            throw new RuntimeException("File not found or not readable: " + storedPath);
+            throw new RuntimeException("فایل پیدا نشد یا قابل خواندن نیست: " + storedPath);
         } catch (MalformedURLException e) {
-            throw new RuntimeException("Failed to load file: " + storedPath, e);
+            throw new RuntimeException("بارگذاری فایل ناموفق بود: " + storedPath, e);
         }
     }
 

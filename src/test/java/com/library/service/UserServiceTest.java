@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -134,5 +135,104 @@ class UserServiceTest extends BaseIntegrationTest {
         assertThatThrownBy(() -> userService.changePassword(request))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("رمز عبور فعلی نادرست است");
+    }
+
+    // ── Last-admin protection ────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("Cannot suspend the only active SYSTEM_ADMIN")
+    void testUpdateStatusCannotSuspendLastAdmin() {
+        User admin = User.builder()
+                .email("sysadmin@lib.com")
+                .passwordHash(passwordEncoder.encode("pass"))
+                .firstName("Sys").lastName("Admin")
+                .systemRole(SystemRole.SYSTEM_ADMIN)
+                .accountStatus(AccountStatus.ACTIVE)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+        admin = userRepository.save(admin);
+
+        // Caller is a plain USER (not counted as admin) — service-layer guard is role-agnostic
+        User caller = User.builder()
+                .email("caller@lib.com")
+                .passwordHash(passwordEncoder.encode("pass"))
+                .firstName("Caller").lastName("User")
+                .systemRole(SystemRole.USER)
+                .accountStatus(AccountStatus.ACTIVE)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+        caller = userRepository.save(caller);
+        SecurityTestUtils.setSecurityContext(caller, "USER");
+
+        final Long adminId = admin.getId();
+        assertThatThrownBy(() -> userService.updateUserStatus(adminId, AccountStatus.SUSPENDED))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("آخرین مدیر سیستم");
+    }
+
+    @Test
+    @DisplayName("Can suspend a SYSTEM_ADMIN when another one exists")
+    void testUpdateStatusCanSuspendNonLastAdmin() {
+        // Two admins — suspending one should succeed
+        User admin1 = User.builder()
+                .email("admin1@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .firstName("A1").lastName("A").systemRole(SystemRole.SYSTEM_ADMIN)
+                .accountStatus(AccountStatus.ACTIVE)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+        admin1 = userRepository.save(admin1);
+
+        User admin2 = User.builder()
+                .email("admin2@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .firstName("A2").lastName("A").systemRole(SystemRole.SYSTEM_ADMIN)
+                .accountStatus(AccountStatus.ACTIVE)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+        admin2 = userRepository.save(admin2);
+        SecurityTestUtils.setSecurityContext(admin2, "SYSTEM_ADMIN");
+
+        final Long admin1Id = admin1.getId();
+        assertThatNoException().isThrownBy(() -> userService.updateUserStatus(admin1Id, AccountStatus.SUSPENDED));
+    }
+
+    @Test
+    @DisplayName("Cannot demote the only SYSTEM_ADMIN to USER")
+    void testUpdateRoleCannotDemoteLastAdmin() {
+        User admin = User.builder()
+                .email("sysadmin2@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .firstName("Sys").lastName("Admin").systemRole(SystemRole.SYSTEM_ADMIN)
+                .accountStatus(AccountStatus.ACTIVE)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+        admin = userRepository.save(admin);
+
+        // Caller is a plain USER — the service-layer guard does not check the caller's role
+        User caller = User.builder()
+                .email("caller2@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .firstName("C").lastName("U").systemRole(SystemRole.USER)
+                .accountStatus(AccountStatus.ACTIVE)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+        caller = userRepository.save(caller);
+        SecurityTestUtils.setSecurityContext(caller, "USER");
+
+        final Long adminId = admin.getId();
+        assertThatThrownBy(() -> userService.updateUserRole(adminId, SystemRole.USER))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("حداقل یک مدیر سیستم");
+    }
+
+    @Test
+    @DisplayName("Cannot change own status")
+    void testUpdateStatusCannotChangeSelf() {
+        SecurityTestUtils.setSecurityContext(testUser, "USER");
+        final Long selfId = testUser.getId();
+        assertThatThrownBy(() -> userService.updateUserStatus(selfId, AccountStatus.SUSPENDED))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("خودتان");
+    }
+
+    @Test
+    @DisplayName("Cannot change own role")
+    void testUpdateRoleCannotChangeSelf() {
+        SecurityTestUtils.setSecurityContext(testUser, "USER");
+        final Long selfId = testUser.getId();
+        assertThatThrownBy(() -> userService.updateUserRole(selfId, SystemRole.SYSTEM_ADMIN))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("خودتان");
     }
 }

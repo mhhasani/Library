@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
+
+    <!--
+        Test-only schema parity. Changeset 18 (physical-delivery fields) is marked
+        dbms="postgresql" because it also recreates a partial unique index that H2 does
+        not support, so on H2 the whole changeset — including its addColumn — is skipped
+        and the Borrow entity's columns are missing. This changeset re-adds just those
+        columns on H2 only, so the in-memory test database matches the entity mapping.
+        On PostgreSQL it is skipped (changeset 18 already created the columns there), so
+        production schema and the already-applied changeset 18 are left untouched.
+    -->
+    <changeSet id="25-h2-test-borrow-columns" author="system" dbms="h2">
+        <addColumn tableName="borrows">
+            <column name="delivery_address" type="text"/>
+            <column name="delivery_extension" type="varchar(50)"/>
+            <column name="requested_duration_days" type="int"/>
+            <column name="approved_duration_days" type="int"/>
+            <column name="planned_delivery_date" type="timestamp"/>
+            <column name="courier_name" type="varchar(255)"/>
+            <column name="copy_unique_code" type="varchar(100)"/>
+            <column name="received_at" type="timestamp"/>
+            <column name="return_confirmed_by" type="bigint"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

@@ -85,7 +85,7 @@ class AuthenticationServiceTest extends BaseIntegrationTest {
         // Try to register with same email
         assertThatThrownBy(() -> authenticationService.register(registerRequest))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("Email already registered");
+                .hasMessageContaining("ایمیل");
     }
 
     @Test
@@ -154,7 +154,7 @@ class AuthenticationServiceTest extends BaseIntegrationTest {
 
         assertThatThrownBy(() -> authenticationService.login(wrongPasswordRequest))
                 .isInstanceOf(UnauthorizedException.class)
-                .hasMessageContaining("Invalid email or password");
+                .hasMessageContaining("ایمیل یا رمز عبور");
     }
 
     @Test

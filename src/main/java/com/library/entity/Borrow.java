@@ -73,6 +73,75 @@ public class Borrow {
     @Column(name = "return_date")
     private LocalDateTime returnDate;
 
+    // ---- Physical delivery workflow fields ----
+
+    /** Snapshot of the delivery address provided at request time. */
+    @Column(name = "delivery_address", columnDefinition = "TEXT")
+    private String deliveryAddress;
+
+    /** Snapshot of the recipient's internal phone extension. */
+    @Column(name = "delivery_extension", length = 50)
+    private String deliveryExtension;
+
+    /** Number of loan days requested by the user. */
+    @Column(name = "requested_duration_days")
+    private Integer requestedDurationDays;
+
+    /** Final number of loan days decided by the librarian. */
+    @Column(name = "approved_duration_days")
+    private Integer approvedDurationDays;
+
+    /** Date the librarian plans to deliver the book to the recipient. */
+    @Column(name = "planned_delivery_date")
+    private LocalDateTime plannedDeliveryDate;
+
+    /** Name of the courier delivering the book (may be filled later). */
+    @Column(name = "courier_name", length = 255)
+    private String courierName;
+
+    /** Unique code of the physical copy dispatched to the recipient. */
+    @Column(name = "copy_unique_code", length = 100)
+    private String copyUniqueCode;
+
+    /** Moment the recipient confirmed receiving the book (starts the loan clock). */
+    @Column(name = "received_at")
+    private LocalDateTime receivedAt;
+
+    // ---- Return-pickup workflow (recipient requests return → librarian schedules pickup) ----
+
+    /** When the recipient asked for the book to be picked up (may be before the due date). */
+    @Column(name = "return_requested_at")
+    private LocalDateTime returnRequestedAt;
+
+    /** Address where the courier should collect the book from. */
+    @Column(name = "return_address", columnDefinition = "TEXT")
+    private String returnAddress;
+
+    /** Recipient internal phone number for the return pickup. */
+    @Column(name = "return_extension", length = 50)
+    private String returnExtension;
+
+    /** Recipient's preferred pickup date/time. */
+    @Column(name = "return_preferred_date")
+    private LocalDateTime returnPreferredDate;
+
+    /** Courier the librarian assigns to collect the book. */
+    @Column(name = "return_courier_name", length = 255)
+    private String returnCourierName;
+
+    /** Pickup date/time scheduled by the librarian. */
+    @Column(name = "return_planned_date")
+    private LocalDateTime returnPlannedDate;
+
+    /** When the recipient handed the book to the courier (in transit back to the library). */
+    @Column(name = "handed_over_by_user_at")
+    private LocalDateTime handedOverByUserAt;
+
+    /** Librarian who recorded the physical return. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "return_confirmed_by")
+    private User returnConfirmedBy;
+
     @Column(nullable = false, updatable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

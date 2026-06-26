@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import AjaLogo from "./AjaLogo";
+import NotificationBell from "./NotificationBell";
 import "./Navbar.css";
 
 const Navbar = () => {
@@ -48,7 +49,7 @@ const Navbar = () => {
             کتابخانه‌ها
           </Link>
 
-          {isAuthenticated && user?.systemRole === "SYSTEM_ADMIN" && (
+          {isAuthenticated && ["SYSTEM_ADMIN", "SUPER_ADMIN"].includes(user?.systemRole) && (
             <Link
               to="/system"
               className={`nav-link nav-link--system ${location.pathname.startsWith("/system") ? "active" : ""}`}
@@ -61,6 +62,7 @@ const Navbar = () => {
           <div className="navbar-actions">
             {isAuthenticated ? (
               <>
+                <NotificationBell />
                 <Link
                   to="/profile"
                   className="nav-user-chip"

@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { adminAPI, libraryAPI } from "../../services/api";
 import { toPersian, toPersianNum } from "../../utils/persian";
+import { useDebounce } from "../../hooks/useDebounce";
+import Pagination from "../../components/Pagination";
 import "./SystemLibrariesPage.css";
 
 const SystemLibrariesPage = () => {
@@ -9,6 +11,10 @@ const SystemLibrariesPage = () => {
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [actionLoading, setActionLoading] = useState({});
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const debouncedSearch = useDebounce(search, 400);
 
   // Create library
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -17,8 +23,10 @@ const SystemLibrariesPage = () => {
     description: "",
     autoMembershipApproval: false,
     defaultBorrowDurationDays: 14,
+    ownerUserId: "",
   });
   const [creating, setCreating] = useState(false);
+  const [users, setUsers] = useState([]);
 
   // Edit library
   const [editTarget, setEditTarget] = useState(null);
@@ -30,20 +38,29 @@ const SystemLibrariesPage = () => {
     setTimeout(() => setSuccessMsg(""), 3500);
   };
 
-  const fetchLibraries = async () => {
+  const fetchLibraries = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await adminAPI.getLibraries();
-      setLibraries(res.data?.data || res.data || []);
+      const res = await adminAPI.getLibraries({ search: debouncedSearch || undefined, page, size: 12 });
+      const d = res.data?.data || res.data;
+      setLibraries(d?.content || []);
+      setTotalPages(d?.totalPages ?? 0);
       setError("");
     } catch (err) {
       setError("خطا در بارگذاری کتابخانه‌ها");
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, page]);
 
-  useEffect(() => { fetchLibraries(); }, []);
+  useEffect(() => { fetchLibraries(); }, [fetchLibraries]);
+  useEffect(() => { setPage(0); }, [debouncedSearch]);
+
+  useEffect(() => {
+    adminAPI.getUsers()
+      .then((res) => setUsers(res.data?.data || res.data || []))
+      .catch(() => {});
+  }, []);
 
   const handleToggleActive = async (lib) => {
     try {
@@ -57,8 +74,9 @@ const SystemLibrariesPage = () => {
           description: lib.description,
           autoMembershipApproval: lib.autoMembershipApproval,
           defaultBorrowDurationDays: lib.defaultBorrowDurationDays,
+          isActive: true,
         });
-        showSuccess(`کتابخانه «${lib.name}» به‌روزرسانی شد`);
+        showSuccess(`کتابخانه «${lib.name}» فعال شد`);
       }
       fetchLibraries();
     } catch (err) {
@@ -113,9 +131,10 @@ const SystemLibrariesPage = () => {
       await libraryAPI.createLibrary({
         ...form,
         defaultBorrowDurationDays: Number(form.defaultBorrowDurationDays),
+        ownerUserId: form.ownerUserId ? Number(form.ownerUserId) : undefined,
       });
       showSuccess("کتابخانه با موفقیت ایجاد شد");
-      setForm({ name: "", description: "", autoMembershipApproval: false, defaultBorrowDurationDays: 14 });
+      setForm({ name: "", description: "", autoMembershipApproval: false, defaultBorrowDurationDays: 14, ownerUserId: "" });
       setShowCreateForm(false);
       fetchLibraries();
     } catch (err) {
@@ -158,6 +177,17 @@ const SystemLibrariesPage = () => {
                 <label>توضیحات</label>
                 <textarea name="description" value={form.description} onChange={handleFormChange} rows={2} placeholder="توضیح مختصری..." />
               </div>
+              <div className="ap-form-group" style={{ gridColumn: "1 / -1" }}>
+                <label>مالک کتابخانه (مدیر) *</label>
+                <select name="ownerUserId" value={form.ownerUserId} onChange={handleFormChange} required>
+                  <option value="">— انتخاب کاربر مالک —</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {`${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email} ({u.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="ap-form-group">
                 <label>مدت امانت پیش‌فرض (روز)</label>
                 <input name="defaultBorrowDurationDays" type="number" min="1" value={form.defaultBorrowDurationDays} onChange={handleFormChange} />
@@ -181,12 +211,21 @@ const SystemLibrariesPage = () => {
         </div>
       )}
 
+      <div className="abr-toolbar">
+        <input
+          className="abr-search"
+          placeholder="🔍 جستجوی کتابخانه بر اساس نام، توضیحات یا مالک..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
       {loading ? (
         <div className="loading">در حال بارگذاری...</div>
       ) : libraries.length === 0 ? (
         <div className="empty-state">
           <span className="empty-icon">🏛️</span>
-          <p>هیچ کتابخانه‌ای ثبت نشده است</p>
+          <p>کتابخانه‌ای یافت نشد</p>
         </div>
       ) : (
         <div className="table-wrapper">
@@ -233,7 +272,7 @@ const SystemLibrariesPage = () => {
                       >
                         ✏️ ویرایش
                       </button>
-                      {lib.isActive && (
+                      {lib.isActive ? (
                         <button
                           className="btn btn-sm btn-outline"
                           style={{ color: "#dc2626", borderColor: "#dc2626", fontSize: "0.78rem" }}
@@ -242,6 +281,15 @@ const SystemLibrariesPage = () => {
                         >
                           {actionLoading[lib.id] ? "..." : "غیرفعال‌کردن"}
                         </button>
+                      ) : (
+                        <button
+                          className="btn btn-sm btn-outline"
+                          style={{ color: "#16a34a", borderColor: "#16a34a", fontSize: "0.78rem" }}
+                          onClick={() => handleToggleActive(lib)}
+                          disabled={actionLoading[lib.id]}
+                        >
+                          {actionLoading[lib.id] ? "..." : "فعال‌کردن"}
+                        </button>
                       )}
                     </div>
                   </td>
@@ -249,6 +297,7 @@ const SystemLibrariesPage = () => {
               ))}
             </tbody>
           </table>
+          <Pagination page={page} totalPages={totalPages} onChange={setPage} />
         </div>
       )}
       {/* Edit Library Modal */}

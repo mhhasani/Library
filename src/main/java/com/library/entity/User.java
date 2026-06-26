@@ -41,6 +41,12 @@ public class User {
     @Column(length = 20)
     private String phoneNumber;
 
+    @Column(name = "delivery_address", columnDefinition = "TEXT")
+    private String deliveryAddress;
+
+    @Column(name = "internal_extension", length = 50)
+    private String internalExtension;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

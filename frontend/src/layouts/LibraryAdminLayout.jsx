@@ -43,7 +43,8 @@ const LibraryAdminLayout = () => {
     { to: `/libraries/${libraryId}/admin`,         end: true,  icon: "📊", label: "داشبورد" },
     { to: `/libraries/${libraryId}/admin/books`,   end: false, icon: "📖", label: "مدیریت کتاب‌ها" },
     { to: `/libraries/${libraryId}/admin/members`, end: false, icon: "👥", label: "اعضا و درخواست‌ها" },
-    { to: `/libraries/${libraryId}/admin/borrows`, end: false, icon: "📋", label: "امانت‌ها" },
+    { to: `/libraries/${libraryId}/admin/borrows/physical`, end: false, icon: "📦", label: "امانت‌ها" },
+    { to: `/libraries/${libraryId}/admin/borrows/digital`, end: false, icon: "💻", label: "دانلودها" },
   ];
 
   if (authLoading || loading) {

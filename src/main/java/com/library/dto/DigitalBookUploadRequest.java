@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Request to upload digital book version")
 public class DigitalBookUploadRequest {
 
-    @NotBlank(message = "File format cannot be blank")
+    @NotBlank(message = "فرمت فایل را مشخص کنید")
     @Schema(description = "File format (PDF, EPUB, MOBI, AZW3)", example = "PDF")
     private String fileFormat;
 

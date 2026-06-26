@@ -19,5 +19,14 @@
     <include file="db/changelog/v1/14-add-subject-isbn-to-books.xml"/>
     <include file="db/changelog/v1/15-add-subject-index.xml"/>
     <include file="db/changelog/v1/16-book-subjects-many-to-many.xml"/>
+    <include file="db/changelog/v1/17-add-user-delivery-fields.xml"/>
+    <include file="db/changelog/v1/18-add-borrow-physical-delivery-fields.xml"/>
+    <include file="db/changelog/v1/19-create-notifications-table.xml"/>
+    <include file="db/changelog/v1/20-add-borrow-return-pickup-fields.xml"/>
+    <include file="db/changelog/v1/21-create-borrow-events-table.xml"/>
+    <include file="db/changelog/v1/22-create-library-requests-table.xml"/>
+    <include file="db/changelog/v1/23-add-borrow-handover-field.xml"/>
+    <include file="db/changelog/v1/24-create-book-favorites-table.xml"/>
+    <include file="db/changelog/v1/25-h2-test-borrow-columns.xml"/>
 
 </databaseChangeLog>

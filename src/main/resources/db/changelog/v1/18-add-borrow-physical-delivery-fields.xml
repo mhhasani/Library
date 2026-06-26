@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
+
+    <changeSet id="18" author="system" dbms="postgresql">
+        <comment>
+            Add physical-delivery workflow fields to borrows and treat the new RECEIVED status
+            as an active borrow in the per-user/per-book uniqueness index.
+        </comment>
+
+        <addColumn tableName="borrows">
+            <column name="delivery_address" type="text"/>
+            <column name="delivery_extension" type="varchar(50)"/>
+            <column name="requested_duration_days" type="int"/>
+            <column name="approved_duration_days" type="int"/>
+            <column name="planned_delivery_date" type="timestamp"/>
+            <column name="courier_name" type="varchar(255)"/>
+            <column name="copy_unique_code" type="varchar(100)"/>
+            <column name="received_at" type="timestamp"/>
+            <column name="return_confirmed_by" type="bigint">
+                <constraints nullable="true" foreignKeyName="fk_borrows_return_confirmed_by"
+                             references="users(id)"/>
+            </column>
+        </addColumn>
+
+        <!-- Recreate the active-physical-borrow uniqueness index to include RECEIVED -->
+        <sql>
+            DROP INDEX IF EXISTS uk_active_physical_borrow;
+            CREATE UNIQUE INDEX uk_active_physical_borrow
+            ON borrows (user_id, book_id)
+            WHERE borrow_type = 'PHYSICAL' AND status IN ('REQUESTED', 'APPROVED', 'RECEIVED');
+        </sql>
+
+        <rollback>
+            <sql>
+                DROP INDEX IF EXISTS uk_active_physical_borrow;
+                CREATE UNIQUE INDEX uk_active_physical_borrow
+                ON borrows (user_id, book_id)
+                WHERE borrow_type = 'PHYSICAL' AND status IN ('REQUESTED', 'APPROVED');
+            </sql>
+            <dropColumn tableName="borrows" columnName="return_confirmed_by"/>
+            <dropColumn tableName="borrows" columnName="received_at"/>
+            <dropColumn tableName="borrows" columnName="copy_unique_code"/>
+            <dropColumn tableName="borrows" columnName="courier_name"/>
+            <dropColumn tableName="borrows" columnName="planned_delivery_date"/>
+            <dropColumn tableName="borrows" columnName="approved_duration_days"/>
+            <dropColumn tableName="borrows" columnName="requested_duration_days"/>
+            <dropColumn tableName="borrows" columnName="delivery_extension"/>
+            <dropColumn tableName="borrows" columnName="delivery_address"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

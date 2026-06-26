@@ -17,18 +17,18 @@ import java.util.List;
 @Schema(description = "Request to create or update a book")
 public class BookRequest {
 
-    @NotBlank(message = "Book title cannot be blank")
+    @NotBlank(message = "عنوان کتاب را وارد کنید")
     @Schema(description = "Book title", example = "Clean Code")
     private String title;
 
-    @NotBlank(message = "Book author cannot be blank")
+    @NotBlank(message = "نام نویسنده را وارد کنید")
     @Schema(description = "Author name", example = "Robert C. Martin")
     private String author;
 
     @Schema(description = "Publisher name", example = "Prentice Hall")
     private String publisher;
 
-    @Positive(message = "Publication year must be positive")
+    @Positive(message = "سال انتشار باید معتبر باشد")
     @Schema(description = "Year of publication", example = "2008")
     private Integer publicationYear;
 
