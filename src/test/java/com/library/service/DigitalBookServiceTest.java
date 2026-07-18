@@ -269,6 +269,56 @@ class DigitalBookServiceTest extends BaseIntegrationTest {
                 .isInstanceOf(UnauthorizedException.class);
     }
 
+    // ── File access gate (used by FileController for /v1/files/{id}) ──────────
+
+    @Test
+    @DisplayName("assertFileAccess is a no-op for a fileResourceId that isn't a digital book (e.g. a cover)")
+    void assertFileAccess_notADigitalBook_noOp() {
+        FileResource coverFile = fileResourceRepository.save(FileResource.builder()
+                .originalFilename("cover.jpg").storedFilename("uuid.jpg")
+                .filePath("covers/uuid.jpg").fileSizeBytes(10L)
+                .contentType("image/jpeg").checksumSha256("cover-checksum")
+                .uploadedBy(adminUser).createdAt(LocalDateTime.now()).build());
+
+        SecurityTestUtils.clearSecurityContext();
+        assertThatNoException().isThrownBy(() -> digitalBookService.assertFileAccess(coverFile.getId()));
+    }
+
+    @Test
+    @DisplayName("assertFileAccess denies a user without an approved borrow for a digital book's file")
+    void assertFileAccess_digitalBookWithoutBorrow_throwsUnauthorized() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        DigitalBookDTO uploaded = digitalBookService.uploadDigitalBook(
+                library.getId(), book.getId(), pdfFile, null);
+        Long fileResourceId = digitalBookRepository.findById(uploaded.getId()).orElseThrow()
+                .getFileResource().getId();
+
+        SecurityTestUtils.setSecurityContext(memberUser, "USER");
+        assertThatThrownBy(() -> digitalBookService.assertFileAccess(fileResourceId))
+                .isInstanceOf(UnauthorizedException.class);
+    }
+
+    @Test
+    @DisplayName("assertFileAccess allows a user with an approved digital borrow")
+    void assertFileAccess_digitalBookWithBorrow_allowed() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        DigitalBookDTO uploaded = digitalBookService.uploadDigitalBook(
+                library.getId(), book.getId(), pdfFile, null);
+        Long fileResourceId = digitalBookRepository.findById(uploaded.getId()).orElseThrow()
+                .getFileResource().getId();
+
+        borrowRepository.save(Borrow.builder()
+                .user(memberUser).library(library).book(book)
+                .borrowType(BorrowType.DIGITAL)
+                .status(BorrowStatus.APPROVED)
+                .borrowDate(LocalDateTime.now())
+                .dueDate(LocalDateTime.now().plusDays(14))
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
+
+        SecurityTestUtils.setSecurityContext(memberUser, "USER");
+        assertThatNoException().isThrownBy(() -> digitalBookService.assertFileAccess(fileResourceId));
+    }
+
     // ── Delete ───────────────────────────────────────────────────────────────
 
     @Test

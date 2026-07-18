@@ -3,6 +3,7 @@ package com.library.controller;
 import com.library.entity.FileResource;
 import com.library.exception.ResourceNotFoundException;
 import com.library.repository.FileResourceRepository;
+import com.library.service.DigitalBookService;
 import com.library.service.StorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,12 +23,17 @@ public class FileController {
 
     @Autowired private FileResourceRepository fileResourceRepository;
     @Autowired private StorageService storageService;
+    @Autowired private DigitalBookService digitalBookService;
 
     @GetMapping("/{fileId}")
-    @Operation(summary = "Serve a file (cover images are public)")
+    @Operation(summary = "Serve a file (cover images are public; digital book files are gated)")
     public ResponseEntity<Resource> serveFile(@PathVariable Long fileId) {
         FileResource fileResource = fileResourceRepository.findById(fileId)
                 .orElseThrow(() -> new ResourceNotFoundException("فایل پیدا نشد: " + fileId));
+
+        // /v1/files/** is permitAll for public cover images, so digital book PDFs
+        // stored in the same FileResource table must re-check the borrow-approval gate here.
+        digitalBookService.assertFileAccess(fileId);
 
         Resource resource = storageService.load(fileResource.getFilePath());
 

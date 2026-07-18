@@ -11,6 +11,7 @@ import com.library.entity.enums.SystemRole;
 import com.library.exception.BadRequestException;
 import com.library.exception.UnauthorizedException;
 import com.library.repository.UserRepository;
+import com.library.security.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,9 @@ class AuthenticationServiceTest extends BaseIntegrationTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtTokenProvider tokenProvider;
 
     private RegisterRequest registerRequest;
     private LoginRequest loginRequest;
@@ -257,5 +261,50 @@ class AuthenticationServiceTest extends BaseIntegrationTest {
         assertThat(result.getAccessToken()).isNotEmpty();
         assertThat(result.getRefreshToken()).isNotEmpty();
         assertThat(result.getUserId()).isEqualTo(user.getId());
+    }
+
+    // ── refreshToken ──────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("Should refresh tokens successfully with a valid refresh token")
+    void testRefreshTokenSuccess() {
+        User user = User.builder()
+                .email("refresh@library.com")
+                .passwordHash(passwordEncoder.encode("password123"))
+                .firstName("Ref").lastName("Resh")
+                .systemRole(SystemRole.USER)
+                .accountStatus(AccountStatus.ACTIVE)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now())
+                .build();
+        user = userRepository.save(user);
+
+        String refreshToken = tokenProvider.generateRefreshToken(user.getEmail(), user.getId());
+
+        AuthResponse result = authenticationService.refreshToken(refreshToken);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getAccessToken()).isNotEmpty();
+        assertThat(result.getRefreshToken()).isNotEmpty();
+        assertThat(result.getEmail()).isEqualTo("refresh@library.com");
+        assertThat(result.getUserId()).isEqualTo(user.getId());
+        assertThat(result.getSystemRole()).isEqualTo("USER");
+    }
+
+    @Test
+    @DisplayName("Should throw UnauthorizedException when refresh token is invalid")
+    void testRefreshTokenInvalid() {
+        assertThatThrownBy(() -> authenticationService.refreshToken("not-a-valid-token"))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessageContaining("منقضی");
+    }
+
+    @Test
+    @DisplayName("Should throw UnauthorizedException when refresh token points to a deleted user")
+    void testRefreshTokenUserNotFound() {
+        String refreshToken = tokenProvider.generateRefreshToken("gone@library.com", 999999L);
+
+        assertThatThrownBy(() -> authenticationService.refreshToken(refreshToken))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessageContaining("کاربر پیدا نشد");
     }
 }

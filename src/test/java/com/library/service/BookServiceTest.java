@@ -6,6 +6,7 @@ import com.library.dto.BookDTO;
 import com.library.dto.BookRequest;
 import com.library.entity.*;
 import com.library.entity.enums.AccountStatus;
+import com.library.entity.enums.BookCopyStatus;
 import com.library.entity.enums.LibraryMembershipRole;
 import com.library.entity.enums.MembershipStatus;
 import com.library.entity.enums.SystemRole;
@@ -26,6 +27,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -49,6 +51,18 @@ class BookServiceTest extends BaseIntegrationTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private BookCopyRepository bookCopyRepository;
+
+    @Autowired
+    private LibrarySubjectRepository subjectRepository;
+
+    @Autowired
+    private DigitalBookRepository digitalBookRepository;
+
+    @Autowired
+    private FileResourceRepository fileResourceRepository;
 
     private User adminUser;
     private User regularUser;
@@ -384,5 +398,558 @@ class BookServiceTest extends BaseIntegrationTest {
         // Verify book is deleted
         assertThatThrownBy(() -> bookService.getBookById(library.getId(), createdBook.getId()))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    // ---------- createBook: subjects ----------
+
+    @Test
+    @DisplayName("Should create book with valid subject ids")
+    void testCreateBookWithSubjects() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+
+        LibrarySubject subject = subjectRepository.save(LibrarySubject.builder()
+                .library(library).name("Software Engineering")
+                .createdAt(LocalDateTime.now()).build());
+
+        BookRequest req = BookRequest.builder()
+                .title("With Subject").author("Author")
+                .subjectIds(List.of(subject.getId()))
+                .build();
+
+        BookDTO result = bookService.createBook(library.getId(), req);
+
+        assertThat(result.getSubjectIds()).containsExactly(subject.getId());
+        assertThat(result.getSubjectNames()).containsExactly("Software Engineering");
+    }
+
+    @Test
+    @DisplayName("Should throw ResourceNotFoundException for unknown subject id")
+    void testCreateBookSubjectNotFound() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+
+        BookRequest req = BookRequest.builder()
+                .title("Bad Subject").author("Author")
+                .subjectIds(List.of(999999L))
+                .build();
+
+        assertThatThrownBy(() -> bookService.createBook(library.getId(), req))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("موضوعی");
+    }
+
+    @Test
+    @DisplayName("Should throw BadRequestException when subject belongs to another library")
+    void testCreateBookSubjectWrongLibrary() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+
+        Library otherLibrary = libraryRepository.save(Library.builder()
+                .name("Other Lib").owner(adminUser).isActive(true)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
+        LibrarySubject foreignSubject = subjectRepository.save(LibrarySubject.builder()
+                .library(otherLibrary).name("Foreign Subject")
+                .createdAt(LocalDateTime.now()).build());
+
+        BookRequest req = BookRequest.builder()
+                .title("Wrong Lib Subject").author("Author")
+                .subjectIds(List.of(foreignSubject.getId()))
+                .build();
+
+        assertThatThrownBy(() -> bookService.createBook(library.getId(), req))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("این موضوع مربوط به این کتابخانه نیست");
+    }
+
+    // ---------- getBookById: library not found + pending membership ----------
+
+    @Test
+    @DisplayName("Should throw ResourceNotFoundException when library does not exist for getBookById")
+    void testGetBookByIdLibraryNotFound() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        assertThatThrownBy(() -> bookService.getBookById(999L, 1L))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("کتابخانه");
+    }
+
+    @Test
+    @DisplayName("Should throw UnauthorizedException when membership is not yet approved")
+    void testGetBookByIdPendingMembership() {
+        User pendingUser = userRepository.save(User.builder()
+                .email("pending@library.com").passwordHash("$2a$10$encoded")
+                .firstName("Pending").lastName("User")
+                .systemRole(SystemRole.USER).accountStatus(AccountStatus.ACTIVE)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
+        membershipRepository.save(LibraryMembership.builder()
+                .user(pendingUser).library(library)
+                .role(LibraryMembershipRole.MEMBER).status(MembershipStatus.PENDING)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
+
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+
+        SecurityTestUtils.setSecurityContext(pendingUser, "USER");
+        Long libId = library.getId();
+        Long bookId = createdBook.getId();
+        assertThatThrownBy(() -> bookService.getBookById(libId, bookId))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessageContaining("تأیید نشده");
+    }
+
+    // ---------- globalSearch ----------
+
+    @Test
+    @DisplayName("Should find books across active libraries via global search")
+    void testGlobalSearchMatches() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        bookService.createBook(library.getId(), bookRequest);
+
+        Page<BookDTO> result = bookService.globalSearch("Clean", PageRequest.of(0, 10));
+
+        assertThat(result.getContent()).anyMatch(b -> b.getTitle().equals("Clean Code"));
+    }
+
+    @Test
+    @DisplayName("Should return all active-library books when global search query is blank")
+    void testGlobalSearchBlankQuery() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        bookService.createBook(library.getId(), bookRequest);
+
+        Page<BookDTO> result = bookService.globalSearch("  ", PageRequest.of(0, 10));
+
+        assertThat(result.getContent()).isNotEmpty();
+    }
+
+    @Test
+    @DisplayName("Should exclude books from inactive libraries in global search")
+    void testGlobalSearchExcludesInactiveLibrary() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+
+        Library inactiveLibrary = Library.builder()
+                .name("Inactive Lib").owner(adminUser).isActive(false)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+        inactiveLibrary = libraryRepository.save(inactiveLibrary);
+        Book inactiveBook = Book.builder()
+                .library(inactiveLibrary).title("Hidden Book").author("Ghost")
+                .autoDigitalBorrowEnabled(false)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+        bookRepository.save(inactiveBook);
+
+        Page<BookDTO> result = bookService.globalSearch("Hidden", PageRequest.of(0, 10));
+
+        assertThat(result.getContent()).isEmpty();
+    }
+
+    // ---------- advancedSearchBooks: subject/year filters ----------
+
+    @Test
+    @DisplayName("Should filter books by subject id")
+    void testAdvancedSearchBySubject() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        LibrarySubject subject = subjectRepository.save(LibrarySubject.builder()
+                .library(library).name("History").createdAt(LocalDateTime.now()).build());
+
+        BookRequest withSubject = BookRequest.builder()
+                .title("History Book").author("Author").subjectIds(List.of(subject.getId())).build();
+        BookRequest withoutSubject = BookRequest.builder()
+                .title("Other Book").author("Author").build();
+        bookService.createBook(library.getId(), withSubject);
+        bookService.createBook(library.getId(), withoutSubject);
+
+        Page<BookDTO> result = bookService.advancedSearchBooks(
+                library.getId(), null, subject.getId(), null, null, PageRequest.of(0, 10));
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getTitle()).isEqualTo("History Book");
+    }
+
+    @Test
+    @DisplayName("Should filter books by year range")
+    void testAdvancedSearchByYearRange() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        bookService.createBook(library.getId(), BookRequest.builder()
+                .title("Old Book").author("Author").publicationYear(1990).build());
+        bookService.createBook(library.getId(), BookRequest.builder()
+                .title("New Book").author("Author").publicationYear(2020).build());
+
+        Page<BookDTO> result = bookService.advancedSearchBooks(
+                library.getId(), null, null, 2000, 2025, PageRequest.of(0, 10));
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getTitle()).isEqualTo("New Book");
+    }
+
+    @Test
+    @DisplayName("Should filter books by yearFrom only")
+    void testAdvancedSearchByYearFromOnly() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        bookService.createBook(library.getId(), BookRequest.builder()
+                .title("Old Book").author("Author").publicationYear(1990).build());
+        bookService.createBook(library.getId(), BookRequest.builder()
+                .title("New Book").author("Author").publicationYear(2020).build());
+
+        Page<BookDTO> result = bookService.advancedSearchBooks(
+                library.getId(), null, null, 2000, null, PageRequest.of(0, 10));
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getTitle()).isEqualTo("New Book");
+    }
+
+    @Test
+    @DisplayName("Should filter books by yearTo only")
+    void testAdvancedSearchByYearToOnly() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        bookService.createBook(library.getId(), BookRequest.builder()
+                .title("Old Book").author("Author").publicationYear(1990).build());
+        bookService.createBook(library.getId(), BookRequest.builder()
+                .title("New Book").author("Author").publicationYear(2020).build());
+
+        Page<BookDTO> result = bookService.advancedSearchBooks(
+                library.getId(), null, null, null, 2000, PageRequest.of(0, 10));
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getTitle()).isEqualTo("Old Book");
+    }
+
+    @Test
+    @DisplayName("Should throw ResourceNotFoundException for advanced search on unknown library")
+    void testAdvancedSearchLibraryNotFound() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        assertThatThrownBy(() -> bookService.advancedSearchBooks(999L, null, null, null, null, PageRequest.of(0, 10)))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    // ---------- updateBook: not found / bad-library branches ----------
+
+    @Test
+    @DisplayName("Should throw ResourceNotFoundException when updating a non-existent library")
+    void testUpdateBookLibraryNotFound() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        assertThatThrownBy(() -> bookService.updateBook(999L, 1L, bookRequest))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("Should throw ResourceNotFoundException when updating a non-existent book")
+    void testUpdateBookNotFound() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        assertThatThrownBy(() -> bookService.updateBook(library.getId(), 999L, bookRequest))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("کتابی با این شناسه");
+    }
+
+    @Test
+    @DisplayName("Should throw BadRequestException when updating a book from a different library")
+    void testUpdateBookWrongLibrary() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+
+        Library otherLibrary = libraryRepository.save(Library.builder()
+                .name("Other Lib").owner(adminUser).isActive(true)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
+        membershipRepository.save(LibraryMembership.builder()
+                .user(adminUser).library(otherLibrary)
+                .role(LibraryMembershipRole.ADMIN).status(MembershipStatus.APPROVED)
+                .approvedBy(adminUser)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
+
+        Long otherLibId = otherLibrary.getId();
+        Long bookId = createdBook.getId();
+        assertThatThrownBy(() -> bookService.updateBook(otherLibId, bookId, bookRequest))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    // ---------- deleteBook: not found / unauthorized / bad-library branches ----------
+
+    @Test
+    @DisplayName("Should throw ResourceNotFoundException when deleting from a non-existent library")
+    void testDeleteBookLibraryNotFound() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        assertThatThrownBy(() -> bookService.deleteBook(999L, 1L))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("Should throw UnauthorizedException when non-member deletes a book")
+    void testDeleteBookNonMember() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+
+        User outsider = userRepository.save(User.builder()
+                .email("outsider-del@library.com").passwordHash("$2a$10$encoded")
+                .firstName("Out").lastName("Sider")
+                .systemRole(SystemRole.USER).accountStatus(AccountStatus.ACTIVE)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
+        SecurityTestUtils.setSecurityContext(outsider, "USER");
+
+        Long libId = library.getId();
+        Long bookId = createdBook.getId();
+        assertThatThrownBy(() -> bookService.deleteBook(libId, bookId))
+                .isInstanceOf(UnauthorizedException.class);
+    }
+
+    @Test
+    @DisplayName("Should throw ResourceNotFoundException when deleting a non-existent book")
+    void testDeleteBookNotFound() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        assertThatThrownBy(() -> bookService.deleteBook(library.getId(), 999L))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("کتابی با این شناسه");
+    }
+
+    @Test
+    @DisplayName("Should throw BadRequestException when deleting a book from a different library")
+    void testDeleteBookWrongLibrary() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+
+        Library otherLibrary = libraryRepository.save(Library.builder()
+                .name("Other Lib 2").owner(adminUser).isActive(true)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
+        membershipRepository.save(LibraryMembership.builder()
+                .user(adminUser).library(otherLibrary)
+                .role(LibraryMembershipRole.ADMIN).status(MembershipStatus.APPROVED)
+                .approvedBy(adminUser)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
+
+        Long otherLibId = otherLibrary.getId();
+        Long bookId = createdBook.getId();
+        assertThatThrownBy(() -> bookService.deleteBook(otherLibId, bookId))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    // ---------- addBookCopies ----------
+
+    @Test
+    @DisplayName("Should add copies with incrementing copy numbers")
+    void testAddBookCopiesSuccess() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+
+        bookService.addBookCopies(library.getId(), createdBook.getId(), 3);
+
+        List<BookCopy> copies = bookCopyRepository.findByBookId(createdBook.getId());
+        assertThat(copies).hasSize(3);
+        assertThat(copies.stream().map(BookCopy::getCopyNumber)).containsExactlyInAnyOrder(1, 2, 3);
+        assertThat(copies).allMatch(c -> c.getStatus() == BookCopyStatus.AVAILABLE);
+    }
+
+    @Test
+    @DisplayName("Should throw ResourceNotFoundException when adding copies to unknown library")
+    void testAddBookCopiesLibraryNotFound() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        assertThatThrownBy(() -> bookService.addBookCopies(999L, 1L, 1))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("Should throw UnauthorizedException when non-admin adds copies")
+    void testAddBookCopiesNonAdmin() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+
+        SecurityTestUtils.setSecurityContext(regularUser, "USER");
+        Long libId = library.getId();
+        Long bookId = createdBook.getId();
+        assertThatThrownBy(() -> bookService.addBookCopies(libId, bookId, 1))
+                .isInstanceOf(UnauthorizedException.class);
+    }
+
+    @Test
+    @DisplayName("Should throw ResourceNotFoundException when adding copies to unknown book")
+    void testAddBookCopiesBookNotFound() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        assertThatThrownBy(() -> bookService.addBookCopies(library.getId(), 999L, 1))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("کتابی با این شناسه");
+    }
+
+    @Test
+    @DisplayName("Should throw BadRequestException when adding copies for a book in a different library")
+    void testAddBookCopiesWrongLibrary() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+
+        Library otherLibrary = libraryRepository.save(Library.builder()
+                .name("Other Lib 3").owner(adminUser).isActive(true)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
+        membershipRepository.save(LibraryMembership.builder()
+                .user(adminUser).library(otherLibrary)
+                .role(LibraryMembershipRole.ADMIN).status(MembershipStatus.APPROVED)
+                .approvedBy(adminUser)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
+
+        Long otherLibId = otherLibrary.getId();
+        Long bookId = createdBook.getId();
+        assertThatThrownBy(() -> bookService.addBookCopies(otherLibId, bookId, 1))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    // ---------- setBookCopyCount ----------
+
+    @Test
+    @DisplayName("Should increase copy count by adding new copies")
+    void testSetBookCopyCountIncrease() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+        bookService.addBookCopies(library.getId(), createdBook.getId(), 2);
+
+        BookDTO result = bookService.setBookCopyCount(library.getId(), createdBook.getId(), 5);
+
+        assertThat(result.getTotalCopiesCount()).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("Should decrease copy count by removing available copies")
+    void testSetBookCopyCountDecrease() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+        bookService.addBookCopies(library.getId(), createdBook.getId(), 5);
+
+        BookDTO result = bookService.setBookCopyCount(library.getId(), createdBook.getId(), 2);
+
+        assertThat(result.getTotalCopiesCount()).isEqualTo(2);
+        List<BookCopy> remaining = bookCopyRepository.findByBookId(createdBook.getId());
+        assertThat(remaining).hasSize(2);
+        assertThat(remaining.stream().map(BookCopy::getCopyNumber)).containsExactlyInAnyOrder(1, 2);
+    }
+
+    @Test
+    @DisplayName("Should keep copy count unchanged when target equals current total")
+    void testSetBookCopyCountUnchanged() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+        bookService.addBookCopies(library.getId(), createdBook.getId(), 3);
+
+        BookDTO result = bookService.setBookCopyCount(library.getId(), createdBook.getId(), 3);
+
+        assertThat(result.getTotalCopiesCount()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("Should let SYSTEM_ADMIN set copy count without library membership admin role")
+    void testSetBookCopyCountAsSystemAdmin() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+        bookService.addBookCopies(library.getId(), createdBook.getId(), 5);
+
+        SecurityTestUtils.setSecurityContext(regularUser, "SYSTEM_ADMIN");
+        BookDTO result = bookService.setBookCopyCount(library.getId(), createdBook.getId(), 2);
+
+        assertThat(result.getTotalCopiesCount()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Should throw UnauthorizedException when non-admin non-system-admin sets copy count")
+    void testSetBookCopyCountUnauthorized() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+
+        SecurityTestUtils.setSecurityContext(regularUser, "USER");
+        Long libId = library.getId();
+        Long bookId = createdBook.getId();
+        assertThatThrownBy(() -> bookService.setBookCopyCount(libId, bookId, 4))
+                .isInstanceOf(UnauthorizedException.class);
+    }
+
+    @Test
+    @DisplayName("Should throw ResourceNotFoundException when setting copy count on unknown library")
+    void testSetBookCopyCountLibraryNotFound() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        assertThatThrownBy(() -> bookService.setBookCopyCount(999L, 1L, 1))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("Should throw ResourceNotFoundException when setting copy count on unknown book")
+    void testSetBookCopyCountBookNotFound() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        assertThatThrownBy(() -> bookService.setBookCopyCount(library.getId(), 999L, 1))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("کتابی با این شناسه");
+    }
+
+    @Test
+    @DisplayName("Should throw BadRequestException when setting copy count for a book in a different library")
+    void testSetBookCopyCountWrongLibrary() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+
+        Library otherLibrary = libraryRepository.save(Library.builder()
+                .name("Other Lib 4").owner(adminUser).isActive(true)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
+        membershipRepository.save(LibraryMembership.builder()
+                .user(adminUser).library(otherLibrary)
+                .role(LibraryMembershipRole.ADMIN).status(MembershipStatus.APPROVED)
+                .approvedBy(adminUser)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
+
+        Long otherLibId = otherLibrary.getId();
+        Long bookId = createdBook.getId();
+        assertThatThrownBy(() -> bookService.setBookCopyCount(otherLibId, bookId, 1))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    @DisplayName("Should throw BadRequestException when target count is negative")
+    void testSetBookCopyCountNegative() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+
+        Long libId = library.getId();
+        Long bookId = createdBook.getId();
+        assertThatThrownBy(() -> bookService.setBookCopyCount(libId, bookId, -1))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("تعداد نسخه نامعتبر است");
+    }
+
+    @Test
+    @DisplayName("Should throw BadRequestException when target count is below copies currently on loan")
+    void testSetBookCopyCountBelowOnLoan() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+        bookService.addBookCopies(library.getId(), createdBook.getId(), 3);
+
+        List<BookCopy> copies = bookCopyRepository.findByBookId(createdBook.getId());
+        BookCopy onLoanCopy = copies.get(0);
+        onLoanCopy.setStatus(BookCopyStatus.BORROWED);
+        bookCopyRepository.save(onLoanCopy);
+
+        Long libId = library.getId();
+        Long bookId = createdBook.getId();
+        assertThatThrownBy(() -> bookService.setBookCopyCount(libId, bookId, 0))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("در امانت است");
+    }
+
+    // ---------- mapToBookDTO: cover image + digital versions ----------
+
+    @Test
+    @DisplayName("Should populate cover image URL and digital-version flag in DTO")
+    void testMapToBookDTOWithCoverAndDigitalVersion() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+        Book book = bookRepository.findById(createdBook.getId()).orElseThrow();
+
+        FileResource coverResource = fileResourceRepository.save(FileResource.builder()
+                .originalFilename("cover.png").storedFilename("stored-cover.png")
+                .filePath("/covers/stored-cover.png").fileSizeBytes(1024L)
+                .contentType("image/png").checksumSha256("abc123")
+                .uploadedBy(adminUser).createdAt(LocalDateTime.now()).build());
+        book.setCoverImage(coverResource);
+        book = bookRepository.save(book);
+
+        FileResource digitalResource = fileResourceRepository.save(FileResource.builder()
+                .originalFilename("book.pdf").storedFilename("stored-book.pdf")
+                .filePath("/digital/stored-book.pdf").fileSizeBytes(2048L)
+                .contentType("application/pdf").checksumSha256("def456")
+                .uploadedBy(adminUser).createdAt(LocalDateTime.now()).build());
+        digitalBookRepository.save(DigitalBook.builder()
+                .book(book).fileResource(digitalResource).fileFormat("PDF")
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
+
+        BookDTO result = bookService.mapToBookDTO(book);
+
+        assertThat(result.getCoverImageUrl()).isEqualTo("/api/v1/files/" + coverResource.getId());
+        assertThat(result.getCoverImageFileResourceId()).isEqualTo(coverResource.getId());
+        assertThat(result.getHasDigitalVersions()).isTrue();
     }
 }

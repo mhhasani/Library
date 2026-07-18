@@ -296,42 +296,12 @@ public class BorrowService {
         }
 
         User admin = userRepository.findById(currentUserId).orElseThrow();
-        // For reservations (no bookCopy yet), auto-assign the first available copy
-        if (borrow.getBorrowType() == BorrowType.PHYSICAL && borrow.getBookCopy() == null) {
-            BookCopy availableCopy = bookCopyRepository.findByBookIdAndStatus(
-                    borrow.getBook().getId(), BookCopyStatus.AVAILABLE)
-                    .stream().findFirst()
-                    .orElseThrow(() -> new BadRequestException("هنوز هیچ نسخه‌ای از این کتاب موجود نیست."));
-            borrow.setBookCopy(availableCopy);
-        }
 
         borrow.setStatus(BorrowStatus.APPROVED);
         borrow.setApprovedBy(admin);
         borrow.setBorrowDate(LocalDateTime.now());
         borrow.setDueDate(LocalDateTime.now().plusDays(borrow.getLibrary().getDefaultBorrowDurationDays()));
         borrow.setUpdatedAt(LocalDateTime.now());
-
-        // Update book copy status if physical
-        if (borrow.getBorrowType() == BorrowType.PHYSICAL && borrow.getBookCopy() != null) {
-            BookCopy copy = borrow.getBookCopy();
-            copy.setStatus(BookCopyStatus.BORROWED);
-            copy.setUpdatedAt(LocalDateTime.now());
-            bookCopyRepository.save(copy);
-
-            // If no available copies remain, auto-reject all other pending requests for this book
-            long availableCopies = bookCopyRepository.countByBookIdAndStatus(borrow.getBook().getId(), BookCopyStatus.AVAILABLE);
-            if (availableCopies == 0) {
-                Long bookId = borrow.getBook().getId();
-                List<Borrow> pendingBorrows = borrowRepository.findRequestedBorrowsByBookExcluding(bookId, borrowId);
-                for (Borrow pending : pendingBorrows) {
-                    pending.setStatus(BorrowStatus.REJECTED);
-                    pending.setRejectionReason("رد خودکار: موجودی کتاب به پایان رسید");
-                    pending.setUpdatedAt(LocalDateTime.now());
-                    borrowRepository.save(pending);
-                    log.info("Auto-rejected borrow {} due to no available copies of book {}", pending.getId(), bookId);
-                }
-            }
-        }
 
         borrow = borrowRepository.save(borrow);
         log.info("Borrow request approved: {} by admin: {}", borrowId, admin.getEmail());

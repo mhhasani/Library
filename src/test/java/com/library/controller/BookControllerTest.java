@@ -2,6 +2,7 @@ package com.library.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.library.BaseIntegrationTest;
+import com.library.dto.AddBookCopyRequest;
 import com.library.dto.BookDTO;
 import com.library.dto.BookRequest;
 import com.library.exception.BadRequestException;
@@ -188,6 +189,289 @@ class BookControllerTest extends BaseIntegrationTest {
         mockMvc.perform(post("/v1/libraries/1/books")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(bookRequest)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Should return 401 when unauthenticated user gets a book")
+    void testGetBookUnauthenticated() throws Exception {
+        mockMvc.perform(get("/v1/libraries/1/books/1"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // ── search ──────────────────────────────────────────────────────────
+
+    @Test
+    @WithMockUser(username = "user@library.com", roles = "USER")
+    @DisplayName("Should search books with query and filters")
+    void testSearchBooksSuccess() throws Exception {
+        Page<BookDTO> bookPage = new PageImpl<>(Arrays.asList(bookDTO), PageRequest.of(0, 10), 1);
+        when(bookService.advancedSearchBooks(eq(1L), eq("Clean"), eq(2L), eq(2000), eq(2020), any()))
+                .thenReturn(bookPage);
+
+        mockMvc.perform(get("/v1/libraries/1/books/search")
+                .param("query", "Clean")
+                .param("subjectId", "2")
+                .param("yearFrom", "2000")
+                .param("yearTo", "2020"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].title").value("Clean Code"));
+    }
+
+    @Test
+    @WithMockUser(username = "user@library.com", roles = "USER")
+    @DisplayName("Should search books with no parameters")
+    void testSearchBooksNoParams() throws Exception {
+        Page<BookDTO> emptyPage = new PageImpl<>(Arrays.asList(), PageRequest.of(0, 10), 0);
+        when(bookService.advancedSearchBooks(eq(1L), isNull(), isNull(), isNull(), isNull(), any()))
+                .thenReturn(emptyPage);
+
+        mockMvc.perform(get("/v1/libraries/1/books/search"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content.length()").value(0));
+    }
+
+    @Test
+    @DisplayName("Should return 401 when unauthenticated user searches books")
+    void testSearchBooksUnauthenticated() throws Exception {
+        mockMvc.perform(get("/v1/libraries/1/books/search"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // ── update ──────────────────────────────────────────────────────────
+
+    @Test
+    @WithMockUser(username = "admin@library.com", roles = "USER")
+    @DisplayName("Should update book successfully")
+    void testUpdateBookSuccess() throws Exception {
+        BookDTO updated = BookDTO.builder()
+                .id(1L)
+                .title("Clean Code 2nd Edition")
+                .author("Robert C. Martin")
+                .build();
+        when(bookService.updateBook(eq(1L), eq(1L), any(BookRequest.class))).thenReturn(updated);
+
+        mockMvc.perform(put("/v1/libraries/1/books/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(bookRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.title").value("Clean Code 2nd Edition"));
+    }
+
+    @Test
+    @WithMockUser(username = "user@library.com", roles = "USER")
+    @DisplayName("Should return 400 when updating book with invalid request")
+    void testUpdateBookInvalidRequest() throws Exception {
+        BookRequest invalidRequest = BookRequest.builder().title("").author("").build();
+
+        mockMvc.perform(put("/v1/libraries/1/books/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "user@library.com", roles = "USER")
+    @DisplayName("Should return 404 when updating a nonexistent book")
+    void testUpdateBookNotFound() throws Exception {
+        doThrow(new ResourceNotFoundException("Book not found"))
+                .when(bookService).updateBook(eq(1L), eq(999L), any(BookRequest.class));
+
+        mockMvc.perform(put("/v1/libraries/1/books/999")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(bookRequest)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "user@library.com", roles = "USER")
+    @DisplayName("Should return 401 when non-admin updates book")
+    void testUpdateBookUnauthorized() throws Exception {
+        doThrow(new UnauthorizedException("Only library admins can update books"))
+                .when(bookService).updateBook(eq(1L), eq(1L), any(BookRequest.class));
+
+        mockMvc.perform(put("/v1/libraries/1/books/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(bookRequest)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Should return 401 when unauthenticated user updates book")
+    void testUpdateBookUnauthenticated() throws Exception {
+        mockMvc.perform(put("/v1/libraries/1/books/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(bookRequest)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // ── delete ──────────────────────────────────────────────────────────
+
+    @Test
+    @WithMockUser(username = "admin@library.com", roles = "USER")
+    @DisplayName("Should delete book successfully")
+    void testDeleteBookSuccess() throws Exception {
+        mockMvc.perform(delete("/v1/libraries/1/books/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Book deleted successfully"));
+    }
+
+    @Test
+    @WithMockUser(username = "user@library.com", roles = "USER")
+    @DisplayName("Should return 404 when deleting a nonexistent book")
+    void testDeleteBookNotFound() throws Exception {
+        doThrow(new ResourceNotFoundException("Book not found"))
+                .when(bookService).deleteBook(1L, 999L);
+
+        mockMvc.perform(delete("/v1/libraries/1/books/999"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "user@library.com", roles = "USER")
+    @DisplayName("Should return 401 when non-admin deletes book")
+    void testDeleteBookUnauthorized() throws Exception {
+        doThrow(new UnauthorizedException("Only library admins can delete books"))
+                .when(bookService).deleteBook(1L, 1L);
+
+        mockMvc.perform(delete("/v1/libraries/1/books/1"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Should return 401 when unauthenticated user deletes book")
+    void testDeleteBookUnauthenticated() throws Exception {
+        mockMvc.perform(delete("/v1/libraries/1/books/1"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // ── add copies ──────────────────────────────────────────────────────
+
+    @Test
+    @WithMockUser(username = "admin@library.com", roles = "USER")
+    @DisplayName("Should add book copies successfully")
+    void testAddBookCopiesSuccess() throws Exception {
+        AddBookCopyRequest request = AddBookCopyRequest.builder().numberOfCopies(5).build();
+
+        mockMvc.perform(post("/v1/libraries/1/books/1/copies")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Book copies added successfully"));
+    }
+
+    @Test
+    @WithMockUser(username = "user@library.com", roles = "USER")
+    @DisplayName("Should return 400 when adding a non-positive number of copies")
+    void testAddBookCopiesInvalidRequest() throws Exception {
+        AddBookCopyRequest request = AddBookCopyRequest.builder().numberOfCopies(-1).build();
+
+        mockMvc.perform(post("/v1/libraries/1/books/1/copies")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "user@library.com", roles = "USER")
+    @DisplayName("Should return 404 when adding copies to a nonexistent book")
+    void testAddBookCopiesNotFound() throws Exception {
+        doThrow(new ResourceNotFoundException("Book not found"))
+                .when(bookService).addBookCopies(1L, 999L, 5);
+        AddBookCopyRequest request = AddBookCopyRequest.builder().numberOfCopies(5).build();
+
+        mockMvc.perform(post("/v1/libraries/1/books/999/copies")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "user@library.com", roles = "USER")
+    @DisplayName("Should return 401 when non-admin adds book copies")
+    void testAddBookCopiesUnauthorized() throws Exception {
+        doThrow(new UnauthorizedException("Only library admins can add copies"))
+                .when(bookService).addBookCopies(1L, 1L, 5);
+        AddBookCopyRequest request = AddBookCopyRequest.builder().numberOfCopies(5).build();
+
+        mockMvc.perform(post("/v1/libraries/1/books/1/copies")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Should return 401 when unauthenticated user adds book copies")
+    void testAddBookCopiesUnauthenticated() throws Exception {
+        AddBookCopyRequest request = AddBookCopyRequest.builder().numberOfCopies(5).build();
+
+        mockMvc.perform(post("/v1/libraries/1/books/1/copies")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // ── set copy count ──────────────────────────────────────────────────
+
+    @Test
+    @WithMockUser(username = "admin@library.com", roles = "USER")
+    @DisplayName("Should set book copy count successfully")
+    void testSetBookCopyCountSuccess() throws Exception {
+        BookDTO updated = BookDTO.builder().id(1L).title("Clean Code").build();
+        when(bookService.setBookCopyCount(1L, 1L, 10)).thenReturn(updated);
+
+        mockMvc.perform(put("/v1/libraries/1/books/1/copies/count")
+                .param("count", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").value(1));
+    }
+
+    @Test
+    @WithMockUser(username = "user@library.com", roles = "USER")
+    @DisplayName("Should return 400 when setting copy count below loaned copies")
+    void testSetBookCopyCountBadRequest() throws Exception {
+        doThrow(new BadRequestException("Cannot go below copies on loan"))
+                .when(bookService).setBookCopyCount(1L, 1L, 0);
+
+        mockMvc.perform(put("/v1/libraries/1/books/1/copies/count")
+                .param("count", "0"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "user@library.com", roles = "USER")
+    @DisplayName("Should return 404 when setting copy count for nonexistent book")
+    void testSetBookCopyCountNotFound() throws Exception {
+        doThrow(new ResourceNotFoundException("Book not found"))
+                .when(bookService).setBookCopyCount(1L, 999L, 10);
+
+        mockMvc.perform(put("/v1/libraries/1/books/999/copies/count")
+                .param("count", "10"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "user@library.com", roles = "USER")
+    @DisplayName("Should return 401 when non-admin sets copy count")
+    void testSetBookCopyCountUnauthorized() throws Exception {
+        doThrow(new UnauthorizedException("Only library admins can set copy count"))
+                .when(bookService).setBookCopyCount(1L, 1L, 10);
+
+        mockMvc.perform(put("/v1/libraries/1/books/1/copies/count")
+                .param("count", "10"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Should return 401 when unauthenticated user sets copy count")
+    void testSetBookCopyCountUnauthenticated() throws Exception {
+        mockMvc.perform(put("/v1/libraries/1/books/1/copies/count")
+                .param("count", "10"))
                 .andExpect(status().isUnauthorized());
     }
 }

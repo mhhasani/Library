@@ -12,4 +12,5 @@ public interface DigitalBookRepository extends JpaRepository<DigitalBook, Long> 
     List<DigitalBook> findByBookId(Long bookId);
     Optional<DigitalBook> findByBookIdAndFileFormat(Long bookId, String fileFormat);
     long countByFileResourceId(Long fileResourceId);
+    Optional<DigitalBook> findByFileResourceId(Long fileResourceId);
 }

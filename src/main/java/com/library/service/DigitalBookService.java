@@ -130,11 +130,27 @@ public class DigitalBookService {
     }
 
     public Resource downloadDigitalBook(Long digitalBookId) {
-        Long currentUserId = SecurityUtils.getCurrentUserId();
-
         DigitalBook digitalBook = digitalBookRepository.findById(digitalBookId)
                 .orElseThrow(() -> new ResourceNotFoundException("نسخه‌ی دیجیتال پیدا نشد: " + digitalBookId));
 
+        checkDownloadAccess(digitalBook);
+
+        return storageService.load(digitalBook.getFileResource().getFilePath());
+    }
+
+    /**
+     * Enforces the same download gate as {@link #downloadDigitalBook}, keyed by the
+     * underlying FileResource. Used by FileController so the shared /v1/files/{id}
+     * endpoint can't be used to bypass the borrow-approval check for digital book PDFs.
+     * No-op if the given fileResourceId isn't a digital book (e.g. a cover image).
+     */
+    public void assertFileAccess(Long fileResourceId) {
+        digitalBookRepository.findByFileResourceId(fileResourceId)
+                .ifPresent(this::checkDownloadAccess);
+    }
+
+    private void checkDownloadAccess(DigitalBook digitalBook) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
         Long bookId = digitalBook.getBook().getId();
         Long libraryId = digitalBook.getBook().getLibrary().getId();
 
@@ -152,8 +168,6 @@ public class DigitalBookService {
                 throw new UnauthorizedException("شما دانلود تأییدشده‌ای برای این کتاب ندارید");
             }
         }
-
-        return storageService.load(digitalBook.getFileResource().getFilePath());
     }
 
     public void deleteDigitalBook(Long libraryId, Long bookId, Long digitalBookId) {

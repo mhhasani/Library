@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -48,6 +50,39 @@ class NotificationControllerTest extends BaseIntegrationTest {
     @DisplayName("Unauthenticated request to GET /v1/notifications — 401")
     void list_unauthenticated_unauthorized() throws Exception {
         mockMvc.perform(get("/v1/notifications")).andExpect(status().isUnauthorized());
+    }
+
+    // ── GET /v1/notifications/paged ──────────────────────────────────────
+
+    @Test
+    @WithMockUser
+    @DisplayName("Paged notifications with default paging — 200")
+    void listPaged_defaultParams_ok() throws Exception {
+        NotificationDTO n = NotificationDTO.builder().id(1L).message("پیام").read(false).build();
+        when(notificationService.getMyNotificationsPaged(PageRequest.of(0, 15)))
+                .thenReturn(new PageImpl<>(List.of(n), PageRequest.of(0, 15), 1));
+
+        mockMvc.perform(get("/v1/notifications/paged"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].id").value(1));
+    }
+
+    @Test
+    @WithMockUser
+    @DisplayName("Paged notifications with explicit page/size — 200")
+    void listPaged_explicitParams_ok() throws Exception {
+        when(notificationService.getMyNotificationsPaged(PageRequest.of(2, 5)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(2, 5), 0));
+
+        mockMvc.perform(get("/v1/notifications/paged").param("page", "2").param("size", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content").isArray());
+    }
+
+    @Test
+    @DisplayName("Unauthenticated paged notifications — 401")
+    void listPaged_unauthenticated() throws Exception {
+        mockMvc.perform(get("/v1/notifications/paged")).andExpect(status().isUnauthorized());
     }
 
     // ── GET /v1/notifications/unread-count ───────────────────────────────
