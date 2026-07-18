@@ -35,6 +35,10 @@ uploads/
 library-files/
 *.sql
 
+# Deploy secrets (contains real DB/JWT credentials, never commit)
+k8s/env-vars.json
+k8s/env-vars.env
+
 # Docker
 docker-compose.override.yml
 
