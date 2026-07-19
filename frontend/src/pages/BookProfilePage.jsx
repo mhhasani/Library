@@ -61,6 +61,9 @@ const BookProfilePage = () => {
     }
   };
 
+  // One click does everything: request digital access if needed (it's granted
+  // instantly, no librarian approval) and download the file — the user never
+  // sees a separate "now click download" step.
   const handleDownload = async () => {
     try {
       setDownloading(true);
@@ -68,7 +71,15 @@ const BookProfilePage = () => {
       const versions = listRes.data?.data || listRes.data || [];
       if (versions.length === 0) { setError("نسخه‌ی دیجیتالی موجود نیست"); return; }
       const v = versions[0];
-      const res = await bookAPI.downloadDigitalBook(libraryId, bookId, v.id);
+      let res;
+      try {
+        res = await bookAPI.downloadDigitalBook(libraryId, bookId, v.id);
+      } catch (err) {
+        if (err.response?.status !== 401) throw err;
+        // No approved access yet — request it (auto-approved instantly) and retry once.
+        await borrowAPI.createBorrow(libraryId, { bookId: Number(bookId), borrowType: "DIGITAL" });
+        res = await bookAPI.downloadDigitalBook(libraryId, bookId, v.id);
+      }
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
       a.href = url;

@@ -219,6 +219,30 @@
   color: var(--color-text);
 }
 
+.btn-outline-danger {
+  background: transparent;
+  color: var(--color-danger);
+  border: 1.5px solid var(--color-danger-border);
+}
+.btn-outline-danger:hover:not(:disabled) {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: white;
+  box-shadow: 0 3px 10px rgba(176, 48, 48, 0.25);
+}
+
+.btn-outline-success {
+  background: transparent;
+  color: var(--color-success);
+  border: 1.5px solid var(--color-success-border);
+}
+.btn-outline-success:hover:not(:disabled) {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: white;
+  box-shadow: 0 3px 10px rgba(26, 107, 68, 0.25);
+}
+
 .btn-sm {
   padding: 0.4rem 0.9rem;
   font-size: 0.83rem;
@@ -265,11 +289,22 @@
 /* ── Table ─────────────────────────────────────────── */
 .table-wrapper {
   background: var(--color-surface);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--color-border-light);
   overflow: hidden;
   overflow-x: auto;
+  position: relative;
+}
+
+.table-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--color-accent) 15%, var(--color-accent) 85%, transparent);
+  opacity: 0.7;
+  z-index: 1;
 }
 
 .modern-table {
@@ -284,27 +319,30 @@
 }
 
 .modern-table thead th {
-  padding: 1rem 1.25rem;
+  padding: 1.05rem 1.25rem;
   text-align: right;
-  font-weight: 600;
-  font-size: 0.83rem;
+  font-weight: 700;
+  font-size: 0.8rem;
   white-space: nowrap;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
+  position: relative;
 }
 
 .modern-table tbody tr {
   border-bottom: 1px solid var(--color-border-light);
   transition: var(--transition-fast);
+  position: relative;
 }
 
 .modern-table tbody tr:last-child { border-bottom: none; }
 
 .modern-table tbody tr:hover {
   background: var(--color-primary-subtle);
+  box-shadow: inset -3px 0 0 var(--color-accent);
 }
 
 .modern-table td {
-  padding: 0.9rem 1.25rem;
+  padding: 0.95rem 1.25rem;
   color: var(--color-text-secondary);
   vertical-align: middle;
 }

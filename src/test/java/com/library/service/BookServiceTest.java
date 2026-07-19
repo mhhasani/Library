@@ -21,8 +21,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +33,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -63,6 +68,12 @@ class BookServiceTest extends BaseIntegrationTest {
 
     @Autowired
     private FileResourceRepository fileResourceRepository;
+
+    @Autowired
+    private BorrowRepository borrowRepository;
+
+    @MockBean
+    private StorageService storageService;
 
     private User adminUser;
     private User regularUser;
@@ -142,6 +153,10 @@ class BookServiceTest extends BaseIntegrationTest {
                 .description("A handbook of agile software craftsmanship")
                 .autoDigitalBorrowEnabled(false)
                 .build();
+
+        when(storageService.store(any(), anyString())).thenReturn("covers/test-uuid.jpg");
+        when(storageService.load(anyString())).thenReturn(new ByteArrayResource("data".getBytes()));
+        doNothing().when(storageService).delete(anyString());
     }
 
     @AfterEach
@@ -716,6 +731,117 @@ class BookServiceTest extends BaseIntegrationTest {
                 .isInstanceOf(BadRequestException.class);
     }
 
+    @Test
+    @DisplayName("Should soft-delete (not hard-delete/throw) a book with borrow history, preserving the row")
+    void testDeleteBookWithBorrowHistory_softDeletesInsteadOfThrowing() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+        bookService.addBookCopies(library.getId(), createdBook.getId(), 1);
+        BookCopy copy = bookCopyRepository.findByBookId(createdBook.getId()).get(0);
+
+        borrowRepository.save(Borrow.builder()
+                .user(adminUser).library(library).book(bookRepository.findById(createdBook.getId()).orElseThrow())
+                .bookCopy(copy)
+                .borrowType(com.library.entity.enums.BorrowType.PHYSICAL)
+                .status(com.library.entity.enums.BorrowStatus.RETURNED)
+                .returnDate(LocalDateTime.now())
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
+
+        Long libId = library.getId();
+        Long bookId = createdBook.getId();
+        bookService.deleteBook(libId, bookId);
+
+        // Row must still exist (soft delete), but marked deleted and hidden from normal access.
+        Book deleted = bookRepository.findById(bookId).orElseThrow();
+        assertThat(deleted.getDeletedAt()).isNotNull();
+        assertThatThrownBy(() -> bookService.getBookById(libId, bookId))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("Should throw BadRequestException when deleting an already-deleted book")
+    void testDeleteBookAlreadyDeleted_throws() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+        Long libId = library.getId();
+        Long bookId = createdBook.getId();
+        bookService.deleteBook(libId, bookId);
+
+        assertThatThrownBy(() -> bookService.deleteBook(libId, bookId))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("قبلاً حذف شده");
+    }
+
+    @Test
+    @DisplayName("Should restore a soft-deleted book, making it visible again")
+    void testRestoreBook_makesBookVisibleAgain() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+        Long libId = library.getId();
+        Long bookId = createdBook.getId();
+        bookService.deleteBook(libId, bookId);
+
+        BookDTO restored = bookService.restoreBook(libId, bookId);
+
+        assertThat(restored.getDeletedAt()).isNull();
+        assertThat(bookService.getBookById(libId, bookId).getId()).isEqualTo(bookId);
+    }
+
+    @Test
+    @DisplayName("Should throw BadRequestException when restoring a book that is not deleted")
+    void testRestoreBook_notDeleted_throws() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+        Long libId = library.getId();
+        Long bookId = createdBook.getId();
+
+        assertThatThrownBy(() -> bookService.restoreBook(libId, bookId))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("حذف نشده");
+    }
+
+    @Test
+    @DisplayName("Should throw UnauthorizedException when a non-admin tries to restore a book")
+    void testRestoreBook_nonAdmin_throws() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+        Long libId = library.getId();
+        Long bookId = createdBook.getId();
+        bookService.deleteBook(libId, bookId);
+
+        SecurityTestUtils.setSecurityContext(regularUser, "USER");
+        assertThatThrownBy(() -> bookService.restoreBook(libId, bookId))
+                .isInstanceOf(UnauthorizedException.class);
+    }
+
+    @Test
+    @DisplayName("Should list a soft-deleted book via getDeletedBooks and exclude it from getLibraryBooks/searchBooks")
+    void testGetDeletedBooks_listsDeletedAndHidesFromNormalListings() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+        Long libId = library.getId();
+        Long bookId = createdBook.getId();
+        bookService.deleteBook(libId, bookId);
+
+        Page<BookDTO> deleted = bookService.getDeletedBooks(libId, PageRequest.of(0, 10));
+        assertThat(deleted.getContent()).extracting(BookDTO::getId).contains(bookId);
+
+        Page<BookDTO> normalListing = bookService.getLibraryBooks(libId, PageRequest.of(0, 10));
+        assertThat(normalListing.getContent()).extracting(BookDTO::getId).doesNotContain(bookId);
+
+        Page<BookDTO> searchResults = bookService.searchBooks(libId, bookRequest.getTitle(), PageRequest.of(0, 10));
+        assertThat(searchResults.getContent()).extracting(BookDTO::getId).doesNotContain(bookId);
+    }
+
+    @Test
+    @DisplayName("Should throw UnauthorizedException when a non-admin lists deleted books")
+    void testGetDeletedBooks_nonAdmin_throws() {
+        SecurityTestUtils.setSecurityContext(regularUser, "USER");
+        Long libId = library.getId();
+        assertThatThrownBy(() -> bookService.getDeletedBooks(libId, PageRequest.of(0, 10)))
+                .isInstanceOf(UnauthorizedException.class);
+    }
+
     // ---------- addBookCopies ----------
 
     @Test
@@ -918,6 +1044,142 @@ class BookServiceTest extends BaseIntegrationTest {
         assertThatThrownBy(() -> bookService.setBookCopyCount(libId, bookId, 0))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("در امانت است");
+    }
+
+    @Test
+    @DisplayName("Should throw BadRequestException (not a DB constraint 500) when reducing count " +
+            "would require deleting an AVAILABLE copy that has borrow history")
+    void testSetBookCopyCountAvailableCopyWithHistory_throwsInsteadOf500() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO createdBook = bookService.createBook(library.getId(), bookRequest);
+        bookService.addBookCopies(library.getId(), createdBook.getId(), 2);
+
+        // Simulate a copy that was borrowed and returned: status is AVAILABLE again,
+        // but a Borrow row still references it via book_copy_id.
+        List<BookCopy> copies = bookCopyRepository.findByBookId(createdBook.getId());
+        BookCopy historyCopy = copies.get(0);
+        borrowRepository.save(Borrow.builder()
+                .user(adminUser).library(library).book(bookRepository.findById(createdBook.getId()).orElseThrow())
+                .bookCopy(historyCopy)
+                .borrowType(com.library.entity.enums.BorrowType.PHYSICAL)
+                .status(com.library.entity.enums.BorrowStatus.RETURNED)
+                .returnDate(LocalDateTime.now())
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
+
+        Long libId = library.getId();
+        Long bookId = createdBook.getId();
+        // Both copies are AVAILABLE, but only 1 has no history — asking to drop to 0
+        // must fail cleanly instead of hitting the FK constraint on delete.
+        assertThatThrownBy(() -> bookService.setBookCopyCount(libId, bookId, 0))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("سابقه‌ی امانت");
+
+        // And the deletable copy must not have been removed by a partial/failed attempt.
+        assertThat(bookCopyRepository.findByBookId(bookId)).hasSize(2);
+    }
+
+    // ---------- consolidated create/update/patch with assets ----------
+
+    @Test
+    @DisplayName("createBookWithAssets: creates book and applies cover + digital + copy count in one call")
+    void testCreateBookWithAssets_allAssets() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        MockMultipartFile cover = new MockMultipartFile("cover", "cover.jpg", "image/jpeg", "img".getBytes());
+        MockMultipartFile digital = new MockMultipartFile("digital", "book.pdf", "application/pdf", "pdf".getBytes());
+
+        BookDTO result = bookService.createBookWithAssets(library.getId(), bookRequest, cover, digital, "v1", 3);
+
+        assertThat(result.getTotalCopiesCount()).isEqualTo(3);
+        assertThat(result.getCoverImageUrl()).isNotNull();
+        assertThat(result.getHasDigitalVersions()).isTrue();
+    }
+
+    @Test
+    @DisplayName("createBookWithAssets: all assets optional — plain metadata-only create still works")
+    void testCreateBookWithAssets_noAssets() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+
+        BookDTO result = bookService.createBookWithAssets(library.getId(), bookRequest, null, null, null, null);
+
+        assertThat(result.getId()).isNotNull();
+        assertThat(result.getTotalCopiesCount()).isEqualTo(0);
+        assertThat(result.getCoverImageUrl()).isNull();
+    }
+
+    @Test
+    @DisplayName("updateBookWithAssets: replaces metadata and applies cover + copy count together")
+    void testUpdateBookWithAssets() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO created = bookService.createBook(library.getId(), bookRequest);
+        MockMultipartFile cover = new MockMultipartFile("cover", "cover.jpg", "image/jpeg", "img".getBytes());
+
+        BookRequest updateRequest = BookRequest.builder()
+                .title("Clean Code 2nd Edition").author("Robert C. Martin")
+                .publisher("Prentice Hall").publicationYear(2020)
+                .autoDigitalBorrowEnabled(false)
+                .build();
+
+        BookDTO result = bookService.updateBookWithAssets(
+                library.getId(), created.getId(), updateRequest, cover, null, null, 4);
+
+        assertThat(result.getTitle()).isEqualTo("Clean Code 2nd Edition");
+        assertThat(result.getTotalCopiesCount()).isEqualTo(4);
+        assertThat(result.getCoverImageUrl()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("patchBookWithAssets: only supplied metadata field changes, rest is untouched")
+    void testPatchBookWithAssets_partialMetadataOnly() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO created = bookService.createBook(library.getId(), bookRequest);
+
+        BookRequest partial = BookRequest.builder().publicationYear(2099).build();
+        BookDTO result = bookService.patchBookWithAssets(
+                library.getId(), created.getId(), partial, null, null, null, null);
+
+        assertThat(result.getPublicationYear()).isEqualTo(2099);
+        assertThat(result.getTitle()).isEqualTo("Clean Code"); // untouched
+        assertThat(result.getAuthor()).isEqualTo("Robert C. Martin"); // untouched
+    }
+
+    @Test
+    @DisplayName("patchBookWithAssets: request part entirely absent — only the asset (copy count) changes")
+    void testPatchBookWithAssets_assetsOnlyNoMetadata() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO created = bookService.createBook(library.getId(), bookRequest);
+
+        BookDTO result = bookService.patchBookWithAssets(
+                library.getId(), created.getId(), null, null, null, null, 2);
+
+        assertThat(result.getTotalCopiesCount()).isEqualTo(2);
+        assertThat(result.getTitle()).isEqualTo("Clean Code"); // untouched
+    }
+
+    @Test
+    @DisplayName("patchBookWithAssets: blank title in the partial request is rejected")
+    void testPatchBookWithAssets_blankTitleRejected() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO created = bookService.createBook(library.getId(), bookRequest);
+        Long libId = library.getId();
+        Long bookId = created.getId();
+
+        BookRequest partial = BookRequest.builder().title("  ").build();
+        assertThatThrownBy(() -> bookService.patchBookWithAssets(libId, bookId, partial, null, null, null, null))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("عنوان کتاب را وارد کنید");
+    }
+
+    @Test
+    @DisplayName("patchBookWithAssets: non-admin is rejected even when only assets are supplied (no metadata part)")
+    void testPatchBookWithAssets_nonAdminRejectedAssetsOnly() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        BookDTO created = bookService.createBook(library.getId(), bookRequest);
+        Long libId = library.getId();
+        Long bookId = created.getId();
+
+        SecurityTestUtils.setSecurityContext(regularUser, "USER");
+        assertThatThrownBy(() -> bookService.patchBookWithAssets(libId, bookId, null, null, null, null, 5))
+                .isInstanceOf(UnauthorizedException.class);
     }
 
     // ---------- mapToBookDTO: cover image + digital versions ----------

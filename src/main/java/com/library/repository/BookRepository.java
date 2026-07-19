@@ -20,6 +20,9 @@ public interface BookRepository extends JpaRepository<Book, Long>, JpaSpecificat
     Page<Book> findByAuthorContainingIgnoreCaseAndLibraryId(String author, Long libraryId, Pageable pageable);
     boolean existsByCoverImageId(Long fileResourceId);
 
+    Page<Book> findByLibraryIdAndDeletedAtIsNull(Long libraryId, Pageable pageable);
+    Page<Book> findByLibraryIdAndDeletedAtIsNotNull(Long libraryId, Pageable pageable);
+
     @Query("SELECT COUNT(b) FROM Book b JOIN b.subjects s WHERE s.id = :subjectId")
     long countBySubjectId(@Param("subjectId") Long subjectId);
 

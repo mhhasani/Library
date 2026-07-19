@@ -6,6 +6,7 @@ import { useDebounce } from "../../hooks/useDebounce";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import PersianDateTimePicker from "../../components/PersianDateTimePicker";
 import Pagination from "../../components/Pagination";
+import FieldHint from "../../components/FieldHint";
 import "./AdminBorrowsPage.css";
 
 const STATUS_LABEL = {
@@ -413,34 +414,34 @@ const AdminPhysicalBorrowsPage = () => {
               </div>
 
               <div className="abr-detail-grid">
-                {b.deliveryAddress && <Detail label="محل تحویل" value={b.deliveryAddress} wide />}
-                {b.deliveryExtension && <Detail label="تلفن داخلی" value={toPersian(b.deliveryExtension)} />}
-                {b.copyNumber != null && <Detail label="نسخه" value={`#${toPersian(b.copyNumber)}`} />}
-                {b.copyUniqueCode && <Detail label="کد نسخه" value={b.copyUniqueCode} />}
-                {b.courierName && <Detail label="پیک" value={b.courierName} />}
+                {b.deliveryAddress && <Detail label="محل تحویل" value={b.deliveryAddress} wide hintKey="deliveryAddress" />}
+                {b.deliveryExtension && <Detail label="تلفن داخلی" value={toPersian(b.deliveryExtension)} hintKey="deliveryExtension" />}
+                {b.copyNumber != null && <Detail label="نسخه" value={`#${toPersian(b.copyNumber)}`} hintKey="copyNumber" />}
+                {b.copyUniqueCode && <Detail label="کد نسخه" value={b.copyUniqueCode} hintKey="copyUniqueCode" />}
+                {b.courierName && <Detail label="پیک" value={b.courierName} hintKey="courierName" />}
                 {b.requestedDurationDays != null && (
-                  <Detail label="مدت درخواستی" value={`${toPersian(b.requestedDurationDays)} روز`} />
+                  <Detail label="مدت درخواستی" value={`${toPersian(b.requestedDurationDays)} روز`} hintKey="requestedDurationDays" />
                 )}
                 {b.approvedDurationDays != null && (
-                  <Detail label="مدت تأییدشده" value={`${toPersian(b.approvedDurationDays)} روز`} />
+                  <Detail label="مدت تأییدشده" value={`${toPersian(b.approvedDurationDays)} روز`} hintKey="approvedDurationDays" />
                 )}
                 {b.plannedDeliveryDate && (
-                  <Detail label="تاریخ تحویل" value={fmtDate(b.plannedDeliveryDate)} />
+                  <Detail label="تاریخ تحویل" value={fmtDate(b.plannedDeliveryDate)} hintKey="plannedDeliveryDate" />
                 )}
                 {b.status === "RECEIVED" && b.dueDate && (
-                  <Detail label="موعد برگرداندن" value={fmtDate(b.dueDate)} danger={b.isOverdue} />
+                  <Detail label="موعد برگرداندن" value={fmtDate(b.dueDate)} danger={b.isOverdue} hintKey="dueDate" />
                 )}
                 {b.returnRequestedAt && (
-                  <Detail label="درخواست برگرداندن کتاب" value={`ثبت شد (${fmtDate(b.returnRequestedAt)})`} />
+                  <Detail label="درخواست برگرداندن کتاب" value={`ثبت شد (${fmtDate(b.returnRequestedAt)})`} hintKey="returnRequestedAt" />
                 )}
-                {b.returnAddress && <Detail label="آدرس برگرداندن" value={b.returnAddress} wide />}
-                {b.returnPreferredDate && <Detail label="زمان پیشنهادی کاربر" value={fmtDate(b.returnPreferredDate)} />}
-                {b.returnCourierName && <Detail label="پیک برگرداندن" value={b.returnCourierName} />}
-                {b.returnPlannedDate && <Detail label="زمان برگرداندن" value={fmtDate(b.returnPlannedDate)} />}
-                {b.handedOverByUserAt && <Detail label="تحویل به پیک" value={`انجام شد (${fmtDate(b.handedOverByUserAt)}) — در مسیر`} />}
-                {b.status === "RETURNED" && b.returnDate && <Detail label="تاریخ برگرداندن" value={fmtDate(b.returnDate)} />}
+                {b.returnAddress && <Detail label="آدرس برگرداندن" value={b.returnAddress} wide hintKey="returnAddress" />}
+                {b.returnPreferredDate && <Detail label="زمان پیشنهادی کاربر" value={fmtDate(b.returnPreferredDate)} hintKey="returnPreferredDate" />}
+                {b.returnCourierName && <Detail label="پیک برگرداندن" value={b.returnCourierName} hintKey="returnCourierName" />}
+                {b.returnPlannedDate && <Detail label="زمان برگرداندن" value={fmtDate(b.returnPlannedDate)} hintKey="returnPlannedDate" />}
+                {b.handedOverByUserAt && <Detail label="تحویل به پیک" value={`انجام شد (${fmtDate(b.handedOverByUserAt)}) — در مسیر`} hintKey="handedOverByUserAt" />}
+                {b.status === "RETURNED" && b.returnDate && <Detail label="تاریخ برگرداندن" value={fmtDate(b.returnDate)} hintKey="returnDate" />}
                 {b.status === "REJECTED" && b.rejectionReason && (
-                  <Detail label="دلیل رد" value={b.rejectionReason} wide danger />
+                  <Detail label="دلیل رد" value={b.rejectionReason} wide danger hintKey="rejectionReason" />
                 )}
               </div>
 
@@ -454,8 +455,7 @@ const AdminPhysicalBorrowsPage = () => {
                       ✓ تأیید با جزئیات تحویل
                     </button>
                     <button
-                      className="btn btn-outline btn-sm"
-                      style={{ color: "#dc2626", borderColor: "#dc2626" }}
+                      className="btn btn-outline-danger btn-sm"
                       onClick={() => openReject(b)}
                     >
                       رد درخواست
@@ -475,8 +475,7 @@ const AdminPhysicalBorrowsPage = () => {
                       📦 کتاب را تحویل گرفتم
                     </button>
                     <button
-                      className="btn btn-outline btn-sm"
-                      style={{ color: "#dc2626", borderColor: "#dc2626" }}
+                      className="btn btn-outline-danger btn-sm"
                       onClick={() => askCancel(b)}
                     >
                       لغو
@@ -491,7 +490,7 @@ const AdminPhysicalBorrowsPage = () => {
                         : "ثبت درخواست برگرداندن"}
                     </button>
                     {b.returnRequestedAt && (
-                      <button className="btn btn-outline btn-sm" style={{ color: "#dc2626", borderColor: "#dc2626" }}
+                      <button className="btn btn-outline-danger btn-sm"
                         onClick={() => askCancelReturn(b)}>
                         لغو درخواست برگرداندن
                       </button>
@@ -504,8 +503,7 @@ const AdminPhysicalBorrowsPage = () => {
                       {actionLoading[b.id] === "return" ? "..." : "📦 کتاب را تحویل گرفتم"}
                     </button>
                     <button
-                      className="btn btn-outline btn-sm"
-                      style={{ color: "#dc2626", borderColor: "#dc2626" }}
+                      className="btn btn-outline-danger btn-sm"
                       onClick={() => askCancel(b)}
                     >
                       لغو
@@ -527,7 +525,7 @@ const AdminPhysicalBorrowsPage = () => {
             <h2 className="ap-modal-title">تأیید امانت</h2>
             {modalError && <div className="error-message" style={{ marginBottom: "1rem" }}>{modalError}</div>}
             {modalError && <div className="error-message" style={{ marginBottom: "0.75rem" }}>{modalError}</div>}
-            <p style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: "1rem" }}>
+            <p className="ap-subtitle" style={{ marginBottom: "1rem" }}>
               کتاب: <strong>{approveTarget.bookTitle}</strong><br />
               گیرنده: {approveTarget.userFullName || approveTarget.userEmail}
               {approveTarget.requestedDurationDays != null && (
@@ -591,7 +589,7 @@ const AdminPhysicalBorrowsPage = () => {
           <div className="ap-modal" style={{ maxWidth: 460 }} onClick={(e) => e.stopPropagation()}>
             <h2 className="ap-modal-title">جزئیات تحویل / پیک</h2>
             {modalError && <div className="error-message" style={{ marginBottom: "1rem" }}>{modalError}</div>}
-            <p style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: "1rem" }}>
+            <p className="ap-subtitle" style={{ marginBottom: "1rem" }}>
               کتاب: <strong>{deliveryTarget.bookTitle}</strong>
             </p>
             <div className="ap-form-grid">
@@ -639,7 +637,7 @@ const AdminPhysicalBorrowsPage = () => {
           <div className="ap-modal" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
             <h2 className="ap-modal-title">رد درخواست امانت</h2>
             {modalError && <div className="error-message" style={{ marginBottom: "1rem" }}>{modalError}</div>}
-            <p style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: "1rem" }}>
+            <p className="ap-subtitle" style={{ marginBottom: "1rem" }}>
               کتاب: <strong>{rejectTarget.bookTitle}</strong><br />
               کاربر: {rejectTarget.userFullName || rejectTarget.userEmail}
             </p>
@@ -652,7 +650,7 @@ const AdminPhysicalBorrowsPage = () => {
               ))}
             </div>
             <div className="ap-form-group">
-              <label>دلیل رد <span style={{ color: "#dc2626" }}>*</span></label>
+              <label>دلیل رد <span style={{ color: "var(--color-danger)" }}>*</span></label>
               <textarea
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
@@ -680,7 +678,7 @@ const AdminPhysicalBorrowsPage = () => {
           <div className="ap-modal" style={{ maxWidth: 460 }} onClick={(e) => e.stopPropagation()}>
             <h2 className="ap-modal-title">تعیین زمان برگرداندن کتاب</h2>
             {modalError && <div className="error-message" style={{ marginBottom: "1rem" }}>{modalError}</div>}
-            <p style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: "1rem" }}>
+            <p className="ap-subtitle" style={{ marginBottom: "1rem" }}>
               کتاب: <strong>{returnTarget.bookTitle}</strong><br />
               گیرنده: {returnTarget.userFullName || returnTarget.userEmail}
               {returnTarget.returnAddress && <><br />آدرس برگرداندن: {returnTarget.returnAddress}</>}
@@ -723,13 +721,13 @@ const AdminPhysicalBorrowsPage = () => {
         <div className="ap-modal-overlay" onClick={() => setLogTarget(null)}>
           <div className="ap-modal" style={{ maxWidth: 520 }} onClick={(e) => e.stopPropagation()}>
             <h2 className="ap-modal-title">📜 تاریخچهٔ امانت</h2>
-            <p style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: "1rem" }}>
+            <p className="ap-subtitle" style={{ marginBottom: "1rem" }}>
               کتاب: <strong>{logTarget.bookTitle}</strong> · گیرنده: {logTarget.userFullName || logTarget.userEmail}
             </p>
             {logLoading ? (
               <div className="loading">در حال بارگذاری...</div>
             ) : logEvents.length === 0 ? (
-              <p style={{ color: "#9ca3af", fontSize: "0.85rem" }}>رویدادی ثبت نشده است.</p>
+              <p className="ap-subtitle">رویدادی ثبت نشده است.</p>
             ) : (
               <div className="abr-timeline">
                 {logEvents.map((e) => (
@@ -793,9 +791,12 @@ const SummaryPanel = ({ loading, s }) => {
   );
 };
 
-const Detail = ({ label, value, wide, danger }) => (
+const Detail = ({ label, value, wide, danger, hintKey }) => (
   <div className={`abr-detail ${wide ? "abr-detail--wide" : ""}`}>
-    <span className="abr-detail-label">{label}</span>
+    <span className="abr-detail-label">
+      {label}
+      {hintKey && <FieldHint hintKey={hintKey} />}
+    </span>
     <span className={`abr-detail-value ${danger ? "abr-detail-value--danger" : ""}`}>{value}</span>
   </div>
 );

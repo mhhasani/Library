@@ -77,6 +77,12 @@ const AdminBooksPage = () => {
   const [digitalError, setDigitalError] = useState("");
   const digitalInputRef = useRef(null);
 
+  // Soft-deleted books (restore panel)
+  const [showDeletedModal, setShowDeletedModal] = useState(false);
+  const [deletedBooks, setDeletedBooks] = useState([]);
+  const [deletedLoading, setDeletedLoading] = useState(false);
+  const [restoringId, setRestoringId] = useState(null);
+
   const showSuccess = (msg) => {
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(""), 3500);
@@ -116,6 +122,39 @@ const AdminBooksPage = () => {
   }, [libraryId]);
 
   useEffect(() => { fetchSubjects(); }, [fetchSubjects]);
+
+  const fetchDeletedBooks = useCallback(async () => {
+    if (!libraryId) return;
+    try {
+      setDeletedLoading(true);
+      const res = await bookAPI.getDeletedBooks(libraryId, { page: 0, size: 100 });
+      const data = res.data?.data;
+      setDeletedBooks(data?.content ?? (Array.isArray(data) ? data : []));
+    } catch {
+      setError("خطا در بارگذاری کتاب‌های حذف‌شده");
+    } finally {
+      setDeletedLoading(false);
+    }
+  }, [libraryId]);
+
+  const openDeletedModal = () => {
+    setShowDeletedModal(true);
+    fetchDeletedBooks();
+  };
+
+  const handleRestore = async (book) => {
+    try {
+      setRestoringId(book.id);
+      await bookAPI.restoreBook(libraryId, book.id);
+      showSuccess(`کتاب «${book.title}» بازگردانی شد`);
+      setDeletedBooks((prev) => prev.filter((b) => b.id !== book.id));
+      fetchBooks();
+    } catch (err) {
+      setError(err.response?.data?.error || err.response?.data?.message || "خطا در بازگردانی کتاب");
+    } finally {
+      setRestoringId(null);
+    }
+  };
 
   const openAddModal = () => {
     setEditingBook(null);
@@ -162,30 +201,6 @@ const AdminBooksPage = () => {
     }
   };
 
-  // Add physical copies from within the edit modal
-  const handleSetCopyCount = async () => {
-    if (!editingBook || !libraryId) return;
-    const n = Number(copyCount);
-    if (n < 0 || Number.isNaN(n)) { setError("تعداد نسخه نامعتبر است"); return; }
-    try {
-      setAddingCopies(true);
-      setError("");
-      const res = await bookAPI.setCopyCount(libraryId, editingBook.id, n);
-      const updated = res.data?.data || res.data;
-      setEditingBook((b) => ({
-        ...b,
-        totalCopiesCount: updated?.totalCopiesCount ?? n,
-        availableCopiesCount: updated?.availableCopiesCount ?? b.availableCopiesCount,
-      }));
-      showSuccess(`تعداد نسخه‌ها روی ${n} تنظیم شد`);
-      fetchBooks();
-    } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.message || "خطا در تنظیم تعداد نسخه");
-    } finally {
-      setAddingCopies(false);
-    }
-  };
-
   const handleFormChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
@@ -223,86 +238,51 @@ const AdminBooksPage = () => {
         autoDigitalBorrowEnabled: form.autoDigitalBorrowEnabled,
       };
 
-      let savedBook;
       const wasEditing = !!editingBook;
-      if (editingBook) {
-        const res = await bookAPI.updateBook(libraryId, editingBook.id, payload);
-        savedBook = res.data?.data || res.data;
+
+      // One request does everything this modal touches: metadata + cover + digital PDF + copy
+      // count. Previously this was up to 4 sequential calls (create/update, cover, copies, PDF).
+      let targetCopyCount;
+      if (wasEditing) {
+        const n = Number(copyCount);
+        if (!Number.isNaN(n) && n !== (editingBook.totalCopiesCount ?? 0)) targetCopyCount = n;
       } else {
-        const res = await bookAPI.createBook(libraryId, payload);
-        savedBook = res.data?.data || res.data;
+        const n = Number(form.initialCopies);
+        if (n > 0) targetCopyCount = n;
       }
+      const pdfFile = wasEditing ? digitalFile : createPdfFile;
+      const pdfVersionName = wasEditing ? (digitalVersionName || undefined) : undefined;
 
-      // Collect any sub-step failure so we can keep the modal open and show it inside.
-      let subError = "";
+      if (coverFile) setCoverUploading(true);
+      if (pdfFile) { wasEditing ? setDigitalUploading(true) : setCreatePdfUploading(true); }
 
-      if (savedBook?.id) {
-        // Upload cover image if selected
-        if (coverFile) {
-          try {
-            setCoverUploading(true);
-            await bookAPI.uploadCoverImage(libraryId, savedBook.id, coverFile, (p) => setCoverProgress(p));
-          } catch {
-            subError = "اطلاعات ذخیره شد ولی آپلود تصویر جلد با خطا مواجه شد";
-          } finally {
-            setCoverUploading(false);
-          }
-        }
-
-        if (!wasEditing) {
-          // New book: add the initial physical copies and/or upload the chosen PDF
-          const copies = Number(form.initialCopies);
-          if (copies > 0) {
-            try {
-              await bookAPI.addCopies(libraryId, savedBook.id, copies);
-            } catch {
-              subError = "کتاب ذخیره شد ولی افزودن نسخه چاپی با خطا مواجه شد";
-            }
-          }
-          if (createPdfFile) {
-            try {
-              setCreatePdfUploading(true);
-              setCreatePdfProgress(0);
-              await bookAPI.uploadDigitalBook(libraryId, savedBook.id, createPdfFile, undefined, (p) => setCreatePdfProgress(p));
-            } catch (err) {
-              subError = err.response?.data?.error || err.response?.data?.message || "کتاب ذخیره شد ولی آپلود PDF با خطا مواجه شد";
-            } finally {
-              setCreatePdfUploading(false);
-            }
-          }
-        } else {
-          // Existing book: the main save also applies a pending copy-count change and a chosen PDF,
-          // so the user doesn't have to use the separate inline buttons.
-          const targetCount = Number(copyCount);
-          if (!Number.isNaN(targetCount) && targetCount !== (editingBook.totalCopiesCount ?? 0)) {
-            try {
-              await bookAPI.setCopyCount(libraryId, savedBook.id, targetCount);
-            } catch (err) {
-              subError = err.response?.data?.error || err.response?.data?.message || "اطلاعات ذخیره شد ولی تنظیم تعداد نسخه با خطا مواجه شد";
-            }
-          }
-          if (digitalFile) {
-            try {
-              setDigitalUploading(true);
-              setDigitalProgress(0);
-              await bookAPI.uploadDigitalBook(libraryId, savedBook.id, digitalFile, digitalVersionName || undefined, (p) => setDigitalProgress(p));
-              setDigitalFile(null);
-              setDigitalVersionName("");
-              if (digitalInputRef.current) digitalInputRef.current.value = "";
-            } catch (err) {
-              subError = err.response?.data?.error || err.response?.data?.message || "اطلاعات ذخیره شد ولی آپلود نسخه دیجیتال با خطا مواجه شد";
-            } finally {
-              setDigitalUploading(false);
-            }
-          }
-        }
-      }
-
-      if (subError) {
-        // Keep the modal open so the error is visible inside it; refresh underlying data.
-        setError(subError);
-        fetchBooks();
+      try {
+        await bookAPI.saveBook(libraryId, {
+          bookId: editingBook?.id,
+          book: payload,
+          cover: coverFile || undefined,
+          digitalFile: pdfFile || undefined,
+          digitalVersionName: pdfVersionName,
+          copyCount: targetCopyCount,
+          onProgress: (p) => {
+            if (coverFile) setCoverProgress(p);
+            if (pdfFile) (wasEditing ? setDigitalProgress : setCreatePdfProgress)(p);
+          },
+        });
+      } catch (err) {
+        setError(err.response?.data?.error || err.response?.data?.message ||
+          (wasEditing ? "خطا در ذخیره‌ی تغییرات کتاب" : "خطا در افزودن کتاب"));
         return;
+      } finally {
+        setCoverUploading(false);
+        setDigitalUploading(false);
+        setCreatePdfUploading(false);
+      }
+
+      if (wasEditing && pdfFile) {
+        setDigitalFile(null);
+        setDigitalVersionName("");
+        if (digitalInputRef.current) digitalInputRef.current.value = "";
       }
 
       showSuccess(wasEditing ? "کتاب با موفقیت ویرایش شد" : "کتاب با موفقیت افزوده شد");
@@ -336,7 +316,7 @@ const AdminBooksPage = () => {
     try {
       setAddingCopies(true);
       await bookAPI.addCopies(libraryId, copyTarget.id, Number(copyCount));
-      showSuccess(`${copyCount} نسخه به کتاب افزوده شد`);
+      showSuccess(`${toPersianNum(copyCount)} نسخه به کتاب افزوده شد`);
       setCopyTarget(null);
       setCopyCount(1);
       fetchBooks();
@@ -464,6 +444,9 @@ const AdminBooksPage = () => {
         />
         <button className="btn btn-ghost btn-sm" onClick={() => setShowSubjectModal(true)}>
           🏷️ مدیریت موضوعات
+        </button>
+        <button className="btn btn-ghost btn-sm" onClick={openDeletedModal}>
+          🗑️ کتاب‌های حذف‌شده
         </button>
         <button className="btn btn-accent" onClick={openAddModal}>
           + افزودن کتاب
@@ -620,12 +603,9 @@ const AdminBooksPage = () => {
                         onChange={(e) => setCopyCount(e.target.value)}
                         style={{ width: 110 }}
                       />
-                      <button type="button" className="btn btn-outline btn-sm" onClick={handleSetCopyCount} disabled={addingCopies}>
-                        {addingCopies ? "..." : "ذخیره تعداد"}
-                      </button>
                     </div>
                     <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
-                      هر تعداد قابل تنظیم است؛ نمی‌توان کمتر از تعداد نسخه‌های در حال امانت تنظیم کرد.
+                      با «ذخیره تغییرات» پایین فرم اعمال می‌شود؛ نمی‌توان کمتر از تعداد نسخه‌های در حال امانت تنظیم کرد.
                     </span>
                   </div>
                 )}
@@ -755,7 +735,7 @@ const AdminBooksPage = () => {
         <div className="ap-modal-overlay" onClick={() => setCopyTarget(null)}>
           <div className="ap-modal" style={{ maxWidth: 380 }} onClick={(e) => e.stopPropagation()}>
             <h2 className="ap-modal-title">افزودن نسخه چاپی</h2>
-            <p style={{ fontSize: "0.88rem", color: "#6b7280", marginBottom: "1.25rem" }}>
+            <p className="ap-subtitle" style={{ marginBottom: "1.25rem" }}>
               کتاب: <strong>{copyTarget.title}</strong>
             </p>
             <form onSubmit={handleAddCopies}>
@@ -779,7 +759,7 @@ const AdminBooksPage = () => {
         <div className="ap-modal-overlay" onClick={() => setDigitalTarget(null)}>
           <div className="ap-modal ap-modal--wide" onClick={(e) => e.stopPropagation()}>
             <h2 className="ap-modal-title">مدیریت نسخه‌های دیجیتال</h2>
-            <p style={{ fontSize: "0.88rem", color: "#6b7280", marginBottom: "1.25rem" }}>
+            <p className="ap-subtitle" style={{ marginBottom: "1.25rem" }}>
               کتاب: <strong>{digitalTarget.title}</strong>
             </p>
 
@@ -854,27 +834,26 @@ const AdminBooksPage = () => {
         <div className="ap-modal-overlay" onClick={() => setShowSubjectModal(false)}>
           <div className="ap-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
             <h2 className="ap-modal-title">🏷️ مدیریت موضوعات</h2>
-            <p style={{ fontSize: "0.85rem", color: "var(--color-text-muted)", marginBottom: "1rem" }}>
+            <p className="ap-subtitle" style={{ marginBottom: "1rem" }}>
               موضوعات تعریف‌شده در این کتابخانه:
             </p>
 
             {subjects.length === 0 ? (
-              <p style={{ color: "var(--color-text-muted)", fontSize: "0.85rem" }}>هنوز موضوعی تعریف نشده</p>
+              <p className="subject-manage-empty">هنوز موضوعی تعریف نشده</p>
             ) : (
-              <ul style={{ listStyle: "none", padding: 0, margin: "0 0 1rem", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+              <ul className="subject-manage-list">
                 {subjects.map((s) => (
-                  <li key={s.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "var(--color-bg)", borderRadius: "6px", padding: "0.4rem 0.75rem" }}>
-                    <span style={{ flex: 1, fontSize: "0.88rem" }}>{s.name}</span>
+                  <li key={s.id} className="subject-manage-item">
+                    <span className="subject-manage-name">{s.name}</span>
                     <button className="btn-icon btn-icon--delete" title="حذف" onClick={() => handleDeleteSubject(s)}>🗑️</button>
                   </li>
                 ))}
               </ul>
             )}
 
-            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+            <div className="subject-manage-add-row">
               <input
-                className="ap-form-group input"
-                style={{ flex: 1, padding: "0.5rem 0.75rem", border: "1.5px solid var(--color-border)", borderRadius: "6px", fontSize: "0.88rem" }}
+                className="subject-manage-input"
                 placeholder="نام موضوع جدید..."
                 value={newSubjectName}
                 onChange={(e) => setNewSubjectName(e.target.value)}
@@ -915,6 +894,46 @@ const AdminBooksPage = () => {
                 بله، حذف کن
               </button>
               <button className="btn btn-outline" onClick={() => setDeleteSubjectTarget(null)}>انصراف</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deleted Books / Restore Modal */}
+      {showDeletedModal && (
+        <div className="ap-modal-overlay" onClick={() => setShowDeletedModal(false)}>
+          <div className="ap-modal ap-modal--wide" onClick={(e) => e.stopPropagation()}>
+            <h2 className="ap-modal-title">🗑️ کتاب‌های حذف‌شده</h2>
+            <p className="ap-subtitle" style={{ marginBottom: "1rem" }}>
+              این کتاب‌ها در سراسر پنل مخفی هستند و قابل امانت نیستند. با «بازگردانی» دوباره فعال می‌شوند.
+            </p>
+
+            {deletedLoading ? (
+              <div className="loading" style={{ fontSize: "0.9rem" }}>در حال بارگذاری...</div>
+            ) : deletedBooks.length === 0 ? (
+              <p className="subject-manage-empty">کتاب حذف‌شده‌ای وجود ندارد.</p>
+            ) : (
+              <ul className="subject-manage-list">
+                {deletedBooks.map((b) => (
+                  <li key={b.id} className="subject-manage-item">
+                    <span className="subject-manage-name">
+                      {b.title}
+                      {b.author && <span style={{ color: "var(--color-text-muted)", fontWeight: 400 }}> — {b.author}</span>}
+                    </span>
+                    <button
+                      className="btn btn-outline-success btn-sm"
+                      onClick={() => handleRestore(b)}
+                      disabled={restoringId === b.id}
+                    >
+                      {restoringId === b.id ? "..." : "↩ بازگردانی"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="ap-modal-actions">
+              <button className="btn btn-outline" onClick={() => setShowDeletedModal(false)}>بستن</button>
             </div>
           </div>
         </div>

@@ -147,7 +147,7 @@ const SystemLibrariesPage = () => {
   return (
     <div>
       <div className="ap-header">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
+        <div className="sl-header-row">
           <div>
             <h1 className="ap-title">مدیریت کتابخانه‌ها</h1>
             <p className="ap-subtitle">ایجاد و مدیریت تمامی کتابخانه‌های سامانه</p>
@@ -163,8 +163,8 @@ const SystemLibrariesPage = () => {
 
       {/* Create Form */}
       {showCreateForm && (
-        <div className="ap-card" style={{ marginBottom: "1.5rem", border: "1.5px solid rgba(200,160,76,0.3)" }}>
-          <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "#1b3560", marginBottom: "1.25rem" }}>
+        <div className="ap-card sl-create-card">
+          <h3 className="sl-create-title">
             ایجاد کتابخانه جدید
           </h3>
           <form onSubmit={handleCreate}>
@@ -192,8 +192,8 @@ const SystemLibrariesPage = () => {
                 <label>مدت امانت پیش‌فرض (روز)</label>
                 <input name="defaultBorrowDurationDays" type="number" min="1" value={form.defaultBorrowDurationDays} onChange={handleFormChange} />
               </div>
-              <div className="ap-form-group" style={{ justifyContent: "center" }}>
-                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+              <div className="ap-form-group sl-checkbox-group">
+                <label className="sl-checkbox-label">
                   <input type="checkbox" name="autoMembershipApproval" checked={form.autoMembershipApproval} onChange={handleFormChange} />
                   تأیید خودکار عضویت
                 </label>
@@ -244,11 +244,11 @@ const SystemLibrariesPage = () => {
             <tbody>
               {libraries.map((lib) => (
                 <tr key={lib.id}>
-                  <td style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{toPersian(lib.id)}</td>
+                  <td className="sl-id">{toPersian(lib.id)}</td>
                   <td>
-                    <div style={{ fontWeight: 600, color: "#1b3560" }}>{lib.name}</div>
+                    <div className="sl-name">{lib.name}</div>
                     {lib.description && (
-                      <div style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{lib.description}</div>
+                      <div className="sl-desc" title={lib.description}>{lib.description}</div>
                     )}
                   </td>
                   <td style={{ fontSize: "0.82rem" }}>{lib.ownerName || "—"}</td>
@@ -264,18 +264,16 @@ const SystemLibrariesPage = () => {
                     </span>
                   </td>
                   <td>
-                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                    <div className="sl-actions">
                       <button
                         className="btn btn-sm btn-outline"
-                        style={{ fontSize: "0.78rem" }}
                         onClick={() => openEditModal(lib)}
                       >
                         ✏️ ویرایش
                       </button>
                       {lib.isActive ? (
                         <button
-                          className="btn btn-sm btn-outline"
-                          style={{ color: "#dc2626", borderColor: "#dc2626", fontSize: "0.78rem" }}
+                          className="btn btn-sm btn-outline-danger"
                           onClick={() => handleToggleActive(lib)}
                           disabled={actionLoading[lib.id]}
                         >
@@ -283,8 +281,7 @@ const SystemLibrariesPage = () => {
                         </button>
                       ) : (
                         <button
-                          className="btn btn-sm btn-outline"
-                          style={{ color: "#16a34a", borderColor: "#16a34a", fontSize: "0.78rem" }}
+                          className="btn btn-sm btn-outline-success"
                           onClick={() => handleToggleActive(lib)}
                           disabled={actionLoading[lib.id]}
                         >
@@ -325,8 +322,8 @@ const SystemLibrariesPage = () => {
                     onChange={handleEditFormChange}
                   />
                 </div>
-                <div className="ap-form-group" style={{ justifyContent: "center" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+                <div className="ap-form-group sl-checkbox-group">
+                  <label className="sl-checkbox-label">
                     <input
                       type="checkbox"
                       name="autoMembershipApproval"

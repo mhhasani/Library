@@ -4,6 +4,7 @@ import { toPersianNum } from "../utils/persian";
 import BorrowModal from "./BorrowModal";
 import ConfirmDialog from "./ConfirmDialog";
 import PersianDateTimePicker from "./PersianDateTimePicker";
+import FieldHint from "./FieldHint";
 import "../pages/BorrowsPage.css";
 import "../pages/PhysicalBorrowsPage.css";
 
@@ -171,20 +172,20 @@ const PhysicalBorrowCard = ({ borrow: b, libraryId, onChanged, onError }) => {
       </div>
 
       <div className="pb-grid">
-        {b.copyNumber != null && <Field label="نسخه" value={`#${toPersianNum(b.copyNumber)}`} />}
-        {b.copyUniqueCode && <Field label="کد نسخه" value={b.copyUniqueCode} />}
-        {b.deliveryAddress && <Field label="محل تحویل" value={b.deliveryAddress} wide />}
-        {b.courierName && <Field label="پیک تحویل" value={b.courierName} />}
-        {b.plannedDeliveryDate && <Field label="تاریخ تحویل" value={fmtDate(b.plannedDeliveryDate)} />}
-        {b.requestedDurationDays != null && <Field label="مدت درخواستی" value={`${toPersianNum(b.requestedDurationDays)} روز`} />}
-        {b.approvedDurationDays != null && <Field label="مدت تأییدشده" value={`${toPersianNum(b.approvedDurationDays)} روز`} />}
-        {b.status === "RECEIVED" && b.dueDate && <Field label="موعد برگرداندن" value={fmtDate(b.dueDate)} danger={overdue} />}
-        {b.returnRequestedAt && <Field label="درخواست برگرداندن کتاب" value={`ثبت شد (${fmtDate(b.returnRequestedAt)})`} />}
-        {b.returnCourierName && <Field label="پیک برگرداندن" value={b.returnCourierName} />}
-        {b.returnPlannedDate && <Field label="زمان برگرداندن" value={fmtDate(b.returnPlannedDate)} />}
-        {b.handedOverByUserAt && <Field label="تحویل به پیک" value={`انجام شد (${fmtDate(b.handedOverByUserAt)})`} />}
-        {b.status === "RETURNED" && b.returnDate && <Field label="تاریخ برگرداندن" value={fmtDate(b.returnDate)} />}
-        {b.status === "REJECTED" && b.rejectionReason && <Field label="دلیل رد" value={b.rejectionReason} wide danger />}
+        {b.copyNumber != null && <Field label="نسخه" value={`#${toPersianNum(b.copyNumber)}`} hintKey="copyNumber" />}
+        {b.copyUniqueCode && <Field label="کد نسخه" value={b.copyUniqueCode} hintKey="copyUniqueCode" />}
+        {b.deliveryAddress && <Field label="محل تحویل" value={b.deliveryAddress} wide hintKey="deliveryAddress" />}
+        {b.courierName && <Field label="پیک تحویل" value={b.courierName} hintKey="courierName" />}
+        {b.plannedDeliveryDate && <Field label="تاریخ تحویل" value={fmtDate(b.plannedDeliveryDate)} hintKey="plannedDeliveryDate" />}
+        {b.requestedDurationDays != null && <Field label="مدت درخواستی" value={`${toPersianNum(b.requestedDurationDays)} روز`} hintKey="requestedDurationDays" />}
+        {b.approvedDurationDays != null && <Field label="مدت تأییدشده" value={`${toPersianNum(b.approvedDurationDays)} روز`} hintKey="approvedDurationDays" />}
+        {b.status === "RECEIVED" && b.dueDate && <Field label="موعد برگرداندن" value={fmtDate(b.dueDate)} danger={overdue} hintKey="dueDate" />}
+        {b.returnRequestedAt && <Field label="درخواست برگرداندن کتاب" value={`ثبت شد (${fmtDate(b.returnRequestedAt)})`} hintKey="returnRequestedAt" />}
+        {b.returnCourierName && <Field label="پیک برگرداندن" value={b.returnCourierName} hintKey="returnCourierName" />}
+        {b.returnPlannedDate && <Field label="زمان برگرداندن" value={fmtDate(b.returnPlannedDate)} hintKey="returnPlannedDate" />}
+        {b.handedOverByUserAt && <Field label="تحویل به پیک" value={`انجام شد (${fmtDate(b.handedOverByUserAt)})`} hintKey="handedOverByUserAt" />}
+        {b.status === "RETURNED" && b.returnDate && <Field label="تاریخ برگرداندن" value={fmtDate(b.returnDate)} hintKey="returnDate" />}
+        {b.status === "REJECTED" && b.rejectionReason && <Field label="دلیل رد" value={b.rejectionReason} wide danger hintKey="rejectionReason" />}
       </div>
 
       {b.status === "REQUESTED" && (
@@ -304,9 +305,12 @@ const Step = ({ label, done, active, last }) => (
   </div>
 );
 
-const Field = ({ label, value, wide, danger }) => (
+const Field = ({ label, value, wide, danger, hintKey }) => (
   <div className={`pb-field ${wide ? "pb-field--wide" : ""}`}>
-    <span className="pb-field-label">{label}</span>
+    <span className="pb-field-label">
+      {label}
+      {hintKey && <FieldHint hintKey={hintKey} />}
+    </span>
     <span className={`pb-field-value ${danger ? "pb-field-value--danger" : ""}`}>{value}</span>
   </div>
 );

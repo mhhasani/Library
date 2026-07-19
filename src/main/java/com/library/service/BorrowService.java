@@ -100,6 +100,9 @@ public class BorrowService {
         if (!book.getLibrary().getId().equals(libraryId)) {
             throw new BadRequestException("این کتاب مربوط به این کتابخانه نیست");
         }
+        if (book.getDeletedAt() != null) {
+            throw new ResourceNotFoundException("کتابی با این شناسه پیدا نشد: " + bookId);
+        }
 
         // Check user membership
         LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
@@ -322,6 +325,9 @@ public class BorrowService {
 
         if (!book.getLibrary().getId().equals(libraryId)) {
             throw new BadRequestException("این کتاب مربوط به این کتابخانه نیست");
+        }
+        if (book.getDeletedAt() != null) {
+            throw new ResourceNotFoundException("کتاب پیدا نشد");
         }
 
         LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
@@ -706,6 +712,7 @@ public class BorrowService {
 
         return borrowRepository.findByUserId(currentUserId).stream()
                 .filter(b -> b.getLibrary().getId().equals(libraryId))
+                .filter(b -> b.getBook().getDeletedAt() == null)
                 .filter(b -> status == null || b.getStatus() == status)
                 .filter(b -> type == null || b.getBorrowType() == type)
                 .map(this::mapToBorrowDTO)
@@ -727,6 +734,7 @@ public class BorrowService {
 
         return borrowRepository.findByStatus(BorrowStatus.REQUESTED).stream()
                 .filter(b -> b.getLibrary().getId().equals(libraryId))
+                .filter(b -> b.getBook().getDeletedAt() == null)
                 .filter(b -> type == null || b.getBorrowType() == type)
                 .map(this::mapToBorrowDTO)
                 .collect(Collectors.toList());
@@ -745,6 +753,7 @@ public class BorrowService {
                 ? borrowRepository.findByLibraryIdAndStatus(libraryId, status)
                 : borrowRepository.findByLibraryId(libraryId);
         return borrows.stream()
+                .filter(b -> b.getBook().getDeletedAt() == null)
                 .filter(b -> type == null || b.getBorrowType() == type)
                 .map(this::mapToBorrowDTO)
                 .collect(Collectors.toList());
@@ -776,6 +785,7 @@ public class BorrowService {
         org.springframework.data.jpa.domain.Specification<Borrow> spec = (root, cq, cb) -> {
             java.util.List<jakarta.persistence.criteria.Predicate> ps = new java.util.ArrayList<>();
             ps.add(cb.equal(root.get("user").get("id"), currentUserId));
+            ps.add(cb.isNull(root.get("book").get("deletedAt")));
             if (type != null) ps.add(cb.equal(root.get("borrowType"), type));
             if (q != null) {
                 var bookJoin = root.join("book");
@@ -806,6 +816,7 @@ public class BorrowService {
         org.springframework.data.jpa.domain.Specification<Borrow> spec = (root, cq, cb) -> {
             java.util.List<jakarta.persistence.criteria.Predicate> ps = new java.util.ArrayList<>();
             ps.add(cb.equal(root.get("library").get("id"), libraryId));
+            ps.add(cb.isNull(root.get("book").get("deletedAt")));
             if (statuses != null && !statuses.isEmpty()) ps.add(root.get("status").in(statuses));
             if (type != null) ps.add(cb.equal(root.get("borrowType"), type));
             if (overdue) {
@@ -1078,6 +1089,7 @@ public class BorrowService {
 
         List<Borrow> all = borrowRepository.findByUserId(userId).stream()
                 .filter(b -> b.getLibrary().getId().equals(libraryId))
+                .filter(b -> b.getBook().getDeletedAt() == null)
                 .collect(Collectors.toList());
 
         LocalDateTime now = LocalDateTime.now();

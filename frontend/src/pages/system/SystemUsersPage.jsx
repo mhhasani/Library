@@ -29,6 +29,8 @@ const STATUS_CLASS = {
   PENDING_VERIFICATION: "badge-info",
 };
 
+const userInitial = (u) => (u.firstName?.trim()?.[0] || u.email?.[0] || "؟").toUpperCase();
+
 const STATUS_FILTERS = [
   { value: "", label: "همه" },
   { value: "ACTIVE", label: "فعال" },
@@ -165,8 +167,7 @@ const SystemUsersPage = () => {
             <thead>
               <tr>
                 <th>#</th>
-                <th>ایمیل</th>
-                <th>نام</th>
+                <th>کاربر</th>
                 <th>تلفن</th>
                 <th>نقش</th>
                 <th>وضعیت</th>
@@ -177,14 +178,19 @@ const SystemUsersPage = () => {
             <tbody>
               {users.map((u) => (
                 <tr key={u.id}>
-                  <td style={{ fontSize: "0.75rem", color: "#9ca3af" }}>
-                    {toPersian(u.id)}
-                  </td>
-                  <td style={{ fontWeight: 500 }}>{u.email}</td>
+                  <td className="su-id">{toPersian(u.id)}</td>
                   <td>
-                    {u.firstName || u.lastName
-                      ? `${u.firstName || ""} ${u.lastName || ""}`.trim()
-                      : "—"}
+                    <div className="su-user">
+                      <span className="su-avatar">{userInitial(u)}</span>
+                      <div>
+                        <div className="su-user-name">
+                          {u.firstName || u.lastName
+                            ? `${u.firstName || ""} ${u.lastName || ""}`.trim()
+                            : "—"}
+                        </div>
+                        <div className="su-user-email">{u.email}</div>
+                      </div>
+                    </div>
                   </td>
                   <td style={{ fontSize: "0.82rem" }}>
                     {u.phoneNumber || "—"}
@@ -203,7 +209,7 @@ const SystemUsersPage = () => {
                       {STATUS_LABELS[u.accountStatus] || u.accountStatus}
                     </span>
                   </td>
-                  <td style={{ fontSize: "0.78rem", color: "#9ca3af" }}>
+                  <td className="su-date">
                     {u.lastLoginAt
                       ? new Date(u.lastLoginAt).toLocaleDateString("fa-IR")
                       : "—"}

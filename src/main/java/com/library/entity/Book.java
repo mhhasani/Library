@@ -71,6 +71,11 @@ public class Book {
     @Builder.Default
     private LocalDateTime updatedAt = LocalDateTime.now();
 
+    /** Soft-delete marker: null means active. A deleted book is hidden everywhere but its
+     *  row (and history referencing it) is preserved so existing FK-referencing data stays intact. */
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();

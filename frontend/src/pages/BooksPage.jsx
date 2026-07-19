@@ -8,6 +8,8 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import { toPersian, toPersianNum } from "../utils/persian";
 import "./BooksPage.css";
 
+const PAGE_SIZE = 24;
+
 const BooksPage = () => {
   const { libraryId } = useParams();
   const { libraryName, borrowDuration } = useLibrary() || {};
@@ -16,10 +18,15 @@ const BooksPage = () => {
   const navigate = useNavigate();
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState(searchParams.get("q") || "");
   const [searching, setSearching] = useState(false);
   const isFirstLoad = useRef(true);
+  const sentinelRef = useRef(null);
 
   // Advanced filters
   const [filterSubjectId, setFilterSubjectId] = useState("");
@@ -49,9 +56,6 @@ const BooksPage = () => {
   const [borrowMap, setBorrowMap] = useState({});
 
   // Download format picker
-  const [downloadBook, setDownloadBook] = useState(null);
-  const [downloadFormats, setDownloadFormats] = useState([]);
-  const [downloadFormatsLoading, setDownloadFormatsLoading] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
 
   // Load available subjects on mount
@@ -63,27 +67,10 @@ const BooksPage = () => {
 
   const hasActiveFilters = searchTerm || filterSubjectId || filterYearFrom || filterYearTo;
 
-  const fetchBooks = useCallback(async () => {
+  const fetchBorrows = useCallback(async () => {
     try {
-      if (isFirstLoad.current) setLoading(true);
-      else setSearching(true);
-
-      const params = { page: 0, size: 200 };
-      if (debouncedSearchTerm.trim()) params.query = debouncedSearchTerm.trim();
-      if (filterSubjectId) params.subjectId = filterSubjectId;
-      if (debouncedYearFrom) params.yearFrom = parseInt(debouncedYearFrom);
-      if (debouncedYearTo) params.yearTo = parseInt(debouncedYearTo);
-
-      const [booksRes, borrowsRes] = await Promise.all([
-        bookAPI.searchBooks(libraryId, params),
-        borrowAPI.getBorrows(libraryId).catch(() => ({ data: { data: [] } })),
-      ]);
-
-      const payload = booksRes.data.data || booksRes.data;
-      const list = Array.isArray(payload) ? payload : payload?.content || [];
-      setBooks(list);
-
-      const myBorrows = borrowsRes.data?.data || borrowsRes.data || [];
+      const res = await borrowAPI.getBorrows(libraryId);
+      const myBorrows = res.data?.data || res.data || [];
       const map = {};
       myBorrows.forEach((b) => {
         const bid = b.bookId;
@@ -99,17 +86,73 @@ const BooksPage = () => {
         }
       });
       setBorrowMap(map);
+    } catch {
+      setBorrowMap({});
+    }
+  }, [libraryId]);
+
+  // Fetches one page of results. `pageNum === 0` replaces the list (new search/filter/first
+  // load); any later page appends, powering infinite scroll.
+  const fetchBooksPage = useCallback(async (pageNum) => {
+    try {
+      if (pageNum === 0) {
+        if (isFirstLoad.current) setLoading(true);
+        else setSearching(true);
+      } else {
+        setLoadingMore(true);
+      }
+
+      const params = { page: pageNum, size: PAGE_SIZE };
+      if (debouncedSearchTerm.trim()) params.query = debouncedSearchTerm.trim();
+      if (filterSubjectId) params.subjectId = filterSubjectId;
+      if (debouncedYearFrom) params.yearFrom = parseInt(debouncedYearFrom);
+      if (debouncedYearTo) params.yearTo = parseInt(debouncedYearTo);
+
+      const booksRes = await bookAPI.searchBooks(libraryId, params);
+      const payload = booksRes.data.data || booksRes.data;
+      const list = Array.isArray(payload) ? payload : payload?.content || [];
+      const totalElements = Array.isArray(payload) ? list.length : (payload?.totalElements ?? list.length);
+      const last = Array.isArray(payload) ? true : (payload?.last ?? true);
+
+      setBooks((prev) => (pageNum === 0 ? list : [...prev, ...list]));
+      setTotalCount(totalElements);
+      setHasMore(!last);
+      setPage(pageNum);
       setError("");
     } catch (err) {
       setError(err.response?.data?.message || "خطا در بارگذاری کتاب‌ها");
     } finally {
       setLoading(false);
       setSearching(false);
+      setLoadingMore(false);
       isFirstLoad.current = false;
     }
   }, [debouncedSearchTerm, filterSubjectId, debouncedYearFrom, debouncedYearTo, libraryId]);
 
-  useEffect(() => { fetchBooks(); }, [fetchBooks]);
+  // Any filter change restarts pagination from page 0
+  useEffect(() => { fetchBooksPage(0); }, [fetchBooksPage]);
+  useEffect(() => { fetchBorrows(); }, [fetchBorrows]);
+
+  // Infinite scroll: load the next page when the sentinel at the bottom of the grid
+  // becomes visible, instead of fetching all 100+ books (with cover images) up front.
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return undefined;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && hasMore && !loadingMore && !loading && !searching) {
+        fetchBooksPage(page + 1);
+      }
+    }, { rootMargin: "400px" });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, loading, searching, page, fetchBooksPage]);
+
+  // After a mutation (borrow/return/reserve), re-sync from the first page rather than
+  // trying to patch individual book entries across however many pages are loaded.
+  const refresh = useCallback(() => {
+    fetchBooksPage(0);
+    fetchBorrows();
+  }, [fetchBooksPage, fetchBorrows]);
 
   // Load the user's favorite book ids (for the star state)
   useEffect(() => {
@@ -155,7 +198,7 @@ const BooksPage = () => {
       setIsModalOpen(false);
       setSelectedBook(null);
       setEditBorrow(null);
-      fetchBooks();
+      refresh();
     } catch (err) {
       const msg = err.response?.data?.error || err.response?.data?.message || "خطا در ثبت درخواست";
       throw new Error(msg); // surfaced inside the modal
@@ -171,12 +214,13 @@ const BooksPage = () => {
       variant: "primary",
       onConfirm: async () => {
         await borrowAPI.reserveBook(libraryId, book.id);
-        fetchBooks();
+        refresh();
       },
     });
   };
 
-  // Digital borrow request (with confirmation)
+  // Digital access is granted instantly on request, so one confirmation click
+  // both requests AND downloads the file — no second "now click download" step.
   const handleRequestDigital = (book) => {
     setConfirm({
       title: "درخواست دانلود",
@@ -185,7 +229,8 @@ const BooksPage = () => {
       variant: "primary",
       onConfirm: async () => {
         await borrowAPI.createBorrow(libraryId, { bookId: book.id, borrowType: "DIGITAL" });
-        fetchBooks();
+        await handleDownload(book);
+        refresh();
       },
     });
   };
@@ -204,25 +249,18 @@ const BooksPage = () => {
     }
   };
 
-  // Open format picker for download
-  const openDownloadPicker = async (book) => {
-    setDownloadBook(book);
-    setDownloadFormats([]);
-    setDownloadFormatsLoading(true);
+  // One click: fetch the book's digital version and download it directly — no
+  // intermediate picker, since a book only ever has one digital (PDF) version.
+  const handleDownload = async (book) => {
     try {
-      const res = await bookAPI.listDigitalBooks(libraryId, book.id);
-      setDownloadFormats(res.data?.data || []);
-    } catch {
-      setError("خطا در دریافت فرمت‌های موجود");
-      setDownloadBook(null);
-    } finally {
-      setDownloadFormatsLoading(false);
-    }
-  };
-
-  const handleDownload = async (book, digitalBook) => {
-    try {
-      setDownloadingId(digitalBook.id);
+      setDownloadingId(book.id);
+      const listRes = await bookAPI.listDigitalBooks(libraryId, book.id);
+      const versions = listRes.data?.data || [];
+      if (versions.length === 0) {
+        setError("نسخه‌ی دیجیتالی موجود نیست");
+        return;
+      }
+      const digitalBook = versions[0];
       const res = await bookAPI.downloadDigitalBook(libraryId, book.id, digitalBook.id);
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
@@ -230,7 +268,6 @@ const BooksPage = () => {
       a.download = `${book.title}.${digitalBook.fileFormat.toLowerCase()}`;
       a.click();
       URL.revokeObjectURL(url);
-      setDownloadBook(null);
     } catch {
       setError("خطا در دانلود. لطفاً دوباره تلاش کنید.");
     } finally {
@@ -250,10 +287,14 @@ const BooksPage = () => {
       <div className="books-header">
         <div className="books-header-inner">
           <div>
+            {libraryName && <span className="books-lib-eyebrow">🏛️ {libraryName}</span>}
             <h1 className="books-main-title">کتاب‌ها</h1>
-            {libraryName && <p className="books-library-name">🏛️ {libraryName}</p>}
+            <span className="books-title-rule" aria-hidden="true" />
           </div>
-          <div className="books-count-badge">{toPersianNum(books.length)} عنوان کتاب</div>
+          <div className="books-count-badge">
+            <strong>{toPersianNum(totalCount)}</strong>
+            <span>عنوان کتاب</span>
+          </div>
         </div>
       </div>
 
@@ -431,8 +472,8 @@ const BooksPage = () => {
 
                         {book.hasDigitalVersions && (
                           borrow.hasApprovedDigital ? (
-                            <button className="btn btn-info btn-sm" onClick={() => openDownloadPicker(book)}>
-                              ⬇ دانلود
+                            <button className="btn btn-info btn-sm" onClick={() => handleDownload(book)} disabled={downloadingId === book.id}>
+                              {downloadingId === book.id ? "در حال دانلود..." : "⬇ دانلود"}
                             </button>
                           ) : borrow.hasActiveDigital ? (
                             <button className="btn btn-ghost btn-sm" disabled>✓ در انتظار تایید دیجیتال</button>
@@ -448,6 +489,12 @@ const BooksPage = () => {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {!searching && hasMore && (
+          <div ref={sentinelRef} className="books-load-sentinel">
+            {loadingMore && <span className="books-searching-spinner" />}
           </div>
         )}
       </div>
@@ -471,46 +518,6 @@ const BooksPage = () => {
         onConfirm={runConfirm}
         onCancel={() => setConfirm(null)}
       />
-
-      {downloadBook && (
-        <div className="modal-overlay" onClick={() => setDownloadBook(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>انتخاب فرمت دانلود</h2>
-              <button className="modal-close-btn" onClick={() => setDownloadBook(null)}>✕</button>
-            </div>
-            <div className="modal-body">
-              <p style={{ fontSize: "0.88rem", color: "var(--color-text-secondary)", marginBottom: "1rem" }}>
-                {downloadBook.title}
-              </p>
-              {downloadFormatsLoading ? (
-                <div className="loading" style={{ fontSize: "0.9rem" }}>در حال بارگذاری...</div>
-              ) : downloadFormats.length === 0 ? (
-                <p style={{ color: "var(--color-text-muted)" }}>فرمتی موجود نیست.</p>
-              ) : (
-                <div className="digital-format-list">
-                  {downloadFormats.map((df) => (
-                    <button
-                      key={df.id}
-                      className="digital-format-option"
-                      onClick={() => handleDownload(downloadBook, df)}
-                      disabled={downloadingId === df.id}
-                      style={{ width: "100%", textAlign: "right", cursor: "pointer", border: "none", background: "transparent" }}
-                    >
-                      <span className="digital-format-badge-lg">{df.fileFormat}</span>
-                      <span className="digital-format-filename">{df.originalFilename}</span>
-                      {downloadingId === df.id && <span style={{ color: "var(--color-text-muted)", fontSize: "0.8rem" }}>در حال دانلود...</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={() => setDownloadBook(null)}>بستن</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

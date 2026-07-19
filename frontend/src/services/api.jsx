@@ -145,8 +145,36 @@ export const bookAPI = {
     api.post(`/v1/libraries/${libraryId}/books`, bookData),
   updateBook: (libraryId, bookId, bookData) =>
     api.put(`/v1/libraries/${libraryId}/books/${bookId}`, bookData),
+  // Consolidated create/update: metadata + cover + digital PDF + copy count in ONE request.
+  // bookId omitted -> POST (create); bookId given -> PUT (full) or PATCH (partial, only
+  // supplied fields/assets change) depending on `partial`. Any of cover/digitalFile/copyCount
+  // may be omitted (undefined/null).
+  saveBook: (libraryId, { bookId, book, cover, digitalFile, digitalVersionName, copyCount, partial, onProgress } = {}) => {
+    const formData = new FormData();
+    if (book) formData.append("book", new Blob([JSON.stringify(book)], { type: "application/json" }));
+    if (cover) formData.append("cover", cover);
+    if (digitalFile) formData.append("digital", digitalFile);
+    if (digitalVersionName) formData.append("digitalVersionName", digitalVersionName);
+    if (copyCount != null) formData.append("copyCount", copyCount);
+
+    const config = {
+      headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: (e) => {
+        if (onProgress && e.total) onProgress(Math.round((e.loaded * 100) / e.total));
+      },
+    };
+    const url = bookId
+      ? `/v1/libraries/${libraryId}/books/${bookId}`
+      : `/v1/libraries/${libraryId}/books`;
+    if (!bookId) return api.post(url, formData, config);
+    return partial ? api.patch(url, formData, config) : api.put(url, formData, config);
+  },
   deleteBook: (libraryId, bookId) =>
     api.delete(`/v1/libraries/${libraryId}/books/${bookId}`),
+  getDeletedBooks: (libraryId, params) =>
+    api.get(`/v1/libraries/${libraryId}/books/deleted`, { params }),
+  restoreBook: (libraryId, bookId) =>
+    api.post(`/v1/libraries/${libraryId}/books/${bookId}/restore`),
   addCopies: (libraryId, bookId, numberOfCopies) =>
     api.post(`/v1/libraries/${libraryId}/books/${bookId}/copies`, {
       numberOfCopies,

@@ -4,11 +4,14 @@ import com.library.BaseIntegrationTest;
 import com.library.dto.ChangePasswordRequest;
 import com.library.dto.UpdateProfileRequest;
 import com.library.dto.UserDTO;
+import com.library.entity.Notification;
 import com.library.entity.User;
 import com.library.entity.enums.AccountStatus;
+import com.library.entity.enums.NotificationType;
 import com.library.entity.enums.SystemRole;
 import com.library.exception.BadRequestException;
 import com.library.exception.ResourceNotFoundException;
+import com.library.repository.NotificationRepository;
 import com.library.repository.UserRepository;
 import com.library.util.SecurityTestUtils;
 import org.junit.jupiter.api.AfterEach;
@@ -44,6 +47,9 @@ class UserServiceTest extends BaseIntegrationTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
 
     private User testUser;
 
@@ -528,5 +534,55 @@ class UserServiceTest extends BaseIntegrationTest {
         final Long regularId = regular.getId();
         UserDTO result = userService.updateUserRole(regularId, SystemRole.SYSTEM_ADMIN);
         assertThat(result.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
+    }
+
+    // ── notifications ─────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("updateUserStatus notifies the affected user when status actually changes")
+    void testUpdateUserStatus_notifiesUser() {
+        User target = User.builder()
+                .email("notify-status@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .firstName("N").lastName("S").systemRole(SystemRole.USER)
+                .accountStatus(AccountStatus.ACTIVE)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+        target = userRepository.save(target);
+
+        userService.updateUserStatus(target.getId(), AccountStatus.SUSPENDED);
+
+        List<Notification> notifs = notificationRepository.findByRecipientIdOrderByCreatedAtDesc(target.getId());
+        assertThat(notifs).anyMatch(n -> n.getType() == NotificationType.ACCOUNT_STATUS_CHANGED);
+    }
+
+    @Test
+    @DisplayName("updateUserStatus does not notify when the status is unchanged")
+    void testUpdateUserStatus_noChange_doesNotNotify() {
+        User target = User.builder()
+                .email("notify-status-nochange@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .firstName("N").lastName("C").systemRole(SystemRole.USER)
+                .accountStatus(AccountStatus.ACTIVE)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+        target = userRepository.save(target);
+
+        userService.updateUserStatus(target.getId(), AccountStatus.ACTIVE);
+
+        List<Notification> notifs = notificationRepository.findByRecipientIdOrderByCreatedAtDesc(target.getId());
+        assertThat(notifs).noneMatch(n -> n.getType() == NotificationType.ACCOUNT_STATUS_CHANGED);
+    }
+
+    @Test
+    @DisplayName("updateUserRole notifies the affected user")
+    void testUpdateUserRole_notifiesUser() {
+        User regular = User.builder()
+                .email("notify-role@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .firstName("N").lastName("R").systemRole(SystemRole.USER)
+                .accountStatus(AccountStatus.ACTIVE)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+        regular = userRepository.save(regular);
+
+        userService.updateUserRole(regular.getId(), SystemRole.SYSTEM_ADMIN);
+
+        List<Notification> notifs = notificationRepository.findByRecipientIdOrderByCreatedAtDesc(regular.getId());
+        assertThat(notifs).anyMatch(n -> n.getType() == NotificationType.SYSTEM_ROLE_CHANGED);
     }
 }

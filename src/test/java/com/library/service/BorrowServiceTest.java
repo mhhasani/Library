@@ -207,6 +207,19 @@ class BorrowServiceTest extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("createBorrowRequest throws ResourceNotFoundException for a soft-deleted book")
+    void createBorrowRequest_deletedBook_throws() {
+        book.setDeletedAt(LocalDateTime.now());
+        bookRepository.save(book);
+
+        SecurityTestUtils.setSecurityContext(memberUser, "USER");
+        BorrowRequest req = BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).deliveryAddress("addr").build();
+
+        assertThatThrownBy(() -> borrowService.createBorrowRequest(library.getId(), book.getId(), req))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
     @DisplayName("createBorrowRequest throws for unknown library")
     void createBorrowRequest_libraryNotFound_throws() {
         SecurityTestUtils.setSecurityContext(memberUser, "USER");
@@ -584,6 +597,19 @@ class BorrowServiceTest extends BaseIntegrationTest {
         assertThatThrownBy(() -> borrowService.reserveBook(library.getId(), book.getId()))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("کتاب موجود است");
+    }
+
+    @Test
+    @DisplayName("reserveBook throws ResourceNotFoundException for a soft-deleted book")
+    void reserveBook_deletedBook_throws() {
+        bookCopy.setStatus(BookCopyStatus.BORROWED);
+        bookCopyRepository.save(bookCopy);
+        book.setDeletedAt(LocalDateTime.now());
+        bookRepository.save(book);
+
+        SecurityTestUtils.setSecurityContext(memberUser, "USER");
+        assertThatThrownBy(() -> borrowService.reserveBook(library.getId(), book.getId()))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
@@ -1120,6 +1146,28 @@ class BorrowServiceTest extends BaseIntegrationTest {
         assertThat(byType).hasSize(1);
         List<BorrowDTO> byWrongType = borrowService.getUserBorrows(library.getId(), null, BorrowType.DIGITAL);
         assertThat(byWrongType).isEmpty();
+    }
+
+    @Test
+    @DisplayName("getUserBorrows, getPendingBorrows and getLibraryBorrows hide borrows of a soft-deleted book")
+    void borrowListings_hideDeletedBookBorrows() {
+        SecurityTestUtils.setSecurityContext(memberUser, "USER");
+        borrowService.createBorrowRequest(library.getId(), book.getId(),
+                BorrowRequest.builder().borrowType(BorrowType.PHYSICAL).deliveryAddress("addr").build());
+
+        book.setDeletedAt(LocalDateTime.now());
+        bookRepository.save(book);
+
+        assertThat(borrowService.getUserBorrows(library.getId(), null, null)).isEmpty();
+
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        assertThat(borrowService.getPendingBorrows(library.getId(), null)).isEmpty();
+        assertThat(borrowService.getLibraryBorrows(library.getId(), null, null)).isEmpty();
+        assertThat(borrowService.getLibraryBorrowsPaged(library.getId(), null, null, null, false, false, PageRequest.of(0, 10)).getContent())
+                .isEmpty();
+
+        SecurityTestUtils.setSecurityContext(memberUser, "USER");
+        assertThat(borrowService.getMyBorrowsPaged(null, null, PageRequest.of(0, 10)).getContent()).isEmpty();
     }
 
     @Test

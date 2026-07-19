@@ -6,6 +6,7 @@ import com.library.dto.LibraryDTO;
 import com.library.dto.LibraryRequest;
 import com.library.entity.Library;
 import com.library.entity.LibraryMembership;
+import com.library.entity.Notification;
 import com.library.entity.User;
 import com.library.entity.enums.*;
 import com.library.exception.BadRequestException;
@@ -14,6 +15,7 @@ import com.library.exception.UnauthorizedException;
 import com.library.dto.MembershipDTO;
 import com.library.repository.LibraryMembershipRepository;
 import com.library.repository.LibraryRepository;
+import com.library.repository.NotificationRepository;
 import com.library.repository.UserRepository;
 import com.library.util.SecurityTestUtils;
 import org.junit.jupiter.api.AfterEach;
@@ -49,6 +51,9 @@ class LibraryServiceTest extends BaseIntegrationTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
 
     private User ownerUser;
     private User memberUser;
@@ -915,5 +920,93 @@ class LibraryServiceTest extends BaseIntegrationTest {
     void testGetMembersPagedUnauthorized() {
         assertThatThrownBy(() -> libraryService.getMembersPaged(library.getId(), null, PageRequest.of(0, 10)))
                 .isInstanceOf(UnauthorizedException.class);
+    }
+
+    // ---------- notifications ----------
+
+    @Test
+    @DisplayName("requestMembership with auto-approval notifies the user directly (MEMBERSHIP_APPROVED)")
+    void testRequestMembership_autoApproved_notifiesUser() {
+        SecurityTestUtils.setSecurityContext(memberUser, "USER");
+        libraryService.requestMembership(library.getId()); // library has autoMembershipApproval = true
+
+        List<Notification> notifs = notificationRepository.findByRecipientIdOrderByCreatedAtDesc(memberUser.getId());
+        assertThat(notifs).anyMatch(n -> n.getType() == NotificationType.MEMBERSHIP_APPROVED);
+    }
+
+    @Test
+    @DisplayName("requestMembership without auto-approval notifies library admins (NEW_MEMBERSHIP_REQUEST)")
+    void testRequestMembership_pending_notifiesAdmins() {
+        SecurityTestUtils.setSecurityContext(memberUser, "USER");
+
+        Library manualLibrary = Library.builder()
+                .name("Manual Library").owner(ownerUser)
+                .autoMembershipApproval(false).isActive(true)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now())
+                .build();
+        manualLibrary = libraryRepository.save(manualLibrary);
+        membershipRepository.save(LibraryMembership.builder()
+                .user(ownerUser).library(manualLibrary)
+                .role(LibraryMembershipRole.ADMIN).status(MembershipStatus.APPROVED)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now())
+                .build());
+
+        libraryService.requestMembership(manualLibrary.getId());
+
+        List<Notification> ownerNotifs = notificationRepository.findByRecipientIdOrderByCreatedAtDesc(ownerUser.getId());
+        assertThat(ownerNotifs).anyMatch(n -> n.getType() == NotificationType.NEW_MEMBERSHIP_REQUEST);
+    }
+
+    @Test
+    @DisplayName("approveMembership notifies the user")
+    void testApproveMembership_notifiesUser() {
+        SecurityTestUtils.setSecurityContext(ownerUser, "USER");
+        LibraryMembership membership = LibraryMembership.builder()
+                .user(memberUser).library(library)
+                .role(LibraryMembershipRole.MEMBER).status(MembershipStatus.PENDING)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now())
+                .build();
+        membershipRepository.save(membership);
+
+        libraryService.approveMembership(library.getId(), memberUser.getId());
+
+        List<Notification> notifs = notificationRepository.findByRecipientIdOrderByCreatedAtDesc(memberUser.getId());
+        assertThat(notifs).anyMatch(n -> n.getType() == NotificationType.MEMBERSHIP_APPROVED);
+    }
+
+    @Test
+    @DisplayName("rejectMembership notifies the user with the rejection reason")
+    void testRejectMembership_notifiesUser() {
+        SecurityTestUtils.setSecurityContext(ownerUser, "USER");
+        LibraryMembership membership = LibraryMembership.builder()
+                .user(memberUser).library(library)
+                .role(LibraryMembershipRole.MEMBER).status(MembershipStatus.PENDING)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now())
+                .build();
+        membershipRepository.save(membership);
+
+        libraryService.rejectMembership(library.getId(), memberUser.getId(), "Not eligible");
+
+        List<Notification> notifs = notificationRepository.findByRecipientIdOrderByCreatedAtDesc(memberUser.getId());
+        Notification n = notifs.stream().filter(x -> x.getType() == NotificationType.MEMBERSHIP_REJECTED)
+                .findFirst().orElseThrow();
+        assertThat(n.getMessage()).contains("Not eligible");
+    }
+
+    @Test
+    @DisplayName("setMemberRole notifies the affected user")
+    void testSetMemberRole_notifiesUser() {
+        LibraryMembership membership = LibraryMembership.builder()
+                .user(memberUser).library(library)
+                .role(LibraryMembershipRole.MEMBER).status(MembershipStatus.APPROVED)
+                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now())
+                .build();
+        membershipRepository.save(membership);
+
+        SecurityTestUtils.setSecurityContext(ownerUser, "USER");
+        libraryService.setMemberRole(library.getId(), memberUser.getId(), LibraryMembershipRole.ADMIN);
+
+        List<Notification> notifs = notificationRepository.findByRecipientIdOrderByCreatedAtDesc(memberUser.getId());
+        assertThat(notifs).anyMatch(n -> n.getType() == NotificationType.LIBRARY_ROLE_CHANGED);
     }
 }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { libraryRequestAPI } from "../../services/api";
 import ConfirmDialog from "../../components/ConfirmDialog";
+import { toPersianNum } from "../../utils/persian";
 import "../admin/AdminBorrowsPage.css";
 
 const STATUS_LABEL = { PENDING: "در انتظار بررسی", APPROVED: "تأیید شد", REJECTED: "رد شد" };
@@ -127,7 +128,7 @@ const SystemLibraryRequestsPage = () => {
               </div>
               <div className="abr-detail-grid">
                 {r.description && <Detail label="توضیحات" value={r.description} wide />}
-                <Detail label="مدت امانت پیش‌فرض" value={`${r.defaultBorrowDurationDays} روز`} />
+                <Detail label="مدت امانت پیش‌فرض" value={`${toPersianNum(r.defaultBorrowDurationDays)} روز`} />
                 <Detail label="تأیید خودکار عضویت" value={r.autoMembershipApproval ? "فعال" : "غیرفعال"} />
                 {r.status === "REJECTED" && r.rejectionReason && <Detail label="دلیل رد" value={r.rejectionReason} wide danger />}
                 {r.status === "APPROVED" && r.createdLibraryId && <Detail label="کتابخانه ایجادشده" value={`#${r.createdLibraryId}`} />}

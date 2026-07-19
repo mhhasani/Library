@@ -2,20 +2,21 @@
   min-height: calc(100vh - 68px);
 }
 
-/* ── Header ──────────────────────────────────── */
-.libraries-header {
+/* ── Hero ──────────────────────────────────── */
+.lib-hero {
   background-image:
     url("data:image/svg+xml,%3Csvg width='400' height='160' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M-20 40 C60 22 140 58 220 38 C300 18 380 54 420 40' stroke='white' stroke-width='0.8' fill='none' opacity='0.05'/%3E%3Cpath d='M-20 80 C60 62 140 98 220 78 C300 58 380 94 420 80' stroke='white' stroke-width='0.8' fill='none' opacity='0.03'/%3E%3Cpath d='M-20 120 C60 102 140 138 220 118 C300 98 380 134 420 120' stroke='white' stroke-width='0.8' fill='none' opacity='0.05'/%3E%3Cpath d='M-20 160 C60 142 140 178 220 158 C300 138 380 174 420 160' stroke='white' stroke-width='0.8' fill='none' opacity='0.03'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 900px 500px at 50% -10%, rgba(200,160,76,0.16), transparent 60%),
     var(--gradient-hero);
-  background-size: 400px 160px, cover;
-  background-position: 0 0, center;
-  padding: 3rem 1.5rem;
+  background-size: 400px 160px, 100% 100%, cover;
+  background-position: 0 0, center, center;
+  padding: 3.5rem 1.5rem 5rem;
   color: white;
   position: relative;
   overflow: hidden;
 }
 
-.libraries-header::before {
+.lib-hero::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -25,7 +26,7 @@
   background-size: 40px 40px;
 }
 
-.libraries-header::after {
+.lib-hero::after {
   content: '';
   position: absolute;
   bottom: 0;
@@ -35,178 +36,390 @@
   background: linear-gradient(90deg, transparent, rgba(200,160,76,0.6) 30%, var(--color-accent) 50%, rgba(200,160,76,0.6) 70%, transparent);
 }
 
-.libraries-header-inner {
+/* Faint colonnade silhouettes framing the hero, evoking a reading-room facade */
+.lib-hero-colonnade {
+  position: absolute;
+  top: 0;
+  bottom: 3px;
+  width: min(22vw, 260px);
+  pointer-events: none;
+  opacity: 0.5;
+  background-repeat: repeat-x;
+  background-position: bottom;
+  background-size: 64px 100%;
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(255,255,255,0.05) 0 10px,
+    transparent 10px 46px,
+    rgba(255,255,255,0.05) 46px 56px,
+    transparent 56px 64px
+  );
+  -webkit-mask-image: linear-gradient(180deg, transparent, rgba(0,0,0,0.9) 35%, rgba(0,0,0,0.9) 80%, transparent);
+          mask-image: linear-gradient(180deg, transparent, rgba(0,0,0,0.9) 35%, rgba(0,0,0,0.9) 80%, transparent);
+}
+
+.lib-hero-colonnade-start { inset-inline-start: 0; -webkit-mask-image: linear-gradient(90deg, rgba(0,0,0,0.9), transparent); mask-image: linear-gradient(90deg, rgba(0,0,0,0.9), transparent); }
+.lib-hero-colonnade-end   { inset-inline-end: 0; -webkit-mask-image: linear-gradient(270deg, rgba(0,0,0,0.9), transparent); mask-image: linear-gradient(270deg, rgba(0,0,0,0.9), transparent); }
+
+.lib-hero-inner {
   max-width: var(--content-max);
   margin: 0 auto;
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.lib-hero-emblem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.75rem;
+  height: 3.75rem;
+  border-radius: 50%;
+  color: var(--color-accent-light);
+  background: radial-gradient(circle at 35% 30%, rgba(200,160,76,0.22), rgba(200,160,76,0.04) 70%);
+  border: 1px solid rgba(200,160,76,0.4);
+  box-shadow: 0 0 0 5px rgba(200,160,76,0.06), inset 0 0 14px rgba(200,160,76,0.12);
+  margin-bottom: 1.1rem;
+}
+
+.lib-hero-eyebrow {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--color-accent-light);
+  background: rgba(200,160,76,0.12);
+  border: 1px solid rgba(200,160,76,0.3);
+  padding: 0.3rem 0.85rem;
+  border-radius: 9999px;
+  margin-bottom: 1rem;
 }
 
 .libraries-main-title {
-  font-size: 2rem;
+  font-size: 2.6rem;
   font-weight: 900;
   color: white;
-  margin-bottom: 0.35rem;
-  letter-spacing: -0.02em;
+  margin-bottom: 0.6rem;
+  letter-spacing: -0.01em;
+  text-shadow: 0 2px 24px rgba(200,160,76,0.18);
+}
+
+.lib-hero-flourish {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1.1rem;
+  color: var(--color-accent);
+}
+
+.lib-hero-flourish i {
+  display: block;
+  width: 3rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, currentColor);
+}
+
+.lib-hero-flourish i:last-child { background: linear-gradient(270deg, transparent, currentColor); }
+
+.lib-hero-flourish span {
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--color-accent-light);
 }
 
 .libraries-main-sub {
-  color: rgba(255,255,255,0.62);
-  font-size: 0.92rem;
+  color: rgba(255,255,255,0.65);
+  font-size: 0.97rem;
+  max-width: 46ch;
+  line-height: 1.8;
 }
+
+.lib-hero-stats {
+  display: flex;
+  gap: 1.25rem;
+  flex-shrink: 0;
+}
+
+.lib-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 6.5rem;
+  padding: 1rem 1.2rem;
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), var(--shadow-sm);
+  backdrop-filter: blur(6px);
+  position: relative;
+}
+
+.lib-stat::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: calc(var(--radius-md) - 3px);
+  pointer-events: none;
+}
+
+.lib-stat strong {
+  font-size: 1.75rem;
+  font-weight: 900;
+  color: white;
+  font-variant-numeric: tabular-nums;
+}
+
+.lib-stat span {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.6);
+  font-weight: 600;
+}
+
+.lib-stat-accent {
+  background: linear-gradient(180deg, rgba(200,160,76,0.2), rgba(200,160,76,0.06));
+  border-color: rgba(200,160,76,0.4);
+}
+.lib-stat-accent strong { color: var(--color-accent-light); }
+.lib-stat-accent::before { border-color: rgba(200,160,76,0.18); }
+
+/* Floating search dock that overlaps the hero's bottom edge. Lives outside
+   .lib-hero (which has overflow:hidden for its decorative background), so its
+   results dropdown is never clipped. */
+.lib-hero-search-dock {
+  position: relative;
+  max-width: 720px;
+  margin: -2.5rem auto 0;
+  padding: 0 1.5rem;
+  z-index: 2;
+}
+
+.lib-hero-search-dock .gsb { margin-top: 0; }
 
 /* ── Body ──────────────────────────────────── */
 .libraries-body {
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: 2.5rem 1.5rem;
+  padding: 1.75rem 1.5rem 2.5rem;
+  position: relative;
 }
 
-/* ── Create Library Card ─────────────────── */
-.create-library-card {
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-  border: 1px solid var(--color-border-light);
-  border-top: 3px solid var(--color-accent);
-  padding: 2rem;
-  margin-bottom: 2.5rem;
-}
-
-.create-library-title {
-  font-size: 1.1rem;
-  font-weight: 800;
-  color: var(--color-text);
-  margin-bottom: 1.5rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1.5px solid var(--color-border-light);
-}
-
-.form-row-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-.checkbox-group {
-  display: flex;
-  align-items: flex-end;
-  padding-bottom: 0.25rem;
-}
-
-.checkbox-label {
+/* ── Toolbar: tabs + create button ──────────── */
+.lib-toolbar {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  cursor: pointer;
-  font-size: 0.875rem;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.lib-tabs {
+  display: inline-flex;
+  gap: 0.25rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  padding: 0.3rem;
+  box-shadow: var(--shadow-md);
+}
+
+.lib-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  background: transparent;
   color: var(--color-text-secondary);
-  font-weight: 500;
-}
-
-.checkbox-label input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--color-primary);
+  font-family: var(--font-family);
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.6rem 1.2rem;
+  border-radius: var(--radius-md);
   cursor: pointer;
+  transition: var(--transition);
 }
 
-.form-actions {
+.lib-tab:hover { color: var(--color-text); background: var(--color-surface-3); }
+
+.lib-tab.active {
+  background: var(--gradient-primary);
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+.lib-tab-count {
+  font-size: 0.7rem;
+  font-weight: 800;
+  background: rgba(255,255,255,0.25);
+  padding: 0.05rem 0.45rem;
+  border-radius: 9999px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lib-tab:not(.active) .lib-tab-count {
+  background: var(--color-surface-3);
+  color: var(--color-text-muted);
+}
+
+.lib-create-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.lib-create-plus {
+  font-size: 1.1rem;
+  line-height: 1;
+  font-weight: 900;
+}
+
+/* Ornamental rule separating the toolbar from the shelf of cards below */
+.lib-divider {
   display: flex;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
+  align-items: center;
+  gap: 1rem;
+  margin: 0 0 2rem;
+  color: var(--color-accent);
+  opacity: 0.55;
+}
+
+.lib-divider i {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, currentColor, transparent);
+}
+
+.lib-divider span {
+  font-size: 0.85rem;
+  line-height: 1;
 }
 
 /* ── Section ──────────────────────────────── */
 .lib-section {
-  margin-bottom: 3rem;
-}
-
-.lib-section-title {
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: var(--color-text);
-  margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 2px solid var(--color-border-light);
-  position: relative;
-}
-
-.lib-section-title::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  right: 0;
-  width: 48px;
-  height: 2px;
-  background: var(--gradient-accent);
-  border-radius: 2px;
+  margin-bottom: 2.5rem;
+  animation: fadeIn 0.35s ease;
 }
 
 /* ── Grid ──────────────────────────────────── */
 .libraries-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 1.75rem;
 }
 
-/* ── Library Card ──────────────────────────── */
+/* ── Library Card: styled like a bound-book plaque, spine on the binding side ── */
 .library-card {
-  background: var(--color-surface);
+  background: var(--gradient-card);
   border: 1px solid var(--color-border-light);
-  border-top: 4px solid var(--color-primary);
   border-radius: var(--radius-lg);
-  padding: 1.5rem;
   box-shadow: var(--shadow-sm);
   transition: var(--transition-slow);
   position: relative;
   overflow: hidden;
   display: flex;
+  flex-direction: row;
+  animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .library-card { animation: none; }
+}
+
+/* Inner hairline frame — the "plaque" border-in-border detail */
+.library-card::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgba(200,160,76,0.16);
+  border-radius: calc(var(--radius-lg) - 6px);
+  pointer-events: none;
+  opacity: 0;
+  transition: var(--transition);
+  z-index: 2;
+}
+
+.library-card:hover {
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(200,160,76,0.18);
+  transform: translateY(-5px);
+  border-color: rgba(200,160,76,0.4);
+}
+
+.library-card:hover::before { opacity: 1; }
+
+/* The spine: a book-binding strip with a subtle ridge texture and a monogram medallion */
+.library-card-spine {
+  position: relative;
+  width: 3.5rem;
+  flex-shrink: 0;
+  background: linear-gradient(180deg,
+    hsl(calc(210 + var(--spine-hue, 0) * 0.15), 50%, 26%),
+    hsl(calc(210 + var(--spine-hue, 0) * 0.15), 55%, 15%));
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  box-shadow: inset -6px 0 10px -8px rgba(0,0,0,0.5);
+}
+
+.library-card-spine-lines {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    180deg,
+    rgba(255,255,255,0.05) 0 2px,
+    transparent 2px 14px
+  );
+  opacity: 0.7;
+}
+
+.library-card-monogram {
+  position: relative;
+  margin-top: 1.1rem;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--color-accent-light);
+  background: radial-gradient(circle at 35% 30%, rgba(200,160,76,0.28), rgba(200,160,76,0.05) 75%);
+  border: 1px solid rgba(200,160,76,0.55);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3), inset 0 0 6px rgba(200,160,76,0.2);
+  z-index: 1;
+}
+
+.library-card-body {
+  flex: 1;
+  min-width: 0;
+  padding: 1.35rem 1.5rem;
+  display: flex;
   flex-direction: column;
   gap: 0.6rem;
 }
 
-.library-card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-4px);
-  border-top-color: var(--color-accent);
-}
-
-.library-card-active {
-  border-top-color: var(--color-accent);
-  box-shadow: 0 0 0 2px rgba(200,160,76,0.18), var(--shadow-sm);
-}
-
-.active-indicator {
-  position: absolute;
-  top: 0;
-  left: 0;
-  background: rgba(200,160,76,0.15);
-  color: var(--color-accent-dark);
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 0.15rem 0.65rem;
-  border-radius: 0 0 var(--radius-xs) 0;
-  letter-spacing: 0.04em;
-}
-
-.library-card-icon {
-  font-size: 1.75rem;
-  margin-bottom: 0.25rem;
-}
-
 .library-card-name {
-  font-size: 1.05rem;
+  font-size: 1.08rem;
   font-weight: 800;
   color: var(--color-text);
   margin: 0;
-  line-height: 1.35;
+  line-height: 1.4;
+}
+
+.library-card-rule {
+  display: block;
+  width: 2.25rem;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--gradient-accent);
 }
 
 .library-card-desc {
@@ -215,32 +428,32 @@
   line-height: 1.65;
   margin: 0;
   flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.library-card-meta {
+.library-card-owner {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.25rem;
-}
-
-.lib-badge {
-  display: inline-flex;
   align-items: center;
-  padding: 0.22rem 0.7rem;
-  border-radius: 9999px;
-  font-size: 0.73rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
 }
 
-.lib-badge-role   { background: var(--color-info-bg); color: var(--color-info); border: 1px solid var(--color-info-border); }
-.lib-badge-status { background: var(--color-success-bg); color: var(--color-success); border: 1px solid var(--color-success-border); }
-.lib-badge-owner  { background: var(--color-surface-3); color: var(--color-text-secondary); border: 1px solid var(--color-border-light); }
+.owner-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  flex-shrink: 0;
+}
 
 .lib-actions-row {
   margin-top: auto;
-  padding-top: 0.75rem;
+  padding-top: 0.9rem;
   border-top: 1px solid var(--color-border-light);
   display: flex;
   gap: 0.5rem;
@@ -250,30 +463,98 @@
 .lib-action-btn { align-self: flex-start; }
 
 .lib-member-status {
-  font-size: 0.82rem;
-  font-weight: 600;
-  padding: 0.35rem 0.85rem;
-  border-radius: 9999px;
-  margin-top: auto;
-  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-warning);
+  padding: 0.4rem 0;
 }
 
-.lib-member-status.member  { background: var(--color-success-bg); color: var(--color-success); }
-.lib-member-status.pending { background: var(--color-warning-bg); color: var(--color-warning); }
+.pending-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-warning);
+  box-shadow: 0 0 0 0 rgba(196,122,16,0.35);
+  animation: pulse-gold 1.8s infinite;
+}
 
 .lib-login-note {
   font-size: 0.82rem;
   color: var(--color-text-muted);
   font-style: italic;
-  margin-top: auto;
+}
+
+/* ── Empty state ──────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 3.75rem 1.5rem;
+  background: var(--color-surface);
+  border: 1.5px dashed var(--color-border-light);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+
+.empty-icon-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 50%;
+  background: var(--color-accent-soft);
+  border: 1.5px solid var(--color-accent-pale);
+  box-shadow: inset 0 0 0 5px var(--color-surface-2);
+}
+
+.empty-icon { font-size: 2rem; opacity: 0.8; }
+
+.empty-state p {
+  color: var(--color-text-secondary);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+/* ── Skeleton loading cards ───────────────── */
+.library-card-skeleton {
+  animation: none;
+}
+
+.skel-spine {
+  background: linear-gradient(90deg, var(--color-surface-3) 25%, var(--color-border-light) 37%, var(--color-surface-3) 63%);
+  background-size: 400% 100%;
+  animation: skel-shimmer 1.4s ease infinite;
+}
+
+.skel {
+  background: linear-gradient(90deg, var(--color-surface-3) 25%, var(--color-border-light) 37%, var(--color-surface-3) 63%);
+  background-size: 400% 100%;
+  border-radius: var(--radius-sm);
+  animation: skel-shimmer 1.4s ease infinite;
+}
+
+.skel-line { height: 0.85rem; }
+
+@keyframes skel-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
 }
 
 @media (max-width: 640px) {
   .libraries-grid { grid-template-columns: 1fr; }
-  .form-row-2     { grid-template-columns: 1fr; }
-  .libraries-header { padding: 2rem 1.25rem; }
-  .libraries-main-title { font-size: 1.6rem; }
+  .lib-hero { padding: 2rem 1.25rem 3.5rem; }
+  .lib-hero-colonnade { display: none; }
+  .libraries-main-title { font-size: 1.75rem; }
+  .lib-hero-inner { align-items: flex-start; }
+  .lib-hero-stats { width: 100%; }
+  .lib-stat { flex: 1; }
+  .lib-toolbar { flex-direction: column; align-items: stretch; }
+  .lib-tabs { justify-content: stretch; }
+  .lib-tab { flex: 1; justify-content: center; }
+  .library-card-spine { width: 2.5rem; }
 }
-
-.libraries-search { margin: 0 auto 1.75rem; display: flex; justify-content: center; }
-.libraries-search .gsb { margin-top: 0; }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { userAPI } from "../services/api";
+import { toPersianNum } from "../utils/persian";
 import "./BorrowModal.css";
 
 /**
@@ -87,7 +88,7 @@ const BorrowModal = ({ isOpen, book, editBorrow, onClose, onSubmit, borrowDurati
               {book?.publisher && <p className="modal-book-publisher">🏢 {book.publisher}</p>}
               {book?.availableCopiesCount != null && (
                 <div className="modal-copies-badge">
-                  <span>{book.availableCopiesCount} نسخه موجود</span>
+                  <span>{toPersianNum(book.availableCopiesCount)} نسخه موجود</span>
                 </div>
               )}
             </div>

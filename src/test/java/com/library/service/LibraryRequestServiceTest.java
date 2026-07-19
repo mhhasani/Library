@@ -4,15 +4,18 @@ import com.library.BaseIntegrationTest;
 import com.library.dto.LibraryCreationRequestDTO;
 import com.library.dto.LibraryRequest;
 import com.library.entity.LibraryCreationRequest;
+import com.library.entity.Notification;
 import com.library.entity.User;
 import com.library.entity.enums.AccountStatus;
 import com.library.entity.enums.LibraryRequestStatus;
+import com.library.entity.enums.NotificationType;
 import com.library.entity.enums.SystemRole;
 import com.library.exception.BadRequestException;
 import com.library.exception.ResourceNotFoundException;
 import com.library.exception.UnauthorizedException;
 import com.library.repository.LibraryCreationRequestRepository;
 import com.library.repository.LibraryRepository;
+import com.library.repository.NotificationRepository;
 import com.library.repository.UserRepository;
 import com.library.util.SecurityTestUtils;
 import org.junit.jupiter.api.AfterEach;
@@ -39,6 +42,7 @@ class LibraryRequestServiceTest extends BaseIntegrationTest {
     @Autowired private LibraryCreationRequestRepository requestRepository;
     @Autowired private LibraryRepository libraryRepository;
     @Autowired private UserRepository userRepository;
+    @Autowired private NotificationRepository notificationRepository;
 
     private User regularUser;
     private User adminUser;
@@ -236,5 +240,49 @@ class LibraryRequestServiceTest extends BaseIntegrationTest {
         SecurityTestUtils.setSecurityContext(regularUser, "USER");
         assertThatThrownBy(() -> libraryRequestService.rejectRequest(1L, "دلیل"))
                 .isInstanceOf(UnauthorizedException.class);
+    }
+
+    // ── notifications ─────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("createRequest notifies every system admin (but not the requester)")
+    void createRequest_notifiesSystemAdmins() {
+        SecurityTestUtils.setSecurityContext(regularUser, "USER");
+        libraryRequestService.createRequest(validRequest);
+
+        List<Notification> adminNotifs = notificationRepository.findByRecipientIdOrderByCreatedAtDesc(adminUser.getId());
+        assertThat(adminNotifs).anyMatch(n -> n.getType() == NotificationType.NEW_LIBRARY_REQUEST);
+
+        List<Notification> requesterNotifs = notificationRepository.findByRecipientIdOrderByCreatedAtDesc(regularUser.getId());
+        assertThat(requesterNotifs).noneMatch(n -> n.getType() == NotificationType.NEW_LIBRARY_REQUEST);
+    }
+
+    @Test
+    @DisplayName("approveRequest notifies the requester")
+    void approveRequest_notifiesRequester() {
+        SecurityTestUtils.setSecurityContext(regularUser, "USER");
+        LibraryCreationRequestDTO created = libraryRequestService.createRequest(validRequest);
+
+        SecurityTestUtils.setSecurityContext(adminUser, "SYSTEM_ADMIN");
+        libraryRequestService.approveRequest(created.getId(), null);
+
+        List<Notification> requesterNotifs = notificationRepository.findByRecipientIdOrderByCreatedAtDesc(regularUser.getId());
+        assertThat(requesterNotifs).anyMatch(n -> n.getType() == NotificationType.LIBRARY_REQUEST_APPROVED);
+    }
+
+    @Test
+    @DisplayName("rejectRequest notifies the requester with the rejection reason")
+    void rejectRequest_notifiesRequester() {
+        SecurityTestUtils.setSecurityContext(regularUser, "USER");
+        LibraryCreationRequestDTO created = libraryRequestService.createRequest(validRequest);
+
+        SecurityTestUtils.setSecurityContext(adminUser, "SYSTEM_ADMIN");
+        libraryRequestService.rejectRequest(created.getId(), "اطلاعات ناقص");
+
+        List<Notification> requesterNotifs = notificationRepository.findByRecipientIdOrderByCreatedAtDesc(regularUser.getId());
+        Notification n = requesterNotifs.stream()
+                .filter(x -> x.getType() == NotificationType.LIBRARY_REQUEST_REJECTED)
+                .findFirst().orElseThrow();
+        assertThat(n.getMessage()).contains("اطلاعات ناقص");
     }
 }

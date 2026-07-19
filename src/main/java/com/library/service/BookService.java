@@ -15,6 +15,7 @@ import com.library.exception.UnauthorizedException;
 import com.library.entity.LibrarySubject;
 import com.library.repository.BookCopyRepository;
 import com.library.repository.BookRepository;
+import com.library.repository.BorrowRepository;
 import com.library.repository.DigitalBookRepository;
 import com.library.repository.LibraryMembershipRepository;
 import com.library.repository.LibraryRepository;
@@ -29,6 +30,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -48,6 +50,9 @@ public class BookService {
     private BookCopyRepository bookCopyRepository;
 
     @Autowired
+    private BorrowRepository borrowRepository;
+
+    @Autowired
     private DigitalBookRepository digitalBookRepository;
 
     @Autowired
@@ -58,6 +63,12 @@ public class BookService {
 
     @Autowired
     private LibrarySubjectRepository subjectRepository;
+
+    @Autowired
+    private CoverImageService coverImageService;
+
+    @Autowired
+    private DigitalBookService digitalBookService;
 
     public BookDTO createBook(Long libraryId, BookRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
@@ -114,6 +125,9 @@ public class BookService {
         if (!book.getLibrary().getId().equals(libraryId)) {
             throw new BadRequestException("این کتاب مربوط به این کتابخانه نیست");
         }
+        if (book.getDeletedAt() != null) {
+            throw new ResourceNotFoundException("کتابی با این شناسه پیدا نشد: " + bookId);
+        }
 
         return mapToBookDTO(book);
     }
@@ -124,7 +138,7 @@ public class BookService {
                 .orElseThrow(() -> new ResourceNotFoundException("کتابخانه‌ای با این شناسه پیدا نشد: " + libraryId));
         requireApprovedMembership(currentUserId, libraryId);
 
-        return bookRepository.findByLibraryId(libraryId, pageable)
+        return bookRepository.findByLibraryIdAndDeletedAtIsNull(libraryId, pageable)
                 .map(this::mapToBookDTO);
     }
 
@@ -139,6 +153,7 @@ public class BookService {
         Specification<Book> spec = (root, cq, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.isTrue(root.get("library").get("isActive")));
+            predicates.add(cb.isNull(root.get("deletedAt")));
             if (normalizedQuery != null) {
                 String pattern = "%" + normalizedQuery + "%";
                 predicates.add(cb.or(
@@ -165,6 +180,7 @@ public class BookService {
         Specification<Book> spec = (root, cq, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("library").get("id"), libraryId));
+            predicates.add(cb.isNull(root.get("deletedAt")));
             if (normalizedQuery != null) {
                 String pattern = "%" + normalizedQuery + "%";
                 predicates.add(cb.or(
@@ -202,10 +218,11 @@ public class BookService {
         }).collect(Collectors.toList());
     }
 
-    public BookDTO updateBook(Long libraryId, Long bookId, BookRequest request) {
+    /** Loads a book for an admin-only edit operation, applying the shared existence/authorization checks. */
+    private Book loadBookForAdminEdit(Long libraryId, Long bookId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        
-        Library library = libraryRepository.findById(libraryId)
+
+        libraryRepository.findById(libraryId)
                 .orElseThrow(() -> new ResourceNotFoundException("کتابخانه‌ای با این شناسه پیدا نشد: " + libraryId));
 
         LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
@@ -221,6 +238,39 @@ public class BookService {
         if (!book.getLibrary().getId().equals(libraryId)) {
             throw new BadRequestException("این کتاب مربوط به این کتابخانه نیست");
         }
+        if (book.getDeletedAt() != null) {
+            throw new BadRequestException("این کتاب حذف شده است؛ ابتدا آن را بازگردانید");
+        }
+        return book;
+    }
+
+    /** Same admin/existence/library checks as {@link #loadBookForAdminEdit}, but does NOT
+     *  reject soft-deleted books — used by delete/restore/list-deleted which must operate
+     *  on (or return) books regardless of their deleted state. */
+    private Book loadBookForAdminAction(Long libraryId, Long bookId, String forbiddenMessage) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+
+        libraryRepository.findById(libraryId)
+                .orElseThrow(() -> new ResourceNotFoundException("کتابخانه‌ای با این شناسه پیدا نشد: " + libraryId));
+
+        LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
+                .orElseThrow(() -> new UnauthorizedException("شما عضو این کتابخانه نیستید"));
+
+        if (membership.getRole() != LibraryMembershipRole.ADMIN) {
+            throw new UnauthorizedException(forbiddenMessage);
+        }
+
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new ResourceNotFoundException("کتابی با این شناسه پیدا نشد: " + bookId));
+
+        if (!book.getLibrary().getId().equals(libraryId)) {
+            throw new BadRequestException("این کتاب مربوط به این کتابخانه نیست");
+        }
+        return book;
+    }
+
+    public BookDTO updateBook(Long libraryId, Long bookId, BookRequest request) {
+        Book book = loadBookForAdminEdit(libraryId, bookId);
 
         book.setTitle(request.getTitle());
         book.setAuthor(request.getAuthor());
@@ -237,28 +287,128 @@ public class BookService {
         return mapToBookDTO(book);
     }
 
-    public void deleteBook(Long libraryId, Long bookId) {
-        Long currentUserId = SecurityUtils.getCurrentUserId();
-        
-        Library library = libraryRepository.findById(libraryId)
-                .orElseThrow(() -> new ResourceNotFoundException("کتابخانه‌ای با این شناسه پیدا نشد: " + libraryId));
+    /** Partial update: only fields present (non-null) in {@code request} are changed. */
+    public BookDTO patchBook(Long libraryId, Long bookId, BookRequest request) {
+        Book book = loadBookForAdminEdit(libraryId, bookId);
 
+        if (request.getTitle() != null) {
+            if (request.getTitle().isBlank()) {
+                throw new BadRequestException("عنوان کتاب را وارد کنید");
+            }
+            book.setTitle(request.getTitle());
+        }
+        if (request.getAuthor() != null) {
+            if (request.getAuthor().isBlank()) {
+                throw new BadRequestException("نام نویسنده را وارد کنید");
+            }
+            book.setAuthor(request.getAuthor());
+        }
+        if (request.getPublisher() != null) book.setPublisher(request.getPublisher());
+        if (request.getPublicationYear() != null) book.setPublicationYear(request.getPublicationYear());
+        if (request.getSubjectIds() != null) book.setSubjects(resolveSubjects(libraryId, request.getSubjectIds()));
+        if (request.getDescription() != null) book.setDescription(request.getDescription());
+        if (request.getAutoDigitalBorrowEnabled() != null) book.setAutoDigitalBorrowEnabled(request.getAutoDigitalBorrowEnabled());
+        book.setUpdatedAt(LocalDateTime.now());
+
+        book = bookRepository.save(book);
+        log.info("Book patched: {} in library {}", book.getTitle(), libraryId);
+
+        return mapToBookDTO(book);
+    }
+
+    /**
+     * Applies whichever optional assets are present in one call — used by the create/update/patch
+     * "with assets" entry points so the admin edit modal can do everything in a single request
+     * instead of separately calling the cover/digital/copy-count endpoints.
+     */
+    private void applyBookAssets(Long libraryId, Long bookId, MultipartFile cover, MultipartFile digital,
+                                  String digitalVersionName, Integer copyCount) {
+        if (cover != null && !cover.isEmpty()) {
+            coverImageService.uploadCoverImage(libraryId, bookId, cover);
+        }
+        if (digital != null && !digital.isEmpty()) {
+            digitalBookService.uploadDigitalBook(libraryId, bookId, digital, digitalVersionName);
+        }
+        if (copyCount != null) {
+            setBookCopyCount(libraryId, bookId, copyCount);
+        }
+    }
+
+    /** Create a book and, in the same call, optionally set its cover, digital PDF, and copy count. */
+    public BookDTO createBookWithAssets(Long libraryId, BookRequest request, MultipartFile cover,
+                                         MultipartFile digital, String digitalVersionName, Integer copyCount) {
+        BookDTO created = createBook(libraryId, request);
+        applyBookAssets(libraryId, created.getId(), cover, digital, digitalVersionName, copyCount);
+        return getBookById(libraryId, created.getId());
+    }
+
+    /** Full update of a book's metadata plus, in the same call, optionally its cover/digital/copy count. */
+    public BookDTO updateBookWithAssets(Long libraryId, Long bookId, BookRequest request, MultipartFile cover,
+                                         MultipartFile digital, String digitalVersionName, Integer copyCount) {
+        updateBook(libraryId, bookId, request);
+        applyBookAssets(libraryId, bookId, cover, digital, digitalVersionName, copyCount);
+        return getBookById(libraryId, bookId);
+    }
+
+    /**
+     * Partial update: {@code request} is optional (may be entirely absent if only assets are being
+     * changed), and any provided assets are applied — all independently optional.
+     */
+    public BookDTO patchBookWithAssets(Long libraryId, Long bookId, BookRequest request, MultipartFile cover,
+                                        MultipartFile digital, String digitalVersionName, Integer copyCount) {
+        if (request != null) {
+            patchBook(libraryId, bookId, request);
+        } else {
+            // Still enforce the admin/existence guard even when only assets are supplied.
+            loadBookForAdminEdit(libraryId, bookId);
+        }
+        applyBookAssets(libraryId, bookId, cover, digital, digitalVersionName, copyCount);
+        return getBookById(libraryId, bookId);
+    }
+
+    /** Soft-delete: marks the book as deleted (hidden from browsing/search/borrowing/history
+     *  everywhere) without removing its row, so existing FK references stay intact and an
+     *  admin can restore it later via {@link #restoreBook}. */
+    public void deleteBook(Long libraryId, Long bookId) {
+        Book book = loadBookForAdminAction(libraryId, bookId, "فقط مدیر کتابخانه می‌تواند کتاب حذف کند");
+
+        if (book.getDeletedAt() != null) {
+            throw new BadRequestException("این کتاب قبلاً حذف شده است");
+        }
+
+        book.setDeletedAt(LocalDateTime.now());
+        bookRepository.save(book);
+        log.info("Book soft-deleted: {} from library {}", book.getTitle(), libraryId);
+    }
+
+    /** Restores a previously soft-deleted book, making it visible/borrowable again everywhere. */
+    public BookDTO restoreBook(Long libraryId, Long bookId) {
+        Book book = loadBookForAdminAction(libraryId, bookId, "فقط مدیر کتابخانه می‌تواند کتاب بازگرداند");
+
+        if (book.getDeletedAt() == null) {
+            throw new BadRequestException("این کتاب حذف نشده است");
+        }
+
+        book.setDeletedAt(null);
+        book = bookRepository.save(book);
+        log.info("Book restored: {} in library {}", book.getTitle(), libraryId);
+
+        return mapToBookDTO(book);
+    }
+
+    /** Lists soft-deleted books for the admin's "بازگردانی" panel. */
+    public Page<BookDTO> getDeletedBooks(Long libraryId, Pageable pageable) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        libraryRepository.findById(libraryId)
+                .orElseThrow(() -> new ResourceNotFoundException("کتابخانه‌ای با این شناسه پیدا نشد: " + libraryId));
         LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
                 .orElseThrow(() -> new UnauthorizedException("شما عضو این کتابخانه نیستید"));
-
         if (membership.getRole() != LibraryMembershipRole.ADMIN) {
-            throw new UnauthorizedException("فقط مدیر کتابخانه می‌تواند کتاب حذف کند");
+            throw new UnauthorizedException("فقط مدیر کتابخانه می‌تواند کتاب‌های حذف‌شده را ببیند");
         }
 
-        Book book = bookRepository.findById(bookId)
-                .orElseThrow(() -> new ResourceNotFoundException("کتابی با این شناسه پیدا نشد: " + bookId));
-
-        if (!book.getLibrary().getId().equals(libraryId)) {
-            throw new BadRequestException("این کتاب مربوط به این کتابخانه نیست");
-        }
-
-        bookRepository.delete(book);
-        log.info("Book deleted: {} from library {}", book.getTitle(), libraryId);
+        return bookRepository.findByLibraryIdAndDeletedAtIsNotNull(libraryId, pageable)
+                .map(this::mapToBookDTO);
     }
 
     public void addBookCopies(Long libraryId, Long bookId, Integer numberOfCopies) {
@@ -335,12 +485,19 @@ public class BookService {
             addBookCopies(libraryId, bookId, targetCount - total);
         } else if (targetCount < total) {
             int toRemove = total - targetCount;
-            // remove AVAILABLE copies with the highest copy numbers first
+            // Only copies with no borrow history at all can be hard-deleted — an AVAILABLE
+            // copy that was borrowed and later returned is still referenced by that Borrow
+            // row (book_copy_id), and deleting it would violate the FK constraint.
             List<BookCopy> removable = all.stream()
                     .filter(c -> c.getStatus() == BookCopyStatus.AVAILABLE)
+                    .filter(c -> borrowRepository.findByBookCopyId(c.getId()).isEmpty())
                     .sorted((a, b) -> Integer.compare(b.getCopyNumber(), a.getCopyNumber()))
                     .limit(toRemove)
                     .collect(Collectors.toList());
+            if (removable.size() < toRemove) {
+                throw new BadRequestException(
+                        "امکان کاهش به این تعداد نیست: برخی نسخه‌های موجود سابقه‌ی امانت دارند و قابل حذف نیستند.");
+            }
             bookCopyRepository.deleteAll(removable);
             log.info("Removed {} available copies for book {} in library {}", removable.size(), bookId, libraryId);
         }
@@ -387,6 +544,7 @@ public class BookService {
                 .hasDigitalVersions(hasDigitalVersions)
                 .createdAt(book.getCreatedAt())
                 .updatedAt(book.getUpdatedAt())
+                .deletedAt(book.getDeletedAt())
                 .build();
     }
 }

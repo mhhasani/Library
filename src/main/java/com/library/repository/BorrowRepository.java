@@ -45,11 +45,12 @@ public interface BorrowRepository extends JpaRepository<Borrow, Long>, JpaSpecif
     @Query("SELECT b.book.id, b.book.title, COUNT(b) AS cnt " +
            "FROM Borrow b WHERE b.library.id = :libraryId " +
            "AND b.status IN ('APPROVED', 'RECEIVED', 'RETURNED') " +
+           "AND b.book.deletedAt IS NULL " +
            "GROUP BY b.book.id, b.book.title ORDER BY cnt DESC")
     List<Object[]> findMostBorrowedBooks(@Param("libraryId") Long libraryId, Pageable pageable);
 
-    /** Books never borrowed in a library */
-    @Query("SELECT b FROM Book b WHERE b.library.id = :libraryId " +
+    /** Books never borrowed in a library (excludes soft-deleted books) */
+    @Query("SELECT b FROM Book b WHERE b.library.id = :libraryId AND b.deletedAt IS NULL " +
            "AND NOT EXISTS (SELECT br FROM Borrow br WHERE br.book.id = b.id " +
            "               AND br.status IN ('APPROVED', 'RECEIVED', 'RETURNED'))")
     List<com.library.entity.Book> findNeverBorrowedBooks(@Param("libraryId") Long libraryId);

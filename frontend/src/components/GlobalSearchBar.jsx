@@ -89,7 +89,9 @@ const GlobalSearchBar = () => {
           ) : (
             filtered.map((b) => (
               <button key={`${b.libraryId}-${b.id}`} className="gsb-item" onClick={() => goToBook(b)}>
-                <span className="gsb-item-cover">📘</span>
+                {b.coverImageUrl
+                  ? <img className="gsb-item-cover-img" src={b.coverImageUrl} alt="" />
+                  : <span className="gsb-item-cover">📘</span>}
                 <span className="gsb-item-body">
                   <span className="gsb-item-title">{b.title}</span>
                   <span className="gsb-item-meta">

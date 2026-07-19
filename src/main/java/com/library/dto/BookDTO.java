@@ -69,4 +69,7 @@ public class BookDTO {
 
     @Schema(description = "Last update timestamp")
     private LocalDateTime updatedAt;
+
+    @Schema(description = "Soft-delete timestamp; null if the book is active")
+    private LocalDateTime deletedAt;
 }

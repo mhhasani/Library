@@ -5,6 +5,7 @@ import com.library.dto.UpdateProfileRequest;
 import com.library.dto.UserDTO;
 import com.library.entity.User;
 import com.library.entity.enums.AccountStatus;
+import com.library.entity.enums.NotificationType;
 import com.library.entity.enums.SystemRole;
 import com.library.exception.BadRequestException;
 import com.library.exception.ResourceNotFoundException;
@@ -26,6 +27,28 @@ public class UserService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private NotificationService notificationService;
+
+    private static final String ENTITY_USER = "USER";
+
+    private static String statusFa(AccountStatus s) {
+        return switch (s) {
+            case ACTIVE -> "فعال";
+            case SUSPENDED -> "معلق";
+            case DELETED -> "حذف‌شده";
+            case PENDING_VERIFICATION -> "در انتظار تأیید";
+        };
+    }
+
+    private static String roleFa(SystemRole r) {
+        return switch (r) {
+            case SUPER_ADMIN -> "مدیر اصلی";
+            case SYSTEM_ADMIN -> "مدیر سیستم";
+            case USER -> "کاربر عادی";
+        };
+    }
 
     public UserDTO getCurrentUserProfile() {
         Long currentUserId = SecurityUtils.getCurrentUserId();
@@ -112,9 +135,18 @@ public class UserService {
             }
         }
 
+        AccountStatus oldStatus = user.getAccountStatus();
         user.setAccountStatus(newStatus);
         user.setUpdatedAt(LocalDateTime.now());
-        return toDto(userRepository.save(user));
+        UserDTO dto = toDto(userRepository.save(user));
+
+        if (oldStatus != newStatus) {
+            notificationService.notify(user, NotificationType.ACCOUNT_STATUS_CHANGED,
+                    "وضعیت حساب تغییر کرد",
+                    String.format("وضعیت حساب شما به «%s» تغییر یافت.", statusFa(newStatus)),
+                    ENTITY_USER, user.getId(), "/profile");
+        }
+        return dto;
     }
 
     public UserDTO updateUserRole(Long userId, SystemRole newRole) {
@@ -141,9 +173,18 @@ public class UserService {
             }
         }
 
+        SystemRole oldRole = user.getSystemRole();
         user.setSystemRole(newRole);
         user.setUpdatedAt(LocalDateTime.now());
-        return toDto(userRepository.save(user));
+        UserDTO dto = toDto(userRepository.save(user));
+
+        if (oldRole != newRole) {
+            notificationService.notify(user, NotificationType.SYSTEM_ROLE_CHANGED,
+                    "نقش سیستمی شما تغییر کرد",
+                    String.format("نقش سیستمی شما به «%s» تغییر یافت.", roleFa(newRole)),
+                    ENTITY_USER, user.getId(), "/profile");
+        }
+        return dto;
     }
 
     private UserDTO toDto(User user) {

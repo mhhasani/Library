@@ -108,7 +108,7 @@ const LibraryLayout = () => {
                 📚 کتاب‌ها
               </NavLink>
               <NavLink
-                to="/profile"
+                to={`/libraries/${libraryId}/borrows`}
                 className={({ isActive }) =>
                   `library-tab ${isActive ? "library-tab--active" : ""}`
                 }

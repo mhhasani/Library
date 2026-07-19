@@ -1,30 +1,32 @@
 .abk-search {
   flex: 1;
   min-width: 240px;
-  padding: 0.6rem 1rem;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 10px;
+  padding: 0.65rem 1.1rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-full);
   font-size: 0.88rem;
-  font-family: inherit;
+  font-family: var(--font-family);
   direction: rtl;
-  transition: border-color 0.18s;
-  background: #fff;
+  transition: var(--transition);
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .abk-search:focus {
   outline: none;
-  border-color: #1b3560;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(200, 160, 76, 0.15);
 }
 
 .abk-title {
-  font-weight: 600;
-  color: #1b3560;
+  font-weight: 700;
+  color: var(--color-text);
   font-size: 0.9rem;
 }
 
 .abk-publisher {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   margin-top: 2px;
 }
 
@@ -180,10 +182,6 @@
   flex-wrap: wrap;
 }
 
-/* Badge variants */
-.badge-info  { background: var(--color-info-bg); color: var(--color-info); }
-.badge-muted { background: var(--color-border-light); color: var(--color-text-muted); }
-
 /* Checkbox label */
 .checkbox-label {
   display: flex;
@@ -196,21 +194,6 @@
 
 .btn-icon:hover { filter: brightness(0.9); }
 
-.btn-danger {
-  padding: 0.55rem 1.25rem;
-  border-radius: 8px;
-  background: #dc2626;
-  color: #fff;
-  border: none;
-  font-family: inherit;
-  font-size: 0.88rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.18s;
-}
-.btn-danger:hover { background: #b91c1c; }
-.btn-danger:disabled { opacity: 0.6; cursor: not-allowed; }
-
 /* Subject chip multi-select */
 .subject-chip-list {
   display: flex;
@@ -220,35 +203,77 @@
 }
 
 .subject-chip {
-  padding: 0.3rem 0.75rem;
+  padding: 0.3rem 0.85rem;
   border-radius: 20px;
-  border: 1.5px solid var(--color-border, #e5e7eb);
-  background: var(--color-bg, #fff);
-  color: var(--color-text-secondary, #6b7280);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
   font-size: 0.85rem;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: var(--transition);
   font-family: inherit;
 }
 
 .subject-chip:hover {
-  border-color: var(--color-accent, #7c3aed);
-  color: var(--color-accent, #7c3aed);
+  border-color: var(--color-accent);
+  color: var(--color-accent-dark);
 }
 
 .subject-chip--selected {
-  background: var(--color-accent-soft, #ede9fe);
-  border-color: var(--color-accent, #7c3aed);
-  color: var(--color-accent, #7c3aed);
-  font-weight: 600;
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent-dark);
+  font-weight: 700;
+}
+
+/* ── Subject management modal ── */
+.subject-manage-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.subject-manage-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.85rem;
+  transition: var(--transition-fast);
+}
+.subject-manage-item:hover { border-color: rgba(200,160,76,0.35); }
+.subject-manage-name { flex: 1; font-size: 0.88rem; color: var(--color-text); font-weight: 600; }
+.subject-manage-empty { color: var(--color-text-muted); font-size: 0.85rem; margin-bottom: 1rem; }
+.subject-manage-add-row { display: flex; gap: 0.5rem; align-items: center; }
+.subject-manage-input {
+  flex: 1;
+  padding: 0.55rem 0.85rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+  font-family: var(--font-family);
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition: var(--transition);
+}
+.subject-manage-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(200, 160, 76, 0.15);
 }
 
 /* ── Unified edit modal: inline copy + digital management ── */
-.abk-edit-section { border-top: 1px dashed var(--color-border-light, #e5e9f0); padding-top: 0.9rem; }
+.abk-edit-section { border-top: 1px dashed var(--color-border-light); padding-top: 0.9rem; }
 .abk-inline-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-.abk-inline-count { font-size: 0.85rem; color: var(--color-text-secondary, #4b5563); font-weight: 600; margin-left: auto; }
+.abk-inline-count { font-size: 0.85rem; color: var(--color-text-secondary); font-weight: 600; margin-left: auto; }
 .abk-digital-list { list-style: none; margin: 0.25rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
 .abk-digital-item {
   display: flex; align-items: center; justify-content: space-between;
-  background: #f7f9fc; border: 1px solid #e8ebf0; border-radius: 10px; padding: 0.4rem 0.7rem; font-size: 0.85rem;
+  background: var(--color-surface-2); border: 1px solid var(--color-border-light); border-radius: 10px; padding: 0.4rem 0.7rem; font-size: 0.85rem;
 }

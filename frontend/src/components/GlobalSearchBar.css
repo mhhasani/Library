@@ -80,6 +80,14 @@
 .gsb-item:last-child { border-bottom: none; }
 .gsb-item:hover { background: #f7f9fc; }
 .gsb-item-cover { font-size: 1.4rem; flex-shrink: 0; }
+.gsb-item-cover-img {
+  width: 34px;
+  height: 48px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
 .gsb-item-body { display: flex; flex-direction: column; gap: 0.22rem; flex: 1; min-width: 0; text-align: right; }
 .gsb-item-title { font-size: 0.94rem; font-weight: 700; color: var(--color-text, #1f2937); }
 .gsb-item-meta { font-size: 0.78rem; color: #6b7280; }

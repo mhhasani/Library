@@ -130,6 +130,115 @@ class BookControllerTest extends BaseIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    // ---------- consolidated create/update/patch with assets (multipart) ----------
+
+    @Test
+    @WithMockUser(username = "admin@library.com", roles = "USER")
+    @DisplayName("POST multipart: creates a book with cover + digital + copy count in one call")
+    void testCreateBookWithAssets_success() throws Exception {
+        when(bookService.createBookWithAssets(eq(1L), any(BookRequest.class), any(), any(), any(), any()))
+                .thenReturn(bookDTO);
+
+        org.springframework.mock.web.MockMultipartFile bookPart = new org.springframework.mock.web.MockMultipartFile(
+                "book", "", "application/json", objectMapper.writeValueAsBytes(bookRequest));
+        org.springframework.mock.web.MockMultipartFile coverPart = new org.springframework.mock.web.MockMultipartFile(
+                "cover", "cover.jpg", "image/jpeg", "img".getBytes());
+        org.springframework.mock.web.MockMultipartFile digitalPart = new org.springframework.mock.web.MockMultipartFile(
+                "digital", "book.pdf", "application/pdf", "pdf".getBytes());
+
+        mockMvc.perform(multipart("/v1/libraries/1/books")
+                        .file(bookPart).file(coverPart).file(digitalPart)
+                        .param("digitalVersionName", "v1")
+                        .param("copyCount", "3"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").value(1));
+    }
+
+    @Test
+    @WithMockUser(username = "admin@library.com", roles = "USER")
+    @DisplayName("POST multipart: book part alone (no assets) still creates the book")
+    void testCreateBookWithAssets_noAssets() throws Exception {
+        when(bookService.createBookWithAssets(eq(1L), any(BookRequest.class), any(), any(), any(), any()))
+                .thenReturn(bookDTO);
+
+        org.springframework.mock.web.MockMultipartFile bookPart = new org.springframework.mock.web.MockMultipartFile(
+                "book", "", "application/json", objectMapper.writeValueAsBytes(bookRequest));
+
+        mockMvc.perform(multipart("/v1/libraries/1/books").file(bookPart))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    @WithMockUser(username = "admin@library.com", roles = "USER")
+    @DisplayName("PUT multipart: full update with cover + copy count in one call")
+    void testUpdateBookWithAssets_success() throws Exception {
+        when(bookService.updateBookWithAssets(eq(1L), eq(1L), any(BookRequest.class), any(), any(), any(), any()))
+                .thenReturn(bookDTO);
+
+        org.springframework.mock.web.MockMultipartFile bookPart = new org.springframework.mock.web.MockMultipartFile(
+                "book", "", "application/json", objectMapper.writeValueAsBytes(bookRequest));
+        org.springframework.mock.web.MockMultipartFile coverPart = new org.springframework.mock.web.MockMultipartFile(
+                "cover", "cover.jpg", "image/jpeg", "img".getBytes());
+
+        mockMvc.perform(multipart("/v1/libraries/1/books/1")
+                        .file(bookPart).file(coverPart)
+                        .param("copyCount", "4")
+                        .with(req -> { req.setMethod("PUT"); return req; }))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    @WithMockUser(username = "admin@library.com", roles = "USER")
+    @DisplayName("PATCH multipart: only copy count supplied, no book JSON part at all")
+    void testPatchBook_assetsOnlyNoMetadataPart() throws Exception {
+        when(bookService.patchBookWithAssets(eq(1L), eq(1L), isNull(), any(), any(), any(), eq(5)))
+                .thenReturn(bookDTO);
+
+        mockMvc.perform(multipart(org.springframework.http.HttpMethod.PATCH, "/v1/libraries/1/books/1")
+                        .param("copyCount", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    @WithMockUser(username = "admin@library.com", roles = "USER")
+    @DisplayName("PATCH multipart: partial book JSON part (only publicationYear) plus no assets")
+    void testPatchBook_partialMetadataOnly() throws Exception {
+        when(bookService.patchBookWithAssets(eq(1L), eq(1L), any(BookRequest.class), any(), any(), any(), isNull()))
+                .thenReturn(bookDTO);
+
+        BookRequest partial = BookRequest.builder().publicationYear(2099).build();
+        org.springframework.mock.web.MockMultipartFile bookPart = new org.springframework.mock.web.MockMultipartFile(
+                "book", "", "application/json", objectMapper.writeValueAsBytes(partial));
+
+        mockMvc.perform(multipart(org.springframework.http.HttpMethod.PATCH, "/v1/libraries/1/books/1")
+                        .file(bookPart))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    @WithMockUser(username = "user@library.com", roles = "USER")
+    @DisplayName("PATCH multipart: non-admin gets 401")
+    void testPatchBook_unauthorized() throws Exception {
+        doThrow(new UnauthorizedException("فقط مدیر کتابخانه می‌تواند کتاب‌ها را ویرایش کند"))
+                .when(bookService).patchBookWithAssets(eq(1L), eq(1L), isNull(), any(), any(), any(), eq(5));
+
+        mockMvc.perform(multipart(org.springframework.http.HttpMethod.PATCH, "/v1/libraries/1/books/1")
+                        .param("copyCount", "5"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("PATCH multipart: unauthenticated gets 401")
+    void testPatchBook_unauthenticated() throws Exception {
+        mockMvc.perform(multipart(org.springframework.http.HttpMethod.PATCH, "/v1/libraries/1/books/1")
+                        .param("copyCount", "5"))
+                .andExpect(status().isUnauthorized());
+    }
+
     @Test
     @WithMockUser(username = "user@library.com", roles = "USER")
     @DisplayName("Should get book by id successfully")

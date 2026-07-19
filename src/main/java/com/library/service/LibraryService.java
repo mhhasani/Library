@@ -8,6 +8,7 @@ import com.library.entity.LibraryMembership;
 import com.library.entity.User;
 import com.library.entity.enums.LibraryMembershipRole;
 import com.library.entity.enums.MembershipStatus;
+import com.library.entity.enums.NotificationType;
 import com.library.exception.BadRequestException;
 import com.library.exception.ResourceNotFoundException;
 import com.library.exception.UnauthorizedException;
@@ -39,6 +40,25 @@ public class LibraryService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private NotificationService notificationService;
+
+    private static final String ENTITY_MEMBERSHIP = "LIBRARY_MEMBERSHIP";
+
+    private String fullName(User u) {
+        String name = ((u.getFirstName() != null ? u.getFirstName() : "") + " " +
+                (u.getLastName() != null ? u.getLastName() : "")).trim();
+        return name.isEmpty() ? u.getEmail() : name;
+    }
+
+    /** Notify every ADMIN member of a library. */
+    private void notifyLibraryAdmins(Library library, NotificationType type, String title, String message, Long relatedId) {
+        membershipRepository.findByLibraryId(library.getId()).stream()
+                .filter(m -> m.getRole() == LibraryMembershipRole.ADMIN)
+                .forEach(m -> notificationService.notify(m.getUser(), type, title, message,
+                        ENTITY_MEMBERSHIP, relatedId, "/libraries/" + library.getId() + "/admin/members"));
+    }
 
     public LibraryDTO createLibrary(LibraryRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
@@ -186,6 +206,13 @@ public class LibraryService {
         membership.setUpdatedAt(LocalDateTime.now());
         membershipRepository.save(membership);
         log.info("Member {} role set to {} in library {}", targetUserId, newRole, libraryId);
+
+        String roleFa = newRole == LibraryMembershipRole.ADMIN ? "مدیر کتابخانه" : "عضو عادی";
+        notificationService.notify(membership.getUser(), NotificationType.LIBRARY_ROLE_CHANGED,
+                "نقش شما تغییر کرد",
+                String.format("نقش شما در کتابخانه «%s» به «%s» تغییر یافت.", library.getName(), roleFa),
+                ENTITY_MEMBERSHIP, membership.getId(), "/libraries/" + libraryId + "/books");
+
         return mapToLibraryDTO(library, null);
     }
 
@@ -229,6 +256,19 @@ public class LibraryService {
 
         membershipRepository.save(membership);
         log.info("Membership requested for library {} by user {}", libraryId, user.getEmail());
+
+        if (membership.getStatus() == MembershipStatus.APPROVED) {
+            // Auto-approved by the library's settings — tell the user right away.
+            notificationService.notify(user, NotificationType.MEMBERSHIP_APPROVED,
+                    "عضویت تأیید شد",
+                    String.format("عضویت شما در کتابخانه «%s» به‌صورت خودکار تأیید شد.", library.getName()),
+                    ENTITY_MEMBERSHIP, membership.getId(), "/libraries/" + libraryId + "/books");
+        } else {
+            notifyLibraryAdmins(library, NotificationType.NEW_MEMBERSHIP_REQUEST,
+                    "درخواست عضویت جدید",
+                    String.format("کاربر %s درخواست عضویت در کتابخانه «%s» را ثبت کرد.", fullName(user), library.getName()),
+                    membership.getId());
+        }
     }
 
     public void approveMembership(Long libraryId, Long userId) {
@@ -250,6 +290,11 @@ public class LibraryService {
         membership.setUpdatedAt(LocalDateTime.now());
         membershipRepository.save(membership);
         log.info("Membership approved for user {} in library {}", userId, libraryId);
+
+        notificationService.notify(membership.getUser(), NotificationType.MEMBERSHIP_APPROVED,
+                "عضویت تأیید شد",
+                String.format("عضویت شما در کتابخانه «%s» تأیید شد.", membership.getLibrary().getName()),
+                ENTITY_MEMBERSHIP, membership.getId(), "/libraries/" + libraryId + "/books");
     }
 
     public void rejectMembership(Long libraryId, Long userId, String rejectionReason) {
@@ -270,6 +315,12 @@ public class LibraryService {
         membership.setUpdatedAt(LocalDateTime.now());
         membershipRepository.save(membership);
         log.info("Membership rejected for user {} in library {}", userId, libraryId);
+
+        notificationService.notify(membership.getUser(), NotificationType.MEMBERSHIP_REJECTED,
+                "عضویت رد شد",
+                String.format("درخواست عضویت شما در کتابخانه «%s» رد شد.%s", membership.getLibrary().getName(),
+                        rejectionReason != null && !rejectionReason.isBlank() ? " دلیل: " + rejectionReason : ""),
+                ENTITY_MEMBERSHIP, membership.getId(), "/libraries");
     }
 
     public List<MembershipDTO> getLibraryMembers(Long libraryId) {

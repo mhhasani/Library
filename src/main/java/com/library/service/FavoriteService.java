@@ -60,6 +60,7 @@ public class FavoriteService {
         Specification<BookFavorite> spec = (root, cq, cb) -> {
             List<Predicate> ps = new ArrayList<>();
             ps.add(cb.equal(root.get("user").get("id"), uid));
+            ps.add(cb.isNull(root.get("book").get("deletedAt")));
             if (q != null) {
                 var book = root.join("book");
                 String pat = "%" + q + "%";

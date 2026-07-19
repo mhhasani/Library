@@ -9,6 +9,8 @@ import "./AdminMembersPage.css";
 
 const MEMBER_SEARCH_FIELDS = ["userEmail", "userName", (m) => m.role];
 
+const memberInitial = (m) => (m.userName?.trim()?.[0] || m.userEmail?.[0] || "؟").toUpperCase();
+
 const ROLE_LABEL = { ADMIN: "مدیر", MEMBER: "عضو" };
 const STATUS_LABEL = { PENDING: "در انتظار", APPROVED: "تأیید شده", REJECTED: "رد شده" };
 const STATUS_CLASS = {
@@ -132,8 +134,7 @@ const AdminMembersPage = () => {
             <table className="modern-table">
               <thead>
                 <tr>
-                  <th>ایمیل</th>
-                  <th>نام</th>
+                  <th>عضو</th>
                   <th>تاریخ درخواست</th>
                   <th>عملیات</th>
                 </tr>
@@ -141,9 +142,16 @@ const AdminMembersPage = () => {
               <tbody>
                 {pending.map((m) => (
                   <tr key={m.id}>
-                    <td>{m.userEmail}</td>
-                    <td>{m.userName?.trim() || "—"}</td>
-                    <td style={{ fontSize: "0.82rem", color: "#9ca3af" }}>
+                    <td>
+                      <div className="amm-member">
+                        <span className="amm-avatar">{memberInitial(m)}</span>
+                        <div>
+                          <div className="amm-member-name">{m.userName?.trim() || "—"}</div>
+                          <div className="amm-member-email">{m.userEmail}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="amm-date">
                       {m.createdAt
                         ? new Date(m.createdAt).toLocaleDateString("fa-IR")
                         : "—"}
@@ -158,10 +166,9 @@ const AdminMembersPage = () => {
                           {actionLoading[m.userId] === "approve" ? "..." : "✓ تأیید"}
                         </button>
                         <button
-                          className="btn btn-outline btn-sm"
+                          className="btn btn-outline-danger btn-sm"
                           onClick={() => { setRejectTarget(m); setRejectReason(""); }}
                           disabled={!!actionLoading[m.userId]}
-                          style={{ color: "#dc2626", borderColor: "#dc2626" }}
                         >
                           رد
                         </button>
@@ -198,8 +205,7 @@ const AdminMembersPage = () => {
             <table className="modern-table">
               <thead>
                 <tr>
-                  <th>ایمیل</th>
-                  <th>نام</th>
+                  <th>عضو</th>
                   <th>نقش</th>
                   <th>وضعیت</th>
                   <th>تاریخ عضویت</th>
@@ -209,8 +215,15 @@ const AdminMembersPage = () => {
               <tbody>
                 {restTable.pageItems.map((m) => (
                   <tr key={m.id}>
-                    <td>{m.userEmail}</td>
-                    <td>{m.userName?.trim() || "—"}</td>
+                    <td>
+                      <div className="amm-member">
+                        <span className="amm-avatar">{memberInitial(m)}</span>
+                        <div>
+                          <div className="amm-member-name">{m.userName?.trim() || "—"}</div>
+                          <div className="amm-member-email">{m.userEmail}</div>
+                        </div>
+                      </div>
+                    </td>
                     <td>
                       {m.userId === ownerId ? (
                         <span className="badge badge-success">👑 مالک</span>
@@ -225,19 +238,18 @@ const AdminMembersPage = () => {
                         {STATUS_LABEL[m.status] || m.status}
                       </span>
                     </td>
-                    <td style={{ fontSize: "0.82rem", color: "#9ca3af" }}>
+                    <td className="amm-date">
                       {m.createdAt
                         ? new Date(m.createdAt).toLocaleDateString("fa-IR")
                         : "—"}
                     </td>
                     <td>
-                      <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                      <div className="amm-actions">
                         {canManageRoles && m.status === "APPROVED" && m.userId !== ownerId && m.role !== "ADMIN" && (
                           <button
-                            className="btn btn-outline btn-sm"
+                            className="btn btn-outline-success btn-sm"
                             onClick={() => handleSetRole(m, "ADMIN")}
                             disabled={!!actionLoading[m.userId]}
-                            style={{ fontSize: "0.78rem", color: "#16a34a", borderColor: "#16a34a" }}
                           >
                             {actionLoading[m.userId] === "role" ? "..." : "⬆️ ارتقا به مدیر"}
                           </button>
@@ -247,17 +259,15 @@ const AdminMembersPage = () => {
                             className="btn btn-outline btn-sm"
                             onClick={() => handleSetRole(m, "MEMBER")}
                             disabled={!!actionLoading[m.userId]}
-                            style={{ fontSize: "0.78rem" }}
                           >
                             {actionLoading[m.userId] === "role" ? "..." : "⬇️ تنزل به عضو"}
                           </button>
                         )}
                         {m.status === "APPROVED" && m.role !== "ADMIN" && (
                           <button
-                            className="btn btn-outline btn-sm"
+                            className="btn btn-outline-danger btn-sm"
                             onClick={() => { setRejectTarget(m); setRejectReason(""); }}
                             disabled={!!actionLoading[m.userId]}
-                            style={{ fontSize: "0.78rem", color: "#dc2626", borderColor: "#dc2626" }}
                           >
                             لغو عضویت
                           </button>
@@ -278,7 +288,7 @@ const AdminMembersPage = () => {
         <div className="ap-modal-overlay" onClick={() => setRejectTarget(null)}>
           <div className="ap-modal" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
             <h2 className="ap-modal-title">رد / لغو عضویت</h2>
-            <p style={{ fontSize: "0.88rem", color: "#6b7280", marginBottom: "1rem" }}>
+            <p className="ap-subtitle" style={{ marginBottom: "1rem" }}>
               کاربر: <strong>{rejectTarget.userEmail}</strong>
             </p>
             <div className="ap-form-group">

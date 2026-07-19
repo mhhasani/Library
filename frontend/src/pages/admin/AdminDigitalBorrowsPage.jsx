@@ -79,7 +79,7 @@ const AdminDigitalBorrowsPage = () => {
                         {STATUS_LABEL[b.status] || b.status}
                       </span>
                     </td>
-                    <td style={{ fontSize: "0.82rem", color: "#9ca3af" }}>
+                    <td className="abr-copy">
                       {b.borrowDate ? new Date(b.borrowDate).toLocaleDateString("fa-IR")
                         : b.createdAt ? new Date(b.createdAt).toLocaleDateString("fa-IR") : "—"}
                     </td>

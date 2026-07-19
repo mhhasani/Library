@@ -9,6 +9,8 @@ import com.library.entity.User;
 import com.library.entity.enums.LibraryMembershipRole;
 import com.library.entity.enums.LibraryRequestStatus;
 import com.library.entity.enums.MembershipStatus;
+import com.library.entity.enums.NotificationType;
+import com.library.entity.enums.SystemRole;
 import com.library.exception.BadRequestException;
 import com.library.exception.ResourceNotFoundException;
 import com.library.exception.UnauthorizedException;
@@ -35,6 +37,10 @@ public class LibraryRequestService {
     @Autowired private LibraryRepository libraryRepository;
     @Autowired private LibraryMembershipRepository membershipRepository;
     @Autowired private UserRepository userRepository;
+    @Autowired private NotificationService notificationService;
+
+    private static final String ENTITY_LIBRARY_REQUEST = "LIBRARY_REQUEST";
+    private static final String SYSTEM_REQUESTS_LINK = "/system/library-requests";
 
     private void requireSystemAdmin() {
         if (!SecurityUtils.hasRole("SYSTEM_ADMIN")) {
@@ -60,8 +66,17 @@ public class LibraryRequestService {
                 .updatedAt(LocalDateTime.now())
                 .build();
         entity = requestRepository.save(entity);
-        log.info("Library creation request {} submitted by {}", entity.getId(), requester.getEmail());
-        return toDto(entity);
+        final LibraryCreationRequest saved = entity;
+        log.info("Library creation request {} submitted by {}", saved.getId(), requester.getEmail());
+
+        userRepository.findBySystemRoleIn(List.of(SystemRole.SYSTEM_ADMIN, SystemRole.SUPER_ADMIN))
+                .forEach(admin -> notificationService.notify(admin, NotificationType.NEW_LIBRARY_REQUEST,
+                        "درخواست کتابخانه جدید",
+                        String.format("کاربر %s درخواست ساخت کتابخانه «%s» را ثبت کرد.",
+                                fullName(requester), saved.getName()),
+                        ENTITY_LIBRARY_REQUEST, saved.getId(), SYSTEM_REQUESTS_LINK));
+
+        return toDto(saved);
     }
 
     @Transactional(readOnly = true)
@@ -127,6 +142,12 @@ public class LibraryRequestService {
         reqEntity.setUpdatedAt(LocalDateTime.now());
         reqEntity = requestRepository.save(reqEntity);
         log.info("Library request {} approved → library {} (owner {})", requestId, library.getId(), owner.getEmail());
+
+        notificationService.notify(owner, NotificationType.LIBRARY_REQUEST_APPROVED,
+                "درخواست کتابخانه تأیید شد",
+                String.format("درخواست ساخت کتابخانه «%s» تأیید شد و کتابخانه ایجاد گردید.", library.getName()),
+                ENTITY_LIBRARY_REQUEST, reqEntity.getId(), "/libraries/" + library.getId() + "/books");
+
         return toDto(reqEntity);
     }
 
@@ -148,7 +169,19 @@ public class LibraryRequestService {
         reqEntity.setUpdatedAt(LocalDateTime.now());
         reqEntity = requestRepository.save(reqEntity);
         log.info("Library request {} rejected", requestId);
+
+        notificationService.notify(reqEntity.getRequester(), NotificationType.LIBRARY_REQUEST_REJECTED,
+                "درخواست کتابخانه رد شد",
+                String.format("درخواست ساخت کتابخانه «%s» رد شد. دلیل: %s", reqEntity.getName(), reason),
+                ENTITY_LIBRARY_REQUEST, reqEntity.getId(), "/libraries");
+
         return toDto(reqEntity);
+    }
+
+    private String fullName(User u) {
+        String name = ((u.getFirstName() != null ? u.getFirstName() : "") + " " +
+                (u.getLastName() != null ? u.getLastName() : "")).trim();
+        return name.isEmpty() ? u.getEmail() : name;
     }
 
     private LibraryCreationRequestDTO toDto(LibraryCreationRequest e) {

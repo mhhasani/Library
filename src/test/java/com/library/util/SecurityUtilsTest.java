@@ -88,4 +88,24 @@ class SecurityUtilsTest {
 
         assertThat(SecurityUtils.hasRole("ADMIN")).isFalse();
     }
+
+    @Test
+    @DisplayName("hasRole('SYSTEM_ADMIN') returns true for a SUPER_ADMIN user (role hierarchy)")
+    void hasRole_superAdminSatisfiesSystemAdminCheck() {
+        User user = User.builder().id(1L).email("a@b.com").systemRole(SystemRole.SUPER_ADMIN).build();
+        SecurityTestUtils.setSecurityContext(user, "SUPER_ADMIN");
+
+        assertThat(SecurityUtils.hasRole("SYSTEM_ADMIN")).isTrue();
+        assertThat(SecurityUtils.hasRole("USER")).isTrue();
+    }
+
+    @Test
+    @DisplayName("hasRole('USER') returns true for a SYSTEM_ADMIN user (role hierarchy)")
+    void hasRole_systemAdminSatisfiesUserCheck() {
+        User user = User.builder().id(1L).email("a@b.com").systemRole(SystemRole.SYSTEM_ADMIN).build();
+        SecurityTestUtils.setSecurityContext(user, "SYSTEM_ADMIN");
+
+        assertThat(SecurityUtils.hasRole("USER")).isTrue();
+        assertThat(SecurityUtils.hasRole("SUPER_ADMIN")).isFalse();
+    }
 }

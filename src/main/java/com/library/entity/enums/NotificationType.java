@@ -15,5 +15,17 @@ public enum NotificationType {
     BORROW_CANCELLED_BY_LIBRARIAN, // To user: the librarian cancelled the request/loan
     RETURN_REQUESTED,              // To admins: the recipient asked for a return pickup
     RETURN_PICKUP_SCHEDULED,       // To user: the librarian scheduled the return pickup
-    BOOK_HANDED_OVER               // To admins: the recipient handed the book to the courier (in transit)
+    BOOK_HANDED_OVER,              // To admins: the recipient handed the book to the courier (in transit)
+
+    NEW_LIBRARY_REQUEST,           // To all system admins: a new library-creation request arrived
+    LIBRARY_REQUEST_APPROVED,      // To requester: their library-creation request was approved
+    LIBRARY_REQUEST_REJECTED,      // To requester: their library-creation request was rejected
+
+    NEW_MEMBERSHIP_REQUEST,        // To library admins: a new membership request arrived (needs manual approval)
+    MEMBERSHIP_APPROVED,           // To user: their library membership was approved (manually or automatically)
+    MEMBERSHIP_REJECTED,           // To user: their library membership request was rejected
+    LIBRARY_ROLE_CHANGED,          // To user: their role within a library was changed (member/admin)
+
+    SYSTEM_ROLE_CHANGED,           // To user: their system-wide role was changed by a super admin
+    ACCOUNT_STATUS_CHANGED         // To user: their account was suspended/activated by a system admin
 }
