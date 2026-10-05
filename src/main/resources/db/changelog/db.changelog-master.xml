@@ -29,5 +29,6 @@
     <include file="db/changelog/v1/24-create-book-favorites-table.xml"/>
     <include file="db/changelog/v1/25-h2-test-borrow-columns.xml"/>
     <include file="db/changelog/v1/26-add-book-deleted-at.xml"/>
+    <include file="db/changelog/v1/27-audit-log-security-fields.xml"/>
 
 </databaseChangeLog>

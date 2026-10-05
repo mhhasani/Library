@@ -160,12 +160,6 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Hypersistence Utils for JSON types -->
-        <dependency>
-            <groupId>io.hypersistence</groupId>
-            <artifactId>hypersistence-utils-hibernate-60</artifactId>
-            <version>3.4.0</version>
-        </dependency>
     </dependencies>
 
     <build>

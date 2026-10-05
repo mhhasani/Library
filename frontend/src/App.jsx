@@ -35,6 +35,7 @@ import SystemDashboard from "./pages/system/SystemDashboard";
 import SystemUsersPage from "./pages/system/SystemUsersPage";
 import SystemLibrariesPage from "./pages/system/SystemLibrariesPage";
 import SystemLibraryRequestsPage from "./pages/system/SystemLibraryRequestsPage";
+import SystemAuditLogsPage from "./pages/system/SystemAuditLogsPage";
 
 import "./App.css";
 
@@ -43,6 +44,7 @@ const SYSTEM_ADMIN_NAV = [
   { to: "/system/users",     end: false, icon: "👤", label: "مدیریت کاربران" },
   { to: "/system/libraries", end: false, icon: "🏛️", label: "کتابخانه‌ها" },
   { to: "/system/library-requests", end: false, icon: "📨", label: "درخواست‌های کتابخانه" },
+  { to: "/system/audit-logs", end: false, icon: "📜", label: "رویدادنگاری امنیتی" },
 ];
 
 function App() {
@@ -113,6 +115,7 @@ function App() {
             <Route path="users" element={<SystemUsersPage />} />
             <Route path="libraries" element={<SystemLibrariesPage />} />
             <Route path="library-requests" element={<SystemLibraryRequestsPage />} />
+            <Route path="audit-logs" element={<SystemAuditLogsPage />} />
           </Route>
         </Routes>
       </AuthProvider>

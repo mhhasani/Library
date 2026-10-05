@@ -338,6 +338,16 @@ export const adminAPI = {
   getLibraries: (params) => api.get("/v1/admin/libraries", { params }),
 };
 
+// Security audit trail (system admin)
+export const auditAPI = {
+  // params: { action?, outcome?, search?, from?, to?, page?, size? } → Page<AuditLogDTO>
+  search: (params) => api.get("/v1/admin/audit-logs", { params }),
+  actions: () => api.get("/v1/admin/audit-logs/actions"),
+  exportCsv: (params) =>
+    api.get("/v1/admin/audit-logs/export", { params, responseType: "blob" }),
+  verify: () => api.post("/v1/admin/audit-logs/verify"),
+};
+
 // Library stats endpoints (admin)
 export const libraryStatsAPI = {
   getMostBorrowed: (libraryId, limit = 10) =>

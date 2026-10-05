@@ -1,9 +1,10 @@
 package com.library.config;
 
+import com.library.audit.AuditEntry;
+import com.library.audit.AuditService;
+import com.library.entity.enums.AuditAction;
 import com.library.logging.LogMarkers;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationFailedEvent;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -21,17 +22,18 @@ import java.util.stream.Stream;
 /**
  * Execution-environment cleanup: the dedicated upload temp directory is wiped on startup
  * (left-overs from a crash) and again on shutdown, so no temporary copies of uploaded files
- * survive the process. Also records application start/stop in the audit log stream.
+ * survive the process. Also records application start/stop in the audit trail.
  */
 @Slf4j
 @Component
 public class RuntimeHygiene {
 
-    private static final Logger AUDIT = LoggerFactory.getLogger("AUDIT");
-
+    private final AuditService auditService;
     private final Path uploadTmpDir;
 
-    public RuntimeHygiene(@Value("${spring.servlet.multipart.location:}") String uploadTmpDir) {
+    public RuntimeHygiene(AuditService auditService,
+                          @Value("${spring.servlet.multipart.location:}") String uploadTmpDir) {
+        this.auditService = auditService;
         this.uploadTmpDir = uploadTmpDir == null || uploadTmpDir.isBlank() ? null : Paths.get(uploadTmpDir);
         cleanUploadTmpDir();
         if (this.uploadTmpDir != null) {
@@ -45,13 +47,13 @@ public class RuntimeHygiene {
 
     @EventListener(ApplicationReadyEvent.class)
     public void onStart() {
-        AUDIT.info("event=APPLICATION_START outcome=SUCCESS");
+        auditService.record(AuditEntry.success(AuditAction.APPLICATION_START).build());
     }
 
     @EventListener(ContextClosedEvent.class)
     public void onStop() {
         cleanUploadTmpDir();
-        AUDIT.info("event=APPLICATION_STOP outcome=SUCCESS");
+        auditService.record(AuditEntry.success(AuditAction.APPLICATION_STOP).build());
     }
 
     @EventListener(ApplicationFailedEvent.class)

@@ -1,10 +1,13 @@
 package com.library.service;
 
+import com.library.audit.AuditEntry;
+import com.library.audit.AuditService;
 import com.library.dto.ChangePasswordRequest;
 import com.library.dto.UpdateProfileRequest;
 import com.library.dto.UserDTO;
 import com.library.entity.User;
 import com.library.entity.enums.AccountStatus;
+import com.library.entity.enums.AuditAction;
 import com.library.entity.enums.NotificationType;
 import com.library.entity.enums.SystemRole;
 import com.library.exception.BadRequestException;
@@ -30,6 +33,9 @@ public class UserService {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private AuditService auditService;
 
     private static final String ENTITY_USER = "USER";
 
@@ -141,6 +147,9 @@ public class UserService {
         UserDTO dto = toDto(userRepository.save(user));
 
         if (oldStatus != newStatus) {
+            auditService.record(AuditEntry.success(AuditAction.USER_STATUS_CHANGE)
+                    .entityType(ENTITY_USER).entityId(user.getId())
+                    .details(oldStatus + " -> " + newStatus).build());
             notificationService.notify(user, NotificationType.ACCOUNT_STATUS_CHANGED,
                     "وضعیت حساب تغییر کرد",
                     String.format("وضعیت حساب شما به «%s» تغییر یافت.", statusFa(newStatus)),
@@ -179,6 +188,9 @@ public class UserService {
         UserDTO dto = toDto(userRepository.save(user));
 
         if (oldRole != newRole) {
+            auditService.record(AuditEntry.success(AuditAction.USER_ROLE_CHANGE)
+                    .entityType(ENTITY_USER).entityId(user.getId())
+                    .details(oldRole + " -> " + newRole).build());
             notificationService.notify(user, NotificationType.SYSTEM_ROLE_CHANGED,
                     "نقش سیستمی شما تغییر کرد",
                     String.format("نقش سیستمی شما به «%s» تغییر یافت.", roleFa(newRole)),

@@ -1,25 +1,30 @@
 package com.library.exception;
 
+import com.library.audit.AuditEntry;
+import com.library.audit.AuditService;
 import com.library.dto.ApiResponse;
+import com.library.entity.enums.AuditAction;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
-import jakarta.validation.ConstraintViolationException;
-import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.context.request.WebRequest;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,6 +33,14 @@ import java.util.stream.Collectors;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final String AUTH_PATH_PREFIX = "/v1/auth/";
+
+    private final AuditService auditService;
+
+    public GlobalExceptionHandler(AuditService auditService) {
+        this.auditService = auditService;
+    }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<Object>> handleResourceNotFound(ResourceNotFoundException ex, WebRequest request) {
@@ -50,6 +63,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UnauthorizedException.class)
     public ResponseEntity<ApiResponse<Object>> handleUnauthorized(UnauthorizedException ex, WebRequest request) {
         log.error("Unauthorized: {}", ex.getMessage());
+        auditAccessDenied(request);
         return new ResponseEntity<>(
                 ApiResponse.error("دسترسی غیرمجاز", ex.getMessage()),
                 HttpStatus.UNAUTHORIZED
@@ -59,6 +73,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Object>> handleAccessDenied(AccessDeniedException ex, WebRequest request) {
         log.error("Access denied: {}", ex.getMessage());
+        auditAccessDenied(request);
         return new ResponseEntity<>(
                 ApiResponse.error("دسترسی رد شد", "شما اجازه‌ی دسترسی به این بخش را ندارید"),
                 HttpStatus.FORBIDDEN
@@ -154,5 +169,15 @@ public class GlobalExceptionHandler {
                 ApiResponse.error("خطای داخلی سرور", "خطای غیرمنتظره‌ای رخ داد"),
                 HttpStatus.INTERNAL_SERVER_ERROR
         );
+    }
+
+    /** Login failures are audited by AuthenticationAuditListener; everything else here is a denied access. */
+    private void auditAccessDenied(WebRequest request) {
+        if (!(request instanceof ServletWebRequest servletRequest)) return;
+        HttpServletRequest http = servletRequest.getRequest();
+        String path = http.getRequestURI().substring(http.getContextPath().length());
+        if (path.startsWith(AUTH_PATH_PREFIX)) return;
+        auditService.record(AuditEntry.failure(AuditAction.ACCESS_DENIED)
+                .entityType("API").details(http.getMethod() + " " + http.getRequestURI()).build());
     }
 }

@@ -1,0 +1,53 @@
+.al-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.al-select {
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-family: var(--font-family);
+  font-size: 0.85rem;
+  min-width: 13rem;
+}
+
+.al-search {
+  flex: 1 1 16rem;
+}
+
+.al-range {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.al-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-right: auto;
+}
+
+.al-time,
+.al-ip {
+  font-size: 0.78rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.al-actor {
+  font-size: 0.8rem;
+}
+
+.al-details {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  max-width: 22rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}

@@ -1,11 +1,14 @@
 package com.library.service;
 
+import com.library.audit.AuditEntry;
+import com.library.audit.AuditService;
 import com.library.dto.LibraryDTO;
 import com.library.dto.LibraryRequest;
 import com.library.dto.MembershipDTO;
 import com.library.entity.Library;
 import com.library.entity.LibraryMembership;
 import com.library.entity.User;
+import com.library.entity.enums.AuditAction;
 import com.library.entity.enums.LibraryMembershipRole;
 import com.library.entity.enums.MembershipStatus;
 import com.library.entity.enums.NotificationType;
@@ -43,6 +46,9 @@ public class LibraryService {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private AuditService auditService;
 
     private static final String ENTITY_MEMBERSHIP = "LIBRARY_MEMBERSHIP";
 
@@ -202,10 +208,15 @@ public class LibraryService {
             throw new BadRequestException("فقط اعضای تأییدشده را می‌توان ارتقا/تنزل داد");
         }
 
+        LibraryMembershipRole oldRole = membership.getRole();
         membership.setRole(newRole);
         membership.setUpdatedAt(LocalDateTime.now());
         membershipRepository.save(membership);
         log.info("Member {} role set to {} in library {}", targetUserId, newRole, libraryId);
+        auditService.record(AuditEntry.success(AuditAction.LIBRARY_ROLE_CHANGE)
+                .entityType(ENTITY_MEMBERSHIP).entityId(membership.getId())
+                .details(String.format("library=%d user=%d %s -> %s", libraryId, targetUserId, oldRole, newRole))
+                .build());
 
         String roleFa = newRole == LibraryMembershipRole.ADMIN ? "مدیر کتابخانه" : "عضو عادی";
         notificationService.notify(membership.getUser(), NotificationType.LIBRARY_ROLE_CHANGED,
@@ -290,6 +301,9 @@ public class LibraryService {
         membership.setUpdatedAt(LocalDateTime.now());
         membershipRepository.save(membership);
         log.info("Membership approved for user {} in library {}", userId, libraryId);
+        auditService.record(AuditEntry.success(AuditAction.MEMBERSHIP_DECISION)
+                .entityType(ENTITY_MEMBERSHIP).entityId(membership.getId())
+                .details(String.format("library=%d user=%d APPROVED", libraryId, userId)).build());
 
         notificationService.notify(membership.getUser(), NotificationType.MEMBERSHIP_APPROVED,
                 "عضویت تأیید شد",
@@ -315,6 +329,9 @@ public class LibraryService {
         membership.setUpdatedAt(LocalDateTime.now());
         membershipRepository.save(membership);
         log.info("Membership rejected for user {} in library {}", userId, libraryId);
+        auditService.record(AuditEntry.success(AuditAction.MEMBERSHIP_DECISION)
+                .entityType(ENTITY_MEMBERSHIP).entityId(membership.getId())
+                .details(String.format("library=%d user=%d REJECTED", libraryId, userId)).build());
 
         notificationService.notify(membership.getUser(), NotificationType.MEMBERSHIP_REJECTED,
                 "عضویت رد شد",

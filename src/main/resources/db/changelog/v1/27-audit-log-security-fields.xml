@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
+
+    <!--
+        Security audit trail. Each record carries who / when / from where / what / outcome,
+        and a SHA-256 hash chained to the previous record so any edit or deletion of
+        history is detectable (see AuditService#verifyChain).
+    -->
+    <changeSet id="27" author="system">
+        <addColumn tableName="audit_logs">
+            <column name="actor_email" type="VARCHAR(255)"/>
+            <column name="outcome" type="VARCHAR(20)" defaultValue="SUCCESS">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ip_address" type="VARCHAR(64)"/>
+            <column name="user_agent" type="VARCHAR(512)"/>
+            <column name="details" type="TEXT"/>
+            <column name="prev_hash" type="VARCHAR(64)"/>
+            <column name="record_hash" type="VARCHAR(64)"/>
+        </addColumn>
+
+        <createIndex indexName="idx_audit_outcome" tableName="audit_logs">
+            <column name="outcome"/>
+        </createIndex>
+
+        <!-- Audit records are written in their own transaction and must outlive any user
+             row, so the actor is kept as a plain id rather than a foreign key. -->
+        <dropForeignKeyConstraint baseTableName="audit_logs" constraintName="fk_audit_logs_actor_id"/>
+    </changeSet>
+
+    <!--
+        Append-only at the database level: rows can be inserted but never updated or
+        deleted, whichever account connects (defense in depth on top of the hash chain).
+    -->
+    <changeSet id="27-append-only" author="system" dbms="postgresql">
+        <sql splitStatements="false">
+            CREATE OR REPLACE FUNCTION audit_logs_append_only() RETURNS trigger AS $$
+            BEGIN
+                RAISE EXCEPTION 'audit_logs is append-only';
+            END;
+            $$ LANGUAGE plpgsql;
+        </sql>
+        <sql>
+            CREATE TRIGGER trg_audit_logs_append_only
+                BEFORE UPDATE OR DELETE ON audit_logs
+                FOR EACH ROW EXECUTE FUNCTION audit_logs_append_only();
+        </sql>
+        <rollback>
+            DROP TRIGGER IF EXISTS trg_audit_logs_append_only ON audit_logs;
+            DROP FUNCTION IF EXISTS audit_logs_append_only();
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
