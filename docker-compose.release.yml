@@ -1,9 +1,11 @@
 # Release (offline bundle) variant of docker-compose.yml: same services, prebuilt images only.
 # Secrets are never defaulted: create .env first with ./generate-env.sh
 #
+# Services: nginx (TLS entry point) → app (API) and keycloak (login, under /auth),
+#           both backed by postgres (separate databases and accounts).
 # Networks (defense in depth):
-#   edge     — nginx <-> app       (only nginx publishes a port, HTTPS only)
-#   data     — app   <-> postgres  (internal: no route to the outside world)
+#   edge     — nginx <-> app / keycloak, app <-> keycloak (only nginx publishes a port)
+#   data     — app / keycloak <-> postgres  (internal: no route to the outside world)
 
 x-hardening: &hardening
   security_opt:
@@ -27,6 +29,8 @@ services:
       POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256 --auth-local=scram-sha-256
       DB_APP_USER: ${DB_APP_USER:-}
       DB_APP_PASSWORD: ${DB_APP_PASSWORD:-}
+      KC_DB_USER: ${KC_DB_USER:?KC_DB_USER is not set - run ./generate-env.sh}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:?KC_DB_PASSWORD is not set - run ./generate-env.sh}
       TZ: ${TZ:-Asia/Tehran}
     # Database-layer audit logging (connections, schema changes, slow statements)
     command:
@@ -46,7 +50,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./deploy/postgres/app-role.sql:/opt/library-db/app-role.sql:ro
+      - ./deploy/postgres/keycloak-db.sql:/opt/library-db/keycloak-db.sql:ro
       - ./deploy/postgres/10-create-app-role.sh:/docker-entrypoint-initdb.d/10-create-app-role.sh:ro
+      - ./deploy/postgres/20-create-keycloak-db.sh:/docker-entrypoint-initdb.d/20-create-keycloak-db.sh:ro
     networks:
       - data
     healthcheck:
@@ -70,7 +76,14 @@ services:
       DB_PASSWORD: ${DB_APP_PASSWORD:-${DB_PASSWORD}}
       DB_MIGRATION_USER: ${DB_USER}
       DB_MIGRATION_PASSWORD: ${DB_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is not set - run ./generate-env.sh}
+      # Identity provider: browsers use the public URL, the app reaches Keycloak internally
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:?APP_PUBLIC_URL is not set - run ./generate-env.sh}
+      OIDC_ISSUER_URI: ${APP_PUBLIC_URL}/auth/realms/library
+      OIDC_INTERNAL_ISSUER_URI: http://keycloak:8080/auth/realms/library
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?OIDC_CLIENT_SECRET is not set - run ./generate-env.sh}
+      SESSION_COOKIE_KEY: ${SESSION_COOKIE_KEY:?SESSION_COOKIE_KEY is not set - run ./generate-env.sh}
+      BOOTSTRAP_SUPER_ADMIN_EMAIL: ${BOOTSTRAP_SUPER_ADMIN_EMAIL:-}
+      ORGANIZATION_NAME: ${ORGANIZATION_NAME:-سامانه کتابخانه هوشمند}
       STORAGE_PATH: /data/library-files
       LOG_PATH: /var/log/library
       TZ: ${TZ:-Asia/Tehran}
@@ -83,12 +96,52 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      keycloak:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/v1/stats"]
       interval: 15s
       timeout: 5s
       retries: 8
       start_period: 40s
+
+  keycloak:
+    <<: *hardening
+    image: library-keycloak:latest
+    container_name: library_keycloak
+    environment:
+      KC_DB_URL: jdbc:postgresql://postgres:5432/${KC_DB_NAME:-keycloak}
+      KC_DB_USERNAME: ${KC_DB_USER}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      # Public URL (through nginx, HTTPS); TLS is terminated by nginx on the internal network
+      KC_HOSTNAME: ${APP_PUBLIC_URL}/auth
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "true"
+      # Temporary administrator for the first start only: create a personal admin in the
+      # master realm, then delete this account (see DEPLOYMENT.md)
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:?KC_BOOTSTRAP_ADMIN_USERNAME is not set - run ./generate-env.sh}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:?KC_BOOTSTRAP_ADMIN_PASSWORD is not set - run ./generate-env.sh}
+      # Values substituted into the realm definition on first import
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL}
+      LIBRARY_OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      TZ: ${TZ:-Asia/Tehran}
+    ports:
+      # Admin console: reachable from the server itself only (e.g. via an SSH tunnel)
+      - "127.0.0.1:${KEYCLOAK_ADMIN_PORT:-8180}:8080"
+    networks:
+      - edge
+      - data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # Pure bash (the Keycloak image ships no curl/grep): the ready endpoint must answer 200
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /auth/health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && IFS= read -r status <&3 && [[ $$status == *' 200 '* ]]"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
 
   frontend:
     <<: *hardening
@@ -107,6 +160,8 @@ services:
       - edge
     depends_on:
       app:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
 
 networks:

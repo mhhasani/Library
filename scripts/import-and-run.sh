@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Installs and starts the offline bundle on the target machine (Docker only required).
+# Installs and starts the offline bundle on the target machine (Docker only required,
+# no internet access needed: all images are included in the bundle).
 # Refuses to install anything whose integrity cannot be verified.
 set -euo pipefail
 
@@ -20,6 +21,7 @@ echo "==> Loading images..."
 docker load -i postgres.tar
 docker load -i app.tar
 docker load -i frontend.tar
+docker load -i keycloak.tar
 
 if [ ! -f .env ]; then
     echo "==> Generating .env with random secrets..."
@@ -29,6 +31,6 @@ fi
 echo "==> Starting services..."
 docker compose -f docker-compose.yml --env-file .env up -d
 
-PORT="$(grep -E '^FRONTEND_PORT=' .env | cut -d= -f2)"
+URL="$(grep -E '^APP_PUBLIC_URL=' .env | cut -d= -f2)"
 echo ""
-echo "==> Done! Open: https://<this-host>:${PORT:-3000}"
+echo "==> Done! Open: ${URL}"

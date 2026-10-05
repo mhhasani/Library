@@ -29,8 +29,23 @@ random_secret() {
     printf '%s' "$s"
 }
 
+random_alnum() {
+    LC_ALL=C tr -dc 'a-z0-9' < /dev/urandom | head -c "$1"
+}
+
 read -r -p "Hostname or IP users will open (TLS certificate name) [library.local]: " TLS_CN || true
 TLS_CN="${TLS_CN:-library.local}"
+read -r -p "HTTPS port users will open [3000]: " PUBLIC_PORT || true
+PUBLIC_PORT="${PUBLIC_PORT:-3000}"
+read -r -p "E-mail of the first super admin (becomes SUPER_ADMIN at first login): " ADMIN_EMAIL || true
+read -r -p "Organization name shown in the security notice [سامانه کتابخانه هوشمند]: " ORG_NAME || true
+ORG_NAME="${ORG_NAME:-سامانه کتابخانه هوشمند}"
+
+if [ "$PUBLIC_PORT" = "443" ]; then
+    PUBLIC_URL="https://$TLS_CN"
+else
+    PUBLIC_URL="https://$TLS_CN:$PUBLIC_PORT"
+fi
 
 umask 077
 cat > "$ENV_FILE" <<ENV
@@ -45,11 +60,25 @@ DB_PASSWORD=$(random_secret 32)
 DB_APP_USER=library_app
 DB_APP_PASSWORD=$(random_secret 32)
 
-# ── Application secrets ─────────────────────────────────────
-JWT_SECRET=$(random_secret 64)
+# Keycloak's own database account
+KC_DB_USER=keycloak
+KC_DB_PASSWORD=$(random_secret 32)
+
+# ── Identity provider (Keycloak) ────────────────────────────
+# Exactly the URL users type in the browser (scheme, host and port)
+APP_PUBLIC_URL=$PUBLIC_URL
+OIDC_CLIENT_SECRET=$(random_secret 48)
+# Temporary Keycloak administrator: replace with a personal admin after first start
+KC_BOOTSTRAP_ADMIN_USERNAME=kc-bootstrap-$(random_alnum 6)
+KC_BOOTSTRAP_ADMIN_PASSWORD=$(random_secret 32)
+BOOTSTRAP_SUPER_ADMIN_EMAIL=$ADMIN_EMAIL
+ORGANIZATION_NAME=$ORG_NAME
+
+# ── Session cookie encryption (AES-256 key, base64) ─────────
+SESSION_COOKIE_KEY=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
 
 # ── Network / TLS ───────────────────────────────────────────
-FRONTEND_PORT=3000
+FRONTEND_PORT=$PUBLIC_PORT
 TLS_COMMON_NAME=$TLS_CN
 TZ=Asia/Tehran
 ENV
@@ -57,3 +86,4 @@ chmod 600 "$ENV_FILE"
 
 echo "Created $ENV_FILE (mode 600)."
 echo "Next: docker compose up -d --build"
+echo "Users open: $PUBLIC_URL"

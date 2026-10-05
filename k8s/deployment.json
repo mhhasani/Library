@@ -11,8 +11,10 @@
       },
       "type": "Opaque",
       "stringData": {
-        "DB_PASSWORD": "REPLACE_ME_DB_PASSWORD",
-        "JWT_SECRET": "REPLACE_ME_JWT_SECRET_MIN_32_CHARS"
+        "DB_PASSWORD": "REPLACE_ME_DB_APP_PASSWORD",
+        "DB_MIGRATION_PASSWORD": "REPLACE_ME_DB_OWNER_PASSWORD",
+        "OIDC_CLIENT_SECRET": "REPLACE_ME_OIDC_CLIENT_SECRET",
+        "SESSION_COOKIE_KEY": "REPLACE_ME_BASE64_OF_32_RANDOM_BYTES"
       }
     },
     {
@@ -49,21 +51,42 @@
                 "image": "registry.hamdocker.ir/mhasani/library:main",
                 "imagePullPolicy": "Always",
                 "ports": [{ "containerPort": 8080 }],
+                "securityContext": {
+                  "runAsNonRoot": true,
+                  "allowPrivilegeEscalation": false,
+                  "capabilities": { "drop": ["ALL"] }
+                },
                 "env": [
                   { "name": "DB_HOST", "value": "REPLACE_ME_POSTGRES_SERVICE_NAME" },
                   { "name": "DB_PORT", "value": "5432" },
                   { "name": "DB_NAME", "value": "library_db" },
-                  { "name": "DB_USER", "value": "libraryuser" },
+                  { "name": "DB_USER", "value": "library_app" },
+                  { "name": "DB_MIGRATION_USER", "value": "library_owner" },
+                  {
+                    "name": "DB_MIGRATION_PASSWORD",
+                    "valueFrom": {
+                      "secretKeyRef": { "name": "library-secrets", "key": "DB_MIGRATION_PASSWORD" }
+                    }
+                  },
                   {
                     "name": "DB_PASSWORD",
                     "valueFrom": {
                       "secretKeyRef": { "name": "library-secrets", "key": "DB_PASSWORD" }
                     }
                   },
+                  { "name": "APP_PUBLIC_URL", "value": "REPLACE_ME_PUBLIC_URL" },
+                  { "name": "OIDC_ISSUER_URI", "value": "REPLACE_ME_PUBLIC_URL/auth/realms/library" },
+                  { "name": "OIDC_INTERNAL_ISSUER_URI", "value": "REPLACE_ME_KEYCLOAK_SERVICE_URL/auth/realms/library" },
                   {
-                    "name": "JWT_SECRET",
+                    "name": "OIDC_CLIENT_SECRET",
                     "valueFrom": {
-                      "secretKeyRef": { "name": "library-secrets", "key": "JWT_SECRET" }
+                      "secretKeyRef": { "name": "library-secrets", "key": "OIDC_CLIENT_SECRET" }
+                    }
+                  },
+                  {
+                    "name": "SESSION_COOKIE_KEY",
+                    "valueFrom": {
+                      "secretKeyRef": { "name": "library-secrets", "key": "SESSION_COOKIE_KEY" }
                     }
                   },
                   { "name": "STORAGE_PATH", "value": "/data/library-files" }
