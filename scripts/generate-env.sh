@@ -8,7 +8,9 @@
 # The file is created with mode 600 (readable only by the installing user).
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+# Project root: next to the script inside the offline bundle, its parent in the repository
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+[ -f "$ROOT_DIR/docker-compose.yml" ] || ROOT_DIR="$(dirname "$ROOT_DIR")"
 ENV_FILE="${ENV_FILE:-$ROOT_DIR/.env}"
 
 if [ -f "$ENV_FILE" ] && [ "${1:-}" != "--force" ]; then

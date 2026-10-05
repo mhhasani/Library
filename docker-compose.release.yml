@@ -74,6 +74,7 @@ services:
       # Runtime connection uses the DML-only role; migrations use the schema owner.
       DB_USER: ${DB_APP_USER:-${DB_USER}}
       DB_PASSWORD: ${DB_APP_PASSWORD:-${DB_PASSWORD}}
+      DB_SSLMODE: ${DB_SSLMODE:-prefer}
       DB_MIGRATION_USER: ${DB_USER}
       DB_MIGRATION_PASSWORD: ${DB_PASSWORD}
       # Identity provider: browsers use the public URL, the app reaches Keycloak internally
@@ -110,7 +111,7 @@ services:
     image: library-keycloak:latest
     container_name: library_keycloak
     environment:
-      KC_DB_URL: jdbc:postgresql://postgres:5432/${KC_DB_NAME:-keycloak}
+      KC_DB_URL: jdbc:postgresql://postgres:5432/${KC_DB_NAME:-keycloak}?sslmode=${DB_SSLMODE:-prefer}
       KC_DB_USERNAME: ${KC_DB_USER}
       KC_DB_PASSWORD: ${KC_DB_PASSWORD}
       # Public URL (through nginx, HTTPS); TLS is terminated by nginx on the internal network

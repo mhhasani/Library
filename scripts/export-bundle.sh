@@ -35,8 +35,10 @@ cp "$ROOT_DIR/.env.example" "$BUNDLE_DIR/.env.example"
 cp "$ROOT_DIR/deploy/postgres/"* "$BUNDLE_DIR/deploy/postgres/"
 cp "$SCRIPT_DIR/generate-env.sh" "$BUNDLE_DIR/generate-env.sh"
 cp "$SCRIPT_DIR/db-upgrade.sh" "$BUNDLE_DIR/db-upgrade.sh"
+cp "$SCRIPT_DIR/backup.sh" "$BUNDLE_DIR/backup.sh"
+cp "$SCRIPT_DIR/restore.sh" "$BUNDLE_DIR/restore.sh"
 cp "$SCRIPT_DIR/import-and-run.sh" "$BUNDLE_DIR/run.sh"
-chmod +x "$BUNDLE_DIR/run.sh" "$BUNDLE_DIR/generate-env.sh" "$BUNDLE_DIR/db-upgrade.sh"
+chmod +x "$BUNDLE_DIR"/*.sh
 
 echo "==> Writing checksums..."
 (cd "$BUNDLE_DIR" && find . -type f ! -name 'SHA256SUMS*' -print0 | sort -z \

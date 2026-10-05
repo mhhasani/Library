@@ -5,7 +5,9 @@
 # Idempotent. Usage: ./scripts/db-upgrade.sh   (values come from .env via docker compose)
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+# Project root: next to the script inside the offline bundle, its parent in the repository
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+[ -f "$ROOT_DIR/docker-compose.yml" ] || ROOT_DIR="$(dirname "$ROOT_DIR")"
 
 docker compose --project-directory "$ROOT_DIR" up -d postgres
 docker compose --project-directory "$ROOT_DIR" exec -T postgres bash -c '

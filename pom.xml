@@ -219,4 +219,38 @@
         </plugins>
     </build>
 
+    <profiles>
+        <!--
+            Third-party component assessment: mvn -Psecurity-scan verify
+            (needs internet access to download the vulnerability database; run on the build
+            machine or in CI, never needed on the offline server). Fails on CVSS >= 7.
+        -->
+        <profile>
+            <id>security-scan</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.owasp</groupId>
+                        <artifactId>dependency-check-maven</artifactId>
+                        <version>13.0.0</version>
+                        <configuration>
+                            <failBuildOnCVSS>7</failBuildOnCVSS>
+                            <formats>
+                                <format>HTML</format>
+                                <format>JSON</format>
+                            </formats>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
 </project>

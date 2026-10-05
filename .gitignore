@@ -58,3 +58,4 @@ bundle/
 
 # Keycloak extension build output
 keycloak/extensions/target/
+backups/

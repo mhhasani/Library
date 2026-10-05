@@ -31,7 +31,7 @@
 - نوع نصب: **Ubuntu Server (minimized)**
 - شبکه: اگر وصل نشد، **Continue without network** بزنید
 - Storage: پیش‌فرض (**Use entire disk + LVM**)
-- رمزگذاری: **غیرفعال**
+- رمزگذاری دیسک: **فعال (LUKS)** — داده‌ها و رویدادنگاری روی دیسک رمزنگاری‌شده ذخیره شوند
 - **OpenSSH server** را فعال کنید
 - username و password را یادداشت کنید
 
@@ -54,59 +54,23 @@ ip a | grep "inet " | grep -v 127
 
 ---
 
-## مرحله ۴ — Build کردن Docker Images (روی سیستم مبدا)
-
-> **نکته:** برای جلوگیری از build طولانی Maven، از `Dockerfile.quick` استفاده کنید که از jar آماده استفاده می‌کند.
-
-### اگر کد Java تغییر کرده:
+## مرحله ۴ — ساخت بسته‌ی آفلاین (روی سیستم مبدا، دارای اینترنت)
 
 ```bash
 cd /path/to/Sarbazi
-
-# اول jar بساز
-mvn package -DskipTests
-
-# سپس image سریع بساز
-docker build -f Dockerfile.quick -t sarbazi-app .
-docker compose build frontend
+./scripts/export-bundle.sh          # همه‌ی ایمیج‌ها: app، frontend، keycloak، postgres
+tar -czf library-bundle.tar.gz bundle/
+sha256sum library-bundle.tar.gz     # این مقدار را جداگانه یادداشت کنید
 ```
 
-### اگر کد تغییر نکرده (فقط می‌خواهی export کنی):
-
-```bash
-cd /path/to/Sarbazi
-
-# Build فقط frontend (در صورت تغییر)
-docker compose build frontend
-```
-
-### Export images:
-
-```bash
-# Export app و frontend
-docker save sarbazi-app sarbazi-frontend | gzip > sarbazi-images.tar.gz
-
-# Export PostgreSQL image
-docker pull postgres:16-alpine
-docker save postgres:16-alpine | gzip > postgres.tar.gz
-```
-
-> **توجه:** فایل `.dockerignore` باید خط `target/` را comment داشته باشد تا `Dockerfile.quick` کار کند:
-> ```
-> # target/
-> ```
+بسته شامل `SHA256SUMS` است و روی سرور پیش از نصب بررسی می‌شود.
 
 ---
 
-## مرحله ۵ — Export دیتابیس (روی سیستم مبدا)
+## مرحله ۵ — Export دیتابیس نسخه‌ی قبلی (فقط در صورت ارتقا)
 
 ```bash
-# اگر container دیتابیس خاموش است، اول روشن کنید
-docker start library_db
-sleep 3
-
-# Dump گرفتن
-docker exec library_db pg_dump -U libraryuser library_db > sarbazi_db.sql
+docker exec library_db pg_dump --no-owner --no-privileges -U <DB_USER قبلی> library_db > sarbazi_db.sql
 ```
 
 ---
@@ -117,116 +81,48 @@ docker exec library_db pg_dump -U libraryuser library_db > sarbazi_db.sql
 VM_IP=192.168.149.128   # IP سرور VM خود را جایگزین کنید
 VM_USER=library          # username VM خود را جایگزین کنید
 
-scp sarbazi-images.tar.gz postgres.tar.gz sarbazi_db.sql ${VM_USER}@${VM_IP}:~/
+scp library-bundle.tar.gz sarbazi_db.sql ${VM_USER}@${VM_IP}:~/
 ```
 
 ---
 
-## مرحله ۷ — راه‌اندازی روی VM
-
-از طریق SSH به VM وصل شوید:
+## مرحله ۷ — نصب روی VM (بدون اینترنت)
 
 ```bash
 ssh library@192.168.149.128
+sha256sum library-bundle.tar.gz            # با مقدار مرحله‌ی ۴ مقایسه کنید
+tar -xzf library-bundle.tar.gz && cd bundle
+./run.sh
 ```
 
-### Load کردن images:
+`run.sh` صحت همه‌ی فایل‌ها را بررسی می‌کند، ایمیج‌ها را load می‌کند، فایل `.env` را با رمزهای
+تصادفی می‌سازد (نام میزبان/IP سرور را بپرسد، همان را وارد کنید) و سرویس‌ها را اجرا می‌کند.
+هیچ رمز یا حساب پیش‌فرضی وجود ندارد.
+
+### بازگرداندن داده‌های نسخه‌ی قبلی (فقط در صورت ارتقا)
 
 ```bash
-docker load < sarbazi-images.tar.gz
-docker load < postgres.tar.gz
+docker compose stop app
+docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"'
+docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < ~/sarbazi_db.sql
+./db-upgrade.sh                            # دسترسی‌های نقش کم‌دسترسی اپ
+docker compose up -d
 ```
 
-### ساخت docker-compose.yml:
-
-```bash
-cat > docker-compose.yml << 'EOF'
-services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: library_db
-    environment:
-      POSTGRES_DB: library_db
-      POSTGRES_USER: libraryuser
-      POSTGRES_PASSWORD: librarypass
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U libraryuser -d library_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  app:
-    image: sarbazi-app
-    container_name: library_app
-    environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: library_db
-      DB_USER: libraryuser
-      DB_PASSWORD: librarypass
-      JWT_SECRET: local-dev-secret-change-this-in-production-now
-      STORAGE_PATH: /data/library-files
-    ports:
-      - "8080:8080"
-    volumes:
-      - library_files:/data/library-files
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
-
-  frontend:
-    image: sarbazi-frontend
-    container_name: library_frontend
-    ports:
-      - "3000:80"
-    depends_on:
-      - app
-    restart: unless-stopped
-
-volumes:
-  postgres_data:
-  library_files:
-EOF
-```
-
-### بالا آوردن سرویس‌ها:
-
-```bash
-sudo docker compose up -d
-```
-
-### Import دیتابیس:
-
-```bash
-# پاک کردن schema خالی که اپ ساخته
-sudo docker exec -i library_db psql -U libraryuser -c \
-  "DROP SCHEMA public CASCADE; CREATE SCHEMA public;" library_db
-
-# Import دیتا
-sudo docker exec -i library_db psql -U libraryuser library_db < sarbazi_db.sql
-```
-
-### تایید راه‌اندازی:
-
-```bash
-sudo docker compose ps
-sudo docker exec -i library_db psql -U libraryuser library_db -c "SELECT COUNT(*) FROM users;"
-```
+برنامه پس از راه‌اندازی، کاربران قبلی را خودکار به Keycloak منتقل می‌کند؛ هر کاربر با رمز
+قبلی وارد می‌شود و باید رمز جدید (مطابق خط‌مشی) و برنامه‌ی Authenticator را ثبت کند.
 
 ---
 
 ## مرحله ۸ — دسترسی به پروژه
 
-| سرویس    | آدرس                          |
-|----------|-------------------------------|
-| Frontend | http://VM_IP:3000             |
-| Backend  | http://VM_IP:8080             |
-| Database | VM_IP:5432                    |
+| سرویس | آدرس |
+|---|---|
+| سامانه (رابط کاربری، API و ورود) | `https://VM_IP:3000` (نشانی دقیق: `APP_PUBLIC_URL` در `.env`) |
+| کنسول مدیریت Keycloak | فقط از خود سرور: `ssh -L 8180:127.0.0.1:8180` سپس `http://127.0.0.1:8180/auth/admin` |
+| پایگاه داده | از بیرون در دسترس نیست |
+
+جزئیات نخستین ورود، حذف حساب موقت مدیریت Keycloak و نصب گواهی سازمانی در `DEPLOYMENT.md` آمده است.
 
 ---
 
@@ -248,6 +144,6 @@ sudo docker exec -i library_db psql -U libraryuser library_db -c "SELECT COUNT(*
 
 ## نکات مهم
 
-- پس از انتقال VM، IP ممکن است تغییر کند — با `ip a` چک کنید
-- برای production حتماً `JWT_SECRET` را تغییر دهید
-- برای update پروژه، فقط کافی است image جدید build، export، و load کنید
+- پس از انتقال VM، اگر IP یا نام میزبان تغییر کند، `APP_PUBLIC_URL` و `TLS_COMMON_NAME` را در
+  `.env` اصلاح کنید و نشانی‌های client در Keycloak (Redirect URI) را نیز به‌روز کنید
+- برای به‌روزرسانی، بسته‌ی جدید را بسازید و با `./run.sh` نصب کنید (فایل `.env` موجود حفظ می‌شود)

@@ -49,21 +49,22 @@ Located at: `src/test/java/com/library/BaseIntegrationTest.java`
 
 ### 2. Service Layer Tests
 
-#### AuthenticationServiceIntegrationTest
+#### Authentication and session security
 
-**File**: `src/test/java/com/library/service/AuthenticationServiceIntegrationTest.java`
+Login, registration, password policy, captcha and MFA are handled by Keycloak; the
+application side is covered by:
 
-**Test Cases**:
-- ✅ `testRegisterUserSuccess` - Successful user registration with valid data
-- ✅ `testRegisterUserDuplicateEmail` - Duplicate email registration prevention
-- ✅ `testRegisterUserInvalidData` - Validation of required fields
-- ✅ `testLoginUserSuccess` - Successful login with correct credentials
-- ✅ `testLoginUserInvalidPassword` - Failed login with wrong password
-- ✅ `testLoginUserNonExistentEmail` - Failed login with non-existent user
-- ✅ `testRefreshTokenSuccess` - Token refresh with valid refresh token
-- ✅ `testRefreshTokenExpired` - Reject expired refresh tokens
-
-**Coverage**: Authentication workflow, password validation, token generation
+- `security/SessionSecurityFilterTest` - session binding to IP/browser, idle timeout, security-notice gate, role/status reload
+- `security/CsrfAndSessionEndpointTest` - CSRF on cookie-authenticated writes, `/v1/auth/session`, notice acknowledgement
+- `security/RecentAuthenticationInterceptorTest` - re-authentication for sensitive operations
+- `security/LibraryAuthorizationRequestResolverTest` - safe return paths, `prompt=login` / `max_age=0`
+- `security/UserProvisioningServiceTest` - account linking on first login, bootstrap super admin
+- `security/ClassificationAccessTest` - clearance-based access to classified books
+- `session/EncryptingCookieSerializerTest` - AES-256-GCM session cookie
+- `keycloak/KeycloakIntegrationLogicTest`, `keycloak/TemporaryPasswordTest` - settings sync, user migration, temporary passwords
+- `audit/AuditServiceTest`, `audit/AuditReportTest` - hash chain, reports, labeled CSV export
+- `settings/SecuritySettingsTest`, `validation/InputValidationTest`, `labeling/PdfLabelStamperTest`
+- Keycloak extensions: `mvn -f keycloak/extensions test` (captcha, conditional MFA, strict password change, bcrypt)
 
 ---
 
@@ -145,24 +146,6 @@ Located at: `src/test/java/com/library/BaseIntegrationTest.java`
 ---
 
 ### 3. Controller Integration Tests
-
-#### AuthenticationControllerIntegrationTest
-
-**File**: `src/test/java/com/library/controller/AuthenticationControllerIntegrationTest.java`
-
-**Test Cases**:
-- ✅ `testRegisterUserSuccess` - POST /v1/auth/register with valid data
-- ✅ `testRegisterUserMissingEmail` - Validation error handling
-- ✅ `testRegisterUserDuplicateEmail` - 400 Bad Request for duplicate email
-- ✅ `testLoginUserSuccess` - POST /v1/auth/login returns tokens
-- ✅ `testLoginUserInvalidPassword` - 401 Unauthorized for wrong password
-- ✅ `testLoginUserNonExistentEmail` - 401 Unauthorized for non-existent user
-- ✅ `testRefreshTokenSuccess` - POST /v1/auth/refresh with valid token
-- ✅ `testRefreshTokenInvalid` - 401 Unauthorized for invalid token
-
-**Coverage**: HTTP status codes, JSON responses, authentication endpoints
-
----
 
 #### LibraryControllerIntegrationTest
 
@@ -310,7 +293,7 @@ spring:
 
 ### Key Business Logic Covered
 
-✅ Authentication and JWT token management  
+✅ Session security, CSRF, re-authentication and classification access  
 ✅ Library ownership and membership workflows  
 ✅ Book search and copy availability tracking  
 ✅ Physical vs digital borrowing rules  

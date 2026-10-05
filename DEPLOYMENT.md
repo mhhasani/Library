@@ -1,101 +1,139 @@
-# Library Management System - Deployment Guide
+# راهنمای نصب و بهره‌برداری
 
-## Deployment Status: ✅ SUCCESS
+این سامانه کاملاً داکرایز شده و برای اجرا روی **سرور بدون اینترنت** طراحی شده است:
+ایمیج‌ها روی یک سیستم دارای اینترنت ساخته و به‌صورت بسته‌ی آفلاین منتقل می‌شوند.
 
-The application has been successfully built and deployed using Docker Compose.
+## معماری
 
-### Containers Running
-- **library_app** - Spring Boot application (port 8080)
-- **library_db** - PostgreSQL 16 database (port 5432)
-
-### Deployment Steps Completed
-
-1. **JAR Build**: Successfully built `library-management-system-1.0.0.jar`
-2. **Database Migrations**: All 10 Liquibase changesets executed successfully
-3. **Application Startup**: Spring Boot application started on port 8080
-
-### Key Configuration
-
-#### Database Connection
-- **URL**: `jdbc:postgresql://postgres:5432/library_db`
-- **Username**: library_user
-- **Password**: library_password
-
-#### Application URL
-- **Base URL**: http://localhost:8080/api
-- **Health Check**: http://localhost:8080/api/actuator/health
-
-### Database Schema
-
-All tables created successfully:
-- `users` - User accounts and authentication
-- `libraries` - Library entities
-- `library_memberships` - User memberships in libraries
-- `books` - Book catalog
-- `book_copies` - Physical book copies
-- `file_resources` - File storage metadata
-- `digital_books` - Digital book versions
-- `borrows` - Borrowing transactions
-- `audit_logs` - System audit trail
-
-### Important Notes on Database Indexes
-
-PostgreSQL automatically creates indexes for:
-- **Foreign key columns** - No need to manually create indexes like `idx_user_id`, `idx_book_id`, etc.
-- **Unique constraints** - Indexes are auto-created for unique constraint columns
-
-The Liquibase changelogs have been optimized to avoid duplicate index creation by removing redundant foreign key column indexes.
-
-### Docker Commands
-
-#### Start the application
-```bash
-mvn clean package -DskipTests && docker compose up -d --build
+```
+مرورگر ──HTTPS──► nginx (frontend، تنها پورت منتشرشده)
+                    ├── /        → رابط کاربری React
+                    ├── /api/*   → app (Spring Boot)  ──┐
+                    └── /auth/*  → keycloak (ورود)     ──┤── postgres
+                                                          │   (پایگاه‌های جدا: library_db و keycloak)
+شبکه‌ها:  edge = nginx ↔ app/keycloak      data (internal) = app/keycloak ↔ postgres
 ```
 
-#### Stop the application
+| سرویس | نقش | دسترسی از بیرون |
+|---|---|---|
+| `frontend` (nginx) | TLS، سرآیندهای امنیتی، محدودیت نرخ درخواست، پراکسی | فقط HTTPS روی `FRONTEND_PORT` |
+| `app` | API، مجوزدهی، رویدادنگاری | ندارد |
+| `keycloak` | احراز هویت (رمز + کپچا + رمز یک‌بار مصرف)، قفل حساب، خط‌مشی رمز | کنسول مدیریت فقط روی `127.0.0.1:8180` |
+| `postgres` | داده | ندارد (شبکه‌ی internal) |
+
+## نصب (سیستم دارای Docker)
+
 ```bash
-docker compose down
+./scripts/generate-env.sh        # ساخت .env با رمزهای تصادفی قوی (دسترسی 600)
+docker compose up -d --build
 ```
 
-#### Stop and remove volumes (clean restart)
+`generate-env.sh` نام میزبان، پورت HTTPS، ایمیل نخستین مدیر اصلی و نام سازمان را می‌پرسد و
+همه‌ی رمزها و کلیدها را به‌صورت تصادفی می‌سازد. **هیچ رمز یا حساب پیش‌فرضی وجود ندارد**؛
+بدون `.env` سرویس‌ها اجرا نمی‌شوند.
+
+سپس سامانه در نشانی `APP_PUBLIC_URL` (مثلاً `https://library.local:3000`) در دسترس است.
+
+### نخستین ورود
+1. با ایمیلی که برای `BOOTSTRAP_SUPER_ADMIN_EMAIL` وارد کرده‌اید در Keycloak ثبت‌نام کنید
+   (دکمه‌ی «ثبت‌نام» در صفحه‌ی ورود). این حساب در نخستین ورود «مدیر اصلی» می‌شود.
+2. در نخستین ورود، ثبت برنامه‌ی Authenticator (رمز یک‌بار مصرف) الزامی است.
+3. پس از ورود، اطلاعیه‌ی امنیتی را تأیید کنید.
+
+### حساب موقت مدیریت Keycloak (حتماً حذف شود)
+`KC_BOOTSTRAP_ADMIN_USERNAME/PASSWORD` فقط برای نخستین راه‌اندازی است:
+
 ```bash
-docker compose down -v
+ssh -L 8180:127.0.0.1:8180 <server>      # کنسول مدیریت فقط از خود سرور در دسترس است
+# مرورگر: http://127.0.0.1:8180/auth/admin
+```
+در realm `master` یک مدیر شخصی (با رمز قوی و OTP) بسازید، با آن وارد شوید و حساب
+`kc-bootstrap-*` را حذف کنید.
+
+## گواهی TLS
+در نخستین اجرا، اگر گواهی‌ای نصب نشده باشد، یک گواهی خودامضا ساخته می‌شود.
+گواهی صادرشده توسط سازمان را در volume `tls_certs` با نام‌های `tls.crt` و `tls.key` قرار دهید:
+
+```bash
+VOLUME=$(docker volume ls -q | grep '_tls_certs$')     # مثلاً library_tls_certs
+docker run --rm -v "$VOLUME":/certs -v "$PWD":/src alpine \
+  sh -c 'cp /src/tls.crt /src/tls.key /certs/ && chmod 600 /certs/tls.key'
+docker compose restart frontend
 ```
 
-#### View logs
+## نصب آفلاین (سرور بدون اینترنت)
+روی سیستم دارای اینترنت:
 ```bash
-docker logs library_app
-docker logs library_db
+./scripts/export-bundle.sh                 # ساخت همه‌ی ایمیج‌ها و SHA256SUMS
+tar -czf library-bundle.tar.gz bundle/
+sha256sum library-bundle.tar.gz            # از کانال جداگانه به سرور اعلام شود
 ```
-
-#### Check container status
+روی سرور:
 ```bash
-docker ps
+tar -xzf library-bundle.tar.gz && cd bundle
+./run.sh        # صحت فایل‌ها را بررسی می‌کند، .env می‌سازد و سرویس‌ها را اجرا می‌کند
 ```
+اگر `GPG_SIGNING_KEY` هنگام ساخت تعیین شده باشد، امضای `SHA256SUMS.asc` نیز بررسی می‌شود.
+در صورت عدم تطابق حتی یک فایل، نصب متوقف می‌شود.
 
-### Troubleshooting
-
-If you encounter index creation errors:
-1. Ensure you're using `docker compose down -v` to remove old volumes
-2. Check that Liquibase changelogs don't manually create indexes for foreign key columns
-3. PostgreSQL automatically creates indexes for FK columns - no manual creation needed
-
-### Next Steps
-
-1. Test the API endpoints
-2. Create initial admin user
-3. Set up libraries and books
-4. Configure security settings
-5. Add monitoring and logging
-
-### Development
-
-To rebuild and restart after code changes:
+## ارتقا از نسخه‌ی قبلی (ورود با JWT)
 ```bash
-mvn clean package -DskipTests && docker compose down && docker compose up -d --build
+git pull                                   # یا بسته‌ی آفلاین جدید
+./scripts/generate-env.sh --force          # متغیرهای جدید (نسخه‌ی قبلی .env پشتیبان می‌شود)
+#   مقادیر DB_USER و DB_PASSWORD قبلی را در .env جدید جایگزین کنید
+./scripts/db-upgrade.sh                    # نقش کم‌دسترسی اپ و پایگاه Keycloak
+docker compose up -d --build
 ```
+پس از بالا آمدن Keycloak، برنامه **خودکار** همه‌ی کاربران قبلی را به Keycloak منتقل می‌کند:
+هر کاربر با همان رمز قبلی وارد می‌شود، بلافاصله باید رمزی مطابق خط‌مشی جدید انتخاب کند و
+برنامه‌ی Authenticator را ثبت کند. پس از انتقال، هش رمزهای قدیمی از پایگاه داده‌ی اپ حذف می‌شود.
 
----
-**Deployment Date**: 2026-02-19
-**Status**: Running and healthy ✅
+## تنظیمات امنیتی
+در «پنل مدیریت سیستم ← تنظیمات امنیتی» (تغییر فقط توسط مدیر اصلی):
+
+| تنظیم | بازه‌ی مجاز | پیش‌فرض |
+|---|---|---|
+| تعداد تلاش ناموفق پیش از قفل | ۱ تا ۶ | ۵ |
+| مدت قفل موقت | ۱ تا ۱۴۴۰ دقیقه | ۱۵ |
+| پایان نشست پس از عدم فعالیت | ۱۵ تا ۳۰ دقیقه | ۳۰ |
+| تعداد رمزهای قبلی غیرقابل‌تکرار | ۱ تا ۳ | ۳ |
+| اعتبار رمز عبور | ۱ تا ۳۶۵ روز | ۹۰ |
+| ورود دومرحله‌ای اجباری | بله/خیر | بله |
+| عملیات حساس نیازمند احراز هویت مجدد | انتخابی | تغییر نقش/وضعیت/سطح دسترسی، رمز موقت، تنظیمات، خروجی رویدادنگاری |
+
+بازه‌ها علاوه بر برنامه، با قید CHECK در پایگاه داده نیز اعمال می‌شوند. تغییرات در همان
+تراکنش به Keycloak اعمال می‌شود (در صورت خطا هیچ تغییری ذخیره نمی‌شود).
+
+## رویدادنگاری
+| لایه | محل |
+|---|---|
+| برنامه (رویدادهای امنیتی، زنجیره‌ی هش) | جدول `audit_logs`؛ گزارش در «رویدادنگاری امنیتی»؛ فایل `audit.log` در volume `app_logs` |
+| برنامه (عمومی) | `application.log` در volume `app_logs` (سطوح: `LOG_LEVEL_*`) |
+| Keycloak (ورود، خطای ورود، قفل حساب، رویدادهای مدیریتی) | پایگاه Keycloak، نگهداری یک سال |
+| nginx | volume `nginx_logs` |
+| PostgreSQL (اتصال/قطع اتصال، DDL، کوئری کند) | `docker compose logs postgres` |
+
+## پشتیبان‌گیری و بازیابی
+پشتیبان شامل پایگاه داده‌ی برنامه، پایگاه Keycloak (کاربران، رمزها، OTP) و فایل‌های بارگذاری‌شده است.
+خروجی یک فایل رمزنگاری‌شده با AES-256 است (کلید با PBKDF2 از عبارت عبور مشتق می‌شود). درون آن
+یک فهرست SHA-256 هم هست تا هنگام بازیابی، هر تغییر یا آسیب در فایل تشخیص داده شود.
+
+```bash
+./scripts/backup.sh /mnt/backup                     # عبارت عبور را می‌پرسد (حداقل ۱۶ نویسه)
+./scripts/restore.sh /mnt/backup/library-backup-YYYYMMDD-HHMMSS.tar.enc
+```
+در بسته‌ی آفلاین همین اسکریپت‌ها در ریشه‌ی بسته قرار دارند (`./backup.sh` و `./restore.sh`).
+برای اجرای زمان‌بندی‌شده (cron)، عبارت عبور را در فایلی با دسترسی 600 بگذارید و نشانی آن را در
+`BACKUP_PASSPHRASE_FILE` قرار دهید. عبارت عبور را جدا از فایل‌های پشتیبان نگه دارید.
+پشتیبان‌ها را روی رسانه‌ای جدا از سرور نگه دارید و بازیابی را به‌صورت دوره‌ای آزمایش کنید.
+
+## پایگاه داده روی سرور جداگانه
+`DB_HOST` را به سرور پایگاه داده اشاره دهید و `DB_SSLMODE=verify-full` قرار دهید
+(گواهی سرور پایگاه داده باید معتبر باشد). Keycloak از همان تنظیم استفاده می‌کند.
+
+## فرمان‌های پرکاربرد
+```bash
+docker compose ps
+docker compose logs -f app keycloak
+docker compose down            # توقف (داده‌ها حفظ می‌شوند)
+```
