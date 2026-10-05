@@ -106,7 +106,7 @@ public final class CaptchaImage {
             for (int i = 0; i < text.length(); i++) {
                 drawGlyph(g, text.charAt(i), 10 + i * cell + cell / 2, HEIGHT / 2.0);
             }
-            drawNoise(g, 4, 1.6f);
+            drawNoise(g, 3, 1.4f);
             for (int i = 0; i < 260; i++) {
                 g.setColor(randomColor(90, 200));
                 g.fillRect(RANDOM.nextInt(WIDTH), RANDOM.nextInt(HEIGHT), 1, 1);
@@ -121,8 +121,8 @@ public final class CaptchaImage {
         double scale = 6.5 + RANDOM.nextDouble() * 1.8;
         AffineTransform saved = g.getTransform();
         g.translate(centerX + RANDOM.nextGaussian() * 2, centerY + RANDOM.nextGaussian() * 3);
-        g.rotate((RANDOM.nextDouble() - 0.5) * 0.7);
-        g.shear((RANDOM.nextDouble() - 0.5) * 0.4, 0);
+        g.rotate((RANDOM.nextDouble() - 0.5) * 0.45);
+        g.shear((RANDOM.nextDouble() - 0.5) * 0.25, 0);
         g.setStroke(new BasicStroke(2.6f + RANDOM.nextFloat(), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         g.setColor(randomColor(10, 90));
         for (double[] s : GLYPHS.get(c)) {

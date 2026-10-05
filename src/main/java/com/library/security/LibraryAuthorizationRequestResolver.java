@@ -64,7 +64,8 @@ public class LibraryAuthorizationRequestResolver implements OAuth2AuthorizationR
         }
 
         var session = request.getSession();
-        session.setAttribute(SessionAttributes.REAUTH_PENDING, reauth);
+        // Re-authentication and account actions continue the current session (if any)
+        session.setAttribute(SessionAttributes.REAUTH_PENDING, reauth || action != null);
         String returnTo = safeReturnPath(request.getParameter("returnTo"));
         if (returnTo != null) {
             session.setAttribute(SessionAttributes.RETURN_TO, returnTo);

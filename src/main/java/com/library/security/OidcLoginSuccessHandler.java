@@ -20,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * Runs after Keycloak has authenticated the user (the session id has already been
@@ -55,7 +57,10 @@ public class OidcLoginSuccessHandler implements AuthenticationSuccessHandler {
                                         Authentication authentication) throws IOException {
         AppOidcUser principal = (AppOidcUser) authentication.getPrincipal();
         HttpSession session = request.getSession();
-        boolean reauthentication = Boolean.TRUE.equals(session.getAttribute(SessionAttributes.REAUTH_PENDING));
+        // A re-authentication or account action inside an existing session of the same user
+        // keeps that session's state (acknowledged notice, login record).
+        boolean reauthentication = Boolean.TRUE.equals(session.getAttribute(SessionAttributes.REAUTH_PENDING))
+                && principal.getUserId().equals(session.getAttribute(SessionAttributes.USER_ID));
         long now = System.currentTimeMillis();
         Instant authTime = principal.getIdToken().getAuthenticatedAt();
 
@@ -74,7 +79,8 @@ public class OidcLoginSuccessHandler implements AuthenticationSuccessHandler {
         } else {
             session.setAttribute(SessionAttributes.NOTICE_ACKNOWLEDGED, false);
             recordLogin(principal.getUserId(), request.getRemoteAddr(), session);
-            endOtherSessions(authentication.getName(), session.getId(), principal.getUserId());
+            endOtherSessions(authentication.getName(), Set.of(session.getId(),
+                    Objects.toString(request.getRequestedSessionId(), "")), principal.getUserId());
         }
 
         String returnTo = (String) session.getAttribute(SessionAttributes.RETURN_TO);
@@ -93,10 +99,14 @@ public class OidcLoginSuccessHandler implements AuthenticationSuccessHandler {
         userRepository.save(user);
     }
 
-    /** One identity, one session: a new login ends the user's other sessions. */
-    private void endOtherSessions(String principalName, String currentSessionId, Long userId) {
+    /**
+     * One identity, one session: a new login ends the user's other sessions. The current
+     * session is known under its new id and, until the end of this request, under the id the
+     * browser sent (the id change at login is persisted when the request completes).
+     */
+    private void endOtherSessions(String principalName, Set<String> currentSessionIds, Long userId) {
         for (String sessionId : sessions.findByPrincipalName(principalName).keySet()) {
-            if (!sessionId.equals(currentSessionId)) {
+            if (!currentSessionIds.contains(sessionId)) {
                 sessions.deleteById(sessionId);
                 auditService.record(AuditEntry.success(AuditAction.SESSION_TERMINATED)
                         .entityType("USER").entityId(userId)

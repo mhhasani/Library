@@ -3,6 +3,7 @@ import { adminAPI } from "../../services/api";
 import { toPersian, toPersianNum } from "../../utils/persian";
 import { useDebounce } from "../../hooks/useDebounce";
 import Pagination from "../../components/Pagination";
+import TemporaryPasswordModal from "../../components/TemporaryPasswordModal";
 import { useAuth } from "../../context/AuthContext";
 import {
   CLASSIFICATION_LEVELS,
@@ -50,6 +51,7 @@ const SystemUsersPage = () => {
   const [successMsg, setSuccessMsg] = useState("");
   const [statusFilter, setStatusFilter] = useState("ACTIVE");
   const [actionLoading, setActionLoading] = useState({});
+  const [passwordTarget, setPasswordTarget] = useState(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -278,6 +280,16 @@ const SystemUsersPage = () => {
                               : "فعال‌سازی"}
                         </button>
                       )}
+                      {isSuperAdmin && u.id !== currentUser?.id && (
+                        <button
+                          className="btn btn-sm btn-outline su-btn-role"
+                          onClick={() => setPasswordTarget(u)}
+                          disabled={!!actionLoading[u.id]}
+                          title="تنظیم رمز عبور موقت"
+                        >
+                          🔑 رمز موقت
+                        </button>
+                      )}
                       {isSuperAdmin && u.systemRole !== "SUPER_ADMIN" && (
                         <button
                           className="btn btn-sm btn-outline su-btn-role"
@@ -300,6 +312,17 @@ const SystemUsersPage = () => {
           </table>
           <Pagination page={page} totalPages={totalPages} onChange={setPage} />
         </div>
+      )}
+
+      {passwordTarget && (
+        <TemporaryPasswordModal
+          user={passwordTarget}
+          onClose={() => setPasswordTarget(null)}
+          onDone={(msg) => {
+            setPasswordTarget(null);
+            showSuccess(msg);
+          }}
+        />
       )}
     </div>
   );

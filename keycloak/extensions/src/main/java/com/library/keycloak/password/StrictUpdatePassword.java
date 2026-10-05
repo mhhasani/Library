@@ -3,8 +3,10 @@ package com.library.keycloak.password;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
 import org.keycloak.authentication.RequiredActionContext;
+import org.keycloak.authentication.RequiredActionProvider;
 import org.keycloak.authentication.requiredactions.UpdatePassword;
 import org.keycloak.events.Errors;
+import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.UserCredentialModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.utils.FormMessage;
@@ -80,6 +82,15 @@ public class StrictUpdatePassword extends UpdatePassword {
                 .addError(new FormMessage(field, message))
                 .createResponse(UserModel.RequiredAction.UPDATE_PASSWORD);
         context.challenge(challenge);
+    }
+
+    /**
+     * The inherited factory method would create the built-in action; every provider instance
+     * handed out under this id must be the strict one.
+     */
+    @Override
+    public RequiredActionProvider create(KeycloakSession session) {
+        return new StrictUpdatePassword();
     }
 
     /** Wins over the built-in provider registered under the same id. */

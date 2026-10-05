@@ -6,6 +6,7 @@ import { AuthProvider } from "./context/AuthContext";
 import PrivateRoute from "./components/PrivateRoute";
 import AdminRoute from "./components/AdminRoute";
 import PrintLabel from "./components/PrintLabel";
+import { SecurityNoticeGate } from "./components/SecurityNotice";
 
 // Layouts
 import UserLayout from "./layouts/UserLayout";
@@ -37,6 +38,7 @@ import SystemUsersPage from "./pages/system/SystemUsersPage";
 import SystemLibrariesPage from "./pages/system/SystemLibrariesPage";
 import SystemLibraryRequestsPage from "./pages/system/SystemLibraryRequestsPage";
 import SystemAuditLogsPage from "./pages/system/SystemAuditLogsPage";
+import SystemSecuritySettingsPage from "./pages/system/SystemSecuritySettingsPage";
 
 import "./App.css";
 
@@ -46,80 +48,84 @@ const SYSTEM_ADMIN_NAV = [
   { to: "/system/libraries", end: false, icon: "🏛️", label: "کتابخانه‌ها" },
   { to: "/system/library-requests", end: false, icon: "📨", label: "درخواست‌های کتابخانه" },
   { to: "/system/audit-logs", end: false, icon: "📜", label: "رویدادنگاری امنیتی" },
+  { to: "/system/security-settings", end: false, icon: "🛡️", label: "تنظیمات امنیتی" },
 ];
 
 function App() {
   return (
     <Router>
       <AuthProvider>
-        <PrintLabel />
-        <Routes>
-          {/* ── User routes (with Navbar) ── */}
-          <Route element={<UserLayout />}>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/libraries" element={<LibrariesPage />} />
-            <Route
-              path="/profile"
-              element={<PrivateRoute><ProfilePage /></PrivateRoute>}
-            />
+        <SecurityNoticeGate>
+          <PrintLabel />
+          <Routes>
+            {/* ── User routes (with Navbar) ── */}
+            <Route element={<UserLayout />}>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/libraries" element={<LibrariesPage />} />
+              <Route
+                path="/profile"
+                element={<PrivateRoute><ProfilePage /></PrivateRoute>}
+              />
 
-            {/* Library-specific user pages */}
-            <Route path="/libraries/:libraryId" element={<LibraryLayout />}>
-              <Route
-                path="books"
-                element={<PrivateRoute><BooksPage /></PrivateRoute>}
-              />
-              <Route
-                path="books/:bookId"
-                element={<PrivateRoute><BookProfilePage /></PrivateRoute>}
-              />
-              <Route path="borrows" element={<Navigate to="physical" replace />} />
-              <Route
-                path="borrows/physical"
-                element={<PrivateRoute><PhysicalBorrowsPage /></PrivateRoute>}
-              />
-              <Route
-                path="borrows/digital"
-                element={<PrivateRoute><DigitalBorrowsPage /></PrivateRoute>}
-              />
-            </Route>
-          </Route>
-
-          {/* ── Library admin panel ── */}
-          <Route
-            path="/libraries/:libraryId/admin"
-            element={<LibraryAdminLayout />}
-          >
-            <Route index element={<AdminDashboard />} />
-            <Route path="books" element={<AdminBooksPage />} />
-            <Route path="members" element={<AdminMembersPage />} />
-            <Route path="borrows" element={<Navigate to="physical" replace />} />
-            <Route path="borrows/physical" element={<AdminPhysicalBorrowsPage />} />
-            <Route path="borrows/digital" element={<AdminDigitalBorrowsPage />} />
-          </Route>
-
-          {/* ── System admin panel ── */}
-          <Route
-            path="/system"
-            element={
-              <AdminRoute>
-                <AdminLayout
-                  title="پنل مدیریت سیستم"
-                  navItems={SYSTEM_ADMIN_NAV}
-                  backTo="/"
+              {/* Library-specific user pages */}
+              <Route path="/libraries/:libraryId" element={<LibraryLayout />}>
+                <Route
+                  path="books"
+                  element={<PrivateRoute><BooksPage /></PrivateRoute>}
                 />
-              </AdminRoute>
-            }
-          >
-            <Route index element={<SystemDashboard />} />
-            <Route path="users" element={<SystemUsersPage />} />
-            <Route path="libraries" element={<SystemLibrariesPage />} />
-            <Route path="library-requests" element={<SystemLibraryRequestsPage />} />
-            <Route path="audit-logs" element={<SystemAuditLogsPage />} />
-          </Route>
-        </Routes>
+                <Route
+                  path="books/:bookId"
+                  element={<PrivateRoute><BookProfilePage /></PrivateRoute>}
+                />
+                <Route path="borrows" element={<Navigate to="physical" replace />} />
+                <Route
+                  path="borrows/physical"
+                  element={<PrivateRoute><PhysicalBorrowsPage /></PrivateRoute>}
+                />
+                <Route
+                  path="borrows/digital"
+                  element={<PrivateRoute><DigitalBorrowsPage /></PrivateRoute>}
+                />
+              </Route>
+            </Route>
+
+            {/* ── Library admin panel ── */}
+            <Route
+              path="/libraries/:libraryId/admin"
+              element={<LibraryAdminLayout />}
+            >
+              <Route index element={<AdminDashboard />} />
+              <Route path="books" element={<AdminBooksPage />} />
+              <Route path="members" element={<AdminMembersPage />} />
+              <Route path="borrows" element={<Navigate to="physical" replace />} />
+              <Route path="borrows/physical" element={<AdminPhysicalBorrowsPage />} />
+              <Route path="borrows/digital" element={<AdminDigitalBorrowsPage />} />
+            </Route>
+
+            {/* ── System admin panel ── */}
+            <Route
+              path="/system"
+              element={
+                <AdminRoute>
+                  <AdminLayout
+                    title="پنل مدیریت سیستم"
+                    navItems={SYSTEM_ADMIN_NAV}
+                    backTo="/"
+                  />
+                </AdminRoute>
+              }
+            >
+              <Route index element={<SystemDashboard />} />
+              <Route path="users" element={<SystemUsersPage />} />
+              <Route path="libraries" element={<SystemLibrariesPage />} />
+              <Route path="library-requests" element={<SystemLibraryRequestsPage />} />
+              <Route path="audit-logs" element={<SystemAuditLogsPage />} />
+              <Route path="security-settings" element={<SystemSecuritySettingsPage />} />
+            </Route>
+          </Routes>
+        </SecurityNoticeGate>
       </AuthProvider>
     </Router>
   );

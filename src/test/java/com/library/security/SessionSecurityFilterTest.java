@@ -159,9 +159,11 @@ class SessionSecurityFilterTest {
         assertThat(blocked.getStatus()).isEqualTo(403);
         assertThat(blocked.getContentAsString()).contains("NOTICE_REQUIRED");
 
-        MockFilterChain chain = new MockFilterChain();
-        filter.doFilter(request("/v1/auth/session"), new MockHttpServletResponse(), chain);
-        assertThat(chain.getRequest()).isNotNull();
+        for (String open : new String[]{"/v1/auth/session", "/oauth2/authorization/keycloak", "/login/oauth2/code/keycloak"}) {
+            MockFilterChain chain = new MockFilterChain();
+            filter.doFilter(request(open), new MockHttpServletResponse(), chain);
+            assertThat(chain.getRequest()).as(open).isNotNull();
+        }
     }
 
     private MockHttpServletRequest request(String path) {

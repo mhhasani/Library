@@ -1,0 +1,75 @@
+.ss-card {
+  padding: 1.5rem 2rem;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.ss-fieldset {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ss-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 1.1rem 1.5rem;
+}
+
+.ss-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ss-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.ss-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ss-input-row input {
+  width: 7rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-family);
+}
+
+.ss-unit,
+.ss-hint {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.ss-toggle,
+.ss-op {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.ss-toggle {
+  margin: 1.5rem 0 0.5rem;
+  font-weight: 600;
+}
+
+.ss-section-title {
+  margin: 1.5rem 0 0.75rem;
+  font-size: 0.95rem;
+}
+
+.ss-ops {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: 0.5rem 1rem;
+}

@@ -8,15 +8,27 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  // Same-origin API: the encrypted HttpOnly session cookie is sent automatically and the
+  // CSRF token is echoed from the XSRF-TOKEN cookie (axios defaults). No credentials or
+  // tokens are ever stored in the browser by this app.
+  withCredentials: true,
 });
 
-// Add token to requests + prevent stale cached GET responses
+/** Where the browser goes to log in through the identity provider (Keycloak). */
+export const loginUrl = ({ register = false, reauth = false, action, returnTo } = {}) => {
+  const params = new URLSearchParams();
+  if (register) params.set("register", "true");
+  if (reauth) params.set("reauth", "true");
+  if (action) params.set("action", action);
+  if (returnTo) params.set("returnTo", returnTo);
+  const query = params.toString();
+  return `${API_BASE_URL}/oauth2/authorization/keycloak${query ? `?${query}` : ""}`;
+};
+
+const currentPath = () => window.location.pathname + window.location.search;
+
+// Prevent stale cached GET responses
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  // Bust browser/proxy caching of GETs so fresh data always loads after mutations
   if ((config.method || "get").toLowerCase() === "get") {
     config.headers["Cache-Control"] = "no-cache";
     config.params = { ...(config.params || {}), _t: Date.now() };
@@ -24,111 +36,37 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Token refresh logic
-let isRefreshing = false;
-let failedQueue = [];
-
-const processQueue = (error, token = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
-  });
-  failedQueue = [];
-};
-
-const clearAuthAndRedirect = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("user");
-  window.location.href = "/login";
-};
-
-// Auto-refresh on 401
+/**
+ * Session problems reported by the server, handled in one place:
+ *   REAUTH_REQUIRED  → sensitive operation: confirm and send the user through Keycloak again
+ *   NOTICE_REQUIRED  → the post-login security notice must be acknowledged first
+ *   other 401        → session ended (expired, invalid or logged out elsewhere)
+ */
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
+  (error) => {
+    const status = error.response?.status;
+    const code = error.response?.data?.code;
+    const isSessionProbe = error.config?.url?.includes("/v1/auth/");
 
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !originalRequest.url.includes("/v1/auth/")
-    ) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return api(originalRequest);
-          })
-          .catch((err) => Promise.reject(err));
+    if (status === 401 && code === "REAUTH_REQUIRED") {
+      if (window.confirm("این عملیات حساس است و باید دوباره هویت خود را تأیید کنید. ادامه می‌دهید؟")) {
+        window.location.href = loginUrl({ reauth: true, returnTo: currentPath() });
       }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      const refreshToken = localStorage.getItem("refreshToken");
-      if (!refreshToken) {
-        isRefreshing = false;
-        clearAuthAndRedirect();
-        return Promise.reject(error);
-      }
-
-      try {
-        const res = await axios.post(
-          `${API_BASE_URL}/v1/auth/refresh`,
-          {},
-          { headers: { Authorization: `Bearer ${refreshToken}` } }
-        );
-        const data = res.data?.data || res.data;
-        const newAccessToken = data.accessToken;
-        localStorage.setItem("token", newAccessToken);
-        if (data.refreshToken) {
-          localStorage.setItem("refreshToken", data.refreshToken);
-        }
-        processQueue(null, newAccessToken);
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        return api(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        clearAuthAndRedirect();
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
-      }
+    } else if (status === 403 && code === "NOTICE_REQUIRED") {
+      window.dispatchEvent(new Event("security-notice-required"));
+    } else if (status === 401 && !isSessionProbe) {
+      window.dispatchEvent(new CustomEvent("session-ended", { detail: code || "SESSION_EXPIRED" }));
     }
-
     return Promise.reject(error);
   }
 );
 
-// Auth endpoints
+// Session endpoints (login itself happens at Keycloak via loginUrl)
 export const authAPI = {
-  register: (userData) =>
-    api.post("/v1/auth/register", {
-      email: userData.email,
-      password: userData.password,
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      phoneNumber: userData.phoneNumber,
-    }),
-  login: (credentials) =>
-    api.post("/v1/auth/login", {
-      email: credentials.email,
-      password: credentials.password,
-    }),
-  refresh: () => {
-    const refreshToken = localStorage.getItem("refreshToken");
-    return axios.post(
-      `${API_BASE_URL}/v1/auth/refresh`,
-      {},
-      { headers: { Authorization: `Bearer ${refreshToken}` } }
-    );
-  },
+  session: () => api.get("/v1/auth/session"),
+  acknowledgeNotice: () => api.post("/v1/auth/notice"),
+  logout: () => api.post("/v1/auth/logout"),
 };
 
 // Book endpoints (require libraryId)
@@ -304,7 +242,9 @@ export const meAPI = {
 export const notificationAPI = {
   list: () => api.get("/v1/notifications"),
   listPaged: (params) => api.get("/v1/notifications/paged", { params }),
-  unreadCount: () => api.get("/v1/notifications/unread-count"),
+  // Polled in the background: must not count as user activity (session idle timeout)
+  unreadCount: () =>
+    api.get("/v1/notifications/unread-count", { headers: { "X-Background-Request": "true" } }),
   markRead: (id) => api.post(`/v1/notifications/${id}/read`),
   markAllRead: () => api.post("/v1/notifications/read-all"),
 };
@@ -336,6 +276,8 @@ export const adminAPI = {
     api.patch(`/v1/admin/users/${userId}/role`, { role }),
   updateUserClearance: (userId, clearance) =>
     api.patch(`/v1/admin/users/${userId}/clearance`, { clearance }),
+  assignTemporaryPassword: (userId, password) =>
+    api.post(`/v1/admin/users/${userId}/temporary-password`, { password }),
   // params: { search?, page?, size? } → Page<LibraryDTO>
   getLibraries: (params) => api.get("/v1/admin/libraries", { params }),
 };
@@ -343,6 +285,13 @@ export const adminAPI = {
 // Output label printed on every page/report (classification, user, IP, time)
 export const outputLabelAPI = {
   current: () => api.get("/v1/output-label"),
+};
+
+// Security settings (view: system admin, change: super admin)
+export const securitySettingsAPI = {
+  get: () => api.get("/v1/admin/security-settings"),
+  update: (settings) => api.put("/v1/admin/security-settings", settings),
+  sensitiveOperations: () => api.get("/v1/admin/security-settings/sensitive-operations"),
 };
 
 // Security audit trail (system admin)
@@ -391,7 +340,6 @@ export const libraryAdminAPI = {
 export const userAPI = {
   getProfile: () => api.get("/v1/users/me"),
   updateProfile: (data) => api.put("/v1/users/me", data),
-  changePassword: (data) => api.put("/v1/users/me/password", data),
 };
 
 // Subject endpoints (per library)

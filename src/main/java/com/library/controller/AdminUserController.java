@@ -86,6 +86,7 @@ public class AdminUserController {
     }
 
     @PostMapping("/users/{userId}/temporary-password")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @RequiresRecentAuthentication(SensitiveOperation.USER_PASSWORD_RESET)
     @Operation(summary = "Assign a temporary password",
             description = "The user must change it at the next login; their open sessions are ended")

@@ -49,6 +49,7 @@ public class SessionSecurityFilter extends OncePerRequestFilter {
     /** Sent by the SPA on automatic polling requests, which must not keep a session alive. */
     public static final String BACKGROUND_HEADER = "X-Background-Request";
 
+    private static final String API_PATH = "/v1/";
     private static final String AUTH_PATH = "/v1/auth/";
 
     private final UserRepository userRepository;
@@ -101,7 +102,7 @@ public class SessionSecurityFilter extends OncePerRequestFilter {
         authenticateRequest(user.get());
 
         if (!Boolean.TRUE.equals(session.getAttribute(SessionAttributes.NOTICE_ACKNOWLEDGED))
-                && !pathOf(request).startsWith(AUTH_PATH)) {
+                && isDataRequest(pathOf(request))) {
             write(response, HttpStatus.FORBIDDEN, ApiResponse.error("تأیید اطلاعیه‌ی امنیتی لازم است",
                     "ابتدا اطلاعیه‌ی امنیتی را مطالعه و تأیید کنید", "NOTICE_REQUIRED"));
             return;
@@ -150,6 +151,11 @@ public class SessionSecurityFilter extends OncePerRequestFilter {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         objectMapper.writeValue(response.getOutputStream(), body);
+    }
+
+    /** Application data endpoints; session and login (OIDC) endpoints stay reachable. */
+    private static boolean isDataRequest(String path) {
+        return path.startsWith(API_PATH) && !path.startsWith(AUTH_PATH);
     }
 
     private static String pathOf(HttpServletRequest request) {

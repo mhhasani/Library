@@ -1,149 +1,115 @@
-import React, { createContext, useState, useContext, useEffect } from "react";
-import { authAPI } from "../services/api";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { authAPI, loginUrl } from "../services/api";
 
 const AuthContext = createContext();
 
-// Helper function to extract error message
-const getErrorMessage = (err) => {
-  // Check for validation errors in the error field
-  if (err.response?.data?.error) {
-    return err.response.data.error;
-  }
-  // Fall back to message field
-  if (err.response?.data?.message) {
-    return err.response.data.message;
-  }
-  // Default error
-  return "An error occurred";
-};
+/** User-activity events that keep the screen unlocked. */
+const ACTIVITY_EVENTS = ["mousedown", "keydown", "touchstart", "scroll"];
+const IDLE_CHECK_MS = 30_000;
 
-const decodeJwtPayload = (token) => {
-  try {
-    const payload = token.split(".")[1];
-    if (!payload) return null;
-    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64.padEnd(
-      base64.length + ((4 - (base64.length % 4)) % 4),
-      "=",
-    );
-    return JSON.parse(atob(padded));
-  } catch (err) {
-    return null;
-  }
-};
-
-const getStoredUser = () => {
-  const raw = localStorage.getItem("user");
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch (err) {
-    return null;
-  }
-};
-
-const buildUserFromAuth = (authData, token) => {
-  const payload = token ? decodeJwtPayload(token) : null;
-  return {
-    id: authData?.userId || payload?.userId || null,
-    email: authData?.email || payload?.sub || null,
-    systemRole: authData?.systemRole || payload?.systemRole || null,
-  };
-};
-
+/**
+ * Authentication state comes only from the server session (GET /v1/auth/session); nothing
+ * about the user is persisted in the browser. Login and registration happen at Keycloak.
+ */
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const lastActivity = useRef(Date.now());
 
-  // Check if user is logged in on mount
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      const storedUser = getStoredUser();
-      if (storedUser) {
-        setUser(storedUser);
-      } else {
-        setUser(buildUserFromAuth(null, token));
-      }
+  const refreshSession = useCallback(async () => {
+    try {
+      const res = await authAPI.session();
+      const data = res.data?.data;
+      setSession(data?.authenticated ? data : null);
+      return data;
+    } catch {
+      setSession(null);
+      return null;
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-
-    // Sync logout across tabs and when interceptor clears tokens
-    const handleStorageChange = (e) => {
-      if (e.key === "token" && !e.newValue) {
-        setUser(null);
-      }
-    };
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  const login = async (credentials) => {
-    try {
-      setLoading(true);
-      const response = await authAPI.login(credentials);
-      const authData = response.data?.data || response.data;
-      const accessToken = authData?.accessToken || authData?.token;
+  useEffect(() => {
+    refreshSession();
+  }, [refreshSession]);
 
-      if (!accessToken) {
-        throw new Error("پاسخ نامعتبر از سرور دریافت شد");
+  // The server ended the session (idle timeout, other login, revoked account): leave the
+  // protected screens immediately so no data stays visible.
+  useEffect(() => {
+    const onEnded = (e) => {
+      setSession(null);
+      const reason = e.detail === "SESSION_INVALID" ? "invalid" : "expired";
+      if (!window.location.pathname.startsWith("/login")) {
+        window.location.href = `/login?session=${reason}`;
       }
+    };
+    const onNoticeRequired = () => refreshSession();
+    window.addEventListener("session-ended", onEnded);
+    window.addEventListener("security-notice-required", onNoticeRequired);
+    return () => {
+      window.removeEventListener("session-ended", onEnded);
+      window.removeEventListener("security-notice-required", onNoticeRequired);
+    };
+  }, [refreshSession]);
 
-      localStorage.setItem("token", accessToken);
-      if (authData?.refreshToken) {
-        localStorage.setItem("refreshToken", authData.refreshToken);
+  // Client-side idle lock mirroring the server's idle timeout (the server stays authoritative).
+  useEffect(() => {
+    if (!session?.idleTimeoutMinutes) return undefined;
+    const touch = () => { lastActivity.current = Date.now(); };
+    ACTIVITY_EVENTS.forEach((evt) => window.addEventListener(evt, touch, { passive: true }));
+    const timer = setInterval(() => {
+      if (Date.now() - lastActivity.current > session.idleTimeoutMinutes * 60_000) {
+        window.dispatchEvent(new CustomEvent("session-ended", { detail: "SESSION_EXPIRED" }));
       }
+    }, IDLE_CHECK_MS);
+    return () => {
+      ACTIVITY_EVENTS.forEach((evt) => window.removeEventListener(evt, touch));
+      clearInterval(timer);
+    };
+  }, [session?.idleTimeoutMinutes]);
 
-      const newUser = buildUserFromAuth(authData, accessToken);
-      localStorage.setItem("user", JSON.stringify(newUser));
-      setUser(newUser);
-      setError(null);
-      return { success: true };
-    } catch (err) {
-      const errorMsg = getErrorMessage(err);
-      setError(errorMsg);
-      return { success: false, error: errorMsg };
-    } finally {
-      setLoading(false);
-    }
-  };
+  const login = useCallback((returnTo) => {
+    window.location.href = loginUrl({ returnTo });
+  }, []);
 
-  const register = async (userData) => {
+  const register = useCallback(() => {
+    window.location.href = loginUrl({ register: true });
+  }, []);
+
+  /** Ends the application session, then the identity-provider session. */
+  const logout = useCallback(async () => {
+    let target = "/";
     try {
-      setLoading(true);
-      await authAPI.register(userData);
-      return await login({
-        email: userData.email,
-        password: userData.password,
-      });
-    } catch (err) {
-      const errorMsg = getErrorMessage(err);
-      setError(errorMsg);
-      return { success: false, error: errorMsg };
-    } finally {
-      setLoading(false);
+      const res = await authAPI.logout();
+      target = res.data?.data?.logoutUrl || "/";
+    } catch {
+      /* session already gone */
     }
-  };
+    setSession(null);
+    window.location.href = target;
+  }, []);
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
-    setUser(null);
-    setError(null);
-  };
+  const acknowledgeNotice = useCallback(async () => {
+    await authAPI.acknowledgeNotice();
+    await refreshSession();
+  }, [refreshSession]);
+
+  const user = session?.user || null;
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        session,
         loading,
-        error,
+        isAuthenticated: !!user,
+        noticeRequired: !!user && !session?.noticeAcknowledged,
         login,
         register,
         logout,
-        isAuthenticated: !!user,
+        acknowledgeNotice,
+        refreshSession,
       }}
     >
       {children}

@@ -16,4 +16,10 @@ class StrictUpdatePasswordTest {
         // Repeats count only beyond what the old password had
         assertEquals(2, StrictUpdatePassword.newCharacterCount("aab", "aaaab"));
     }
+
+    @Test
+    void factoryHandsOutTheStrictAction() {
+        // The built-in factory method returns a plain UpdatePassword; ours must not
+        assertEquals(StrictUpdatePassword.class, new StrictUpdatePassword().create(null).getClass());
+    }
 }

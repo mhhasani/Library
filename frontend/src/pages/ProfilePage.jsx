@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { userAPI } from "../services/api";
-import PasswordInput from "../components/PasswordInput";
+import { loginUrl, userAPI } from "../services/api";
 import MyLibraryActivity from "../components/MyLibraryActivity";
 import "./ProfilePage.css";
 
@@ -16,7 +15,7 @@ const ROLE_LABELS = {
 const TABS = [
   { key: "account", label: "👤 اطلاعات حساب" },
   { key: "activity", label: "📚 فعالیت کتابخانه‌ای" },
-  { key: "password", label: "🔐 تغییر رمز عبور" },
+  { key: "password", label: "🔐 امنیت حساب" },
 ];
 
 const ProfilePage = () => {
@@ -36,12 +35,6 @@ const ProfilePage = () => {
   });
   const [saving, setSaving] = useState(false);
   const [editSuccess, setEditSuccess] = useState("");
-
-  // Change password state
-  const [pwForm, setPwForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
-  const [pwSaving, setPwSaving] = useState(false);
-  const [pwError, setPwError] = useState("");
-  const [pwSuccess, setPwSuccess] = useState("");
 
   useEffect(() => {
     userAPI.getProfile()
@@ -84,38 +77,6 @@ const ProfilePage = () => {
       setError(extractError(err));
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handlePwChange = (e) => {
-    const { name, value } = e.target;
-    setPwForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleChangePassword = async (e) => {
-    e.preventDefault();
-    if (pwForm.newPassword !== pwForm.confirmPassword) {
-      setPwError("رمز عبور جدید و تکرار آن مطابقت ندارند");
-      return;
-    }
-    if (pwForm.newPassword.length < 8) {
-      setPwError("رمز عبور جدید باید حداقل ۸ کاراکتر باشد");
-      return;
-    }
-    try {
-      setPwSaving(true);
-      setPwError("");
-      await userAPI.changePassword({
-        currentPassword: pwForm.currentPassword,
-        newPassword: pwForm.newPassword,
-      });
-      setPwSuccess("رمز عبور با موفقیت تغییر یافت");
-      setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-      setTimeout(() => setPwSuccess(""), 3500);
-    } catch (err) {
-      setPwError(extractError(err));
-    } finally {
-      setPwSaving(false);
     }
   };
 
@@ -332,62 +293,24 @@ const ProfilePage = () => {
         </div>
         )}
 
-        {/* Change Password tab */}
+        {/* Account security tab: credentials are managed by the identity provider */}
         {tab === "password" && (
-        <div className="profile-card">
-          <div style={{ padding: "1.5rem 2rem 0.5rem" }}>
-            <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--color-text)", margin: 0 }}>
-              🔐 تغییر رمز عبور
-            </h3>
-            <p style={{ fontSize: "0.82rem", color: "var(--color-text-muted)", marginTop: "0.25rem" }}>
-              برای امنیت بیشتر، رمز عبور حداقل ۸ کاراکتر باشد
-            </p>
+        <div className="profile-card" style={{ padding: "1.5rem 2rem 2rem" }}>
+          <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--color-text)", margin: 0 }}>
+            🔐 امنیت حساب
+          </h3>
+          <p style={{ fontSize: "0.85rem", color: "var(--color-text-muted)", lineHeight: 1.9 }}>
+            رمز عبور و ورود دومرحله‌ای در سامانه‌ی احراز هویت متمرکز مدیریت می‌شوند. برای تغییر رمز، رمز فعلی
+            را وارد می‌کنید و رمز جدید باید دست‌کم ۴ نویسه‌ی تازه داشته باشد و با رمزهای اخیر یکسان نباشد.
+          </p>
+          <div className="ap-modal-actions" style={{ justifyContent: "flex-start" }}>
+            <a className="btn btn-primary" href={loginUrl({ action: "password", returnTo: "/profile" })}>
+              تغییر رمز عبور
+            </a>
+            <a className="btn btn-outline" href={loginUrl({ action: "otp", returnTo: "/profile" })}>
+              تنظیم برنامه‌ی ورود دومرحله‌ای
+            </a>
           </div>
-          <div className="profile-divider" style={{ margin: "0.75rem 2rem" }} />
-          <form onSubmit={handleChangePassword} style={{ padding: "0.5rem 2rem 2rem" }}>
-            {pwError && <div className="error-message" style={{ marginBottom: "1rem" }}>{pwError}</div>}
-            {pwSuccess && <div className="success-message" style={{ marginBottom: "1rem" }}>{pwSuccess}</div>}
-            <div className="ap-form-grid">
-              <div className="ap-form-group" style={{ gridColumn: "1 / -1" }}>
-                <label>رمز عبور فعلی *</label>
-                <PasswordInput
-                  name="currentPassword"
-                  value={pwForm.currentPassword}
-                  onChange={handlePwChange}
-                  required
-                  placeholder="رمز عبور فعلی"
-                  autoComplete="current-password"
-                />
-              </div>
-              <div className="ap-form-group">
-                <label>رمز عبور جدید *</label>
-                <PasswordInput
-                  name="newPassword"
-                  value={pwForm.newPassword}
-                  onChange={handlePwChange}
-                  required
-                  placeholder="حداقل ۸ کاراکتر"
-                  autoComplete="new-password"
-                />
-              </div>
-              <div className="ap-form-group">
-                <label>تکرار رمز عبور جدید *</label>
-                <PasswordInput
-                  name="confirmPassword"
-                  value={pwForm.confirmPassword}
-                  onChange={handlePwChange}
-                  required
-                  placeholder="تکرار رمز عبور"
-                  autoComplete="new-password"
-                />
-              </div>
-            </div>
-            <div className="ap-modal-actions">
-              <button className="btn btn-primary" type="submit" disabled={pwSaving}>
-                {pwSaving ? "در حال تغییر..." : "تغییر رمز عبور"}
-              </button>
-            </div>
-          </form>
         </div>
         )}
       </div>
