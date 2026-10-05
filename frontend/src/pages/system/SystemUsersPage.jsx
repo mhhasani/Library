@@ -4,6 +4,11 @@ import { toPersian, toPersianNum } from "../../utils/persian";
 import { useDebounce } from "../../hooks/useDebounce";
 import Pagination from "../../components/Pagination";
 import { useAuth } from "../../context/AuthContext";
+import {
+  CLASSIFICATION_LEVELS,
+  classificationBadge,
+  classificationLabel,
+} from "../../utils/classification";
 import "./SystemUsersPage.css";
 
 const ROLE_LABELS = {
@@ -120,6 +125,21 @@ const SystemUsersPage = () => {
     }
   };
 
+  const handleClearanceChange = async (user, clearance) => {
+    const label = classificationLabel(clearance);
+    if (!window.confirm(`سطح دسترسی ${user.email} به «${label}» تغییر کند؟`)) return;
+    try {
+      setActionLoading((p) => ({ ...p, [user.id]: "clearance" }));
+      await adminAPI.updateUserClearance(user.id, clearance);
+      showSuccess(`سطح دسترسی ${user.email} به «${label}» تغییر کرد`);
+      fetchUsers();
+    } catch (err) {
+      setError(err.response?.data?.message || "خطا در تغییر سطح دسترسی");
+    } finally {
+      setActionLoading((p) => ({ ...p, [user.id]: null }));
+    }
+  };
+
   return (
     <div>
       <div className="ap-header">
@@ -171,6 +191,7 @@ const SystemUsersPage = () => {
                 <th>تلفن</th>
                 <th>نقش</th>
                 <th>وضعیت</th>
+                <th>سطح دسترسی</th>
                 <th>آخرین ورود</th>
                 <th>عملیات</th>
               </tr>
@@ -208,6 +229,25 @@ const SystemUsersPage = () => {
                     >
                       {STATUS_LABELS[u.accountStatus] || u.accountStatus}
                     </span>
+                  </td>
+                  <td>
+                    {isSuperAdmin && u.id !== currentUser?.id ? (
+                      <select
+                        className="su-clearance-select"
+                        value={u.clearance || "UNCLASSIFIED"}
+                        onChange={(e) => handleClearanceChange(u, e.target.value)}
+                        disabled={!!actionLoading[u.id]}
+                        title="سطح دسترسی به اطلاعات طبقه‌بندی‌شده"
+                      >
+                        {CLASSIFICATION_LEVELS.map((l) => (
+                          <option key={l.value} value={l.value}>{l.label}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className={`badge ${classificationBadge(u.clearance)}`}>
+                        {classificationLabel(u.clearance)}
+                      </span>
+                    )}
                   </td>
                   <td className="su-date">
                     {u.lastLoginAt

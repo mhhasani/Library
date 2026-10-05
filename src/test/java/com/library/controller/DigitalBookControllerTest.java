@@ -2,6 +2,7 @@ package com.library.controller;
 
 import com.library.BaseIntegrationTest;
 import com.library.dto.DigitalBookDTO;
+import com.library.entity.enums.ClassificationLevel;
 import com.library.exception.BadRequestException;
 import com.library.exception.UnauthorizedException;
 import com.library.service.CoverImageService;
@@ -23,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -185,10 +187,13 @@ class DigitalBookControllerTest extends BaseIntegrationTest {
                 .thenReturn(new ByteArrayResource("pdf content".getBytes()));
         when(digitalBookService.getContentType(1L)).thenReturn("application/pdf");
         when(digitalBookService.getOriginalFilename(1L)).thenReturn("book.pdf");
+        when(digitalBookService.getClassification(1L)).thenReturn(ClassificationLevel.CONFIDENTIAL);
 
         mockMvc.perform(get("/v1/libraries/1/books/1/digital/1/download"))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Content-Disposition", "attachment; filename=\"book.pdf\""))
+                .andExpect(header().string("Content-Disposition", containsString("filename*=UTF-8''book.pdf")))
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(header().string("X-Output-Label", containsString("Classification: CONFIDENTIAL")))
                 .andExpect(content().contentType("application/pdf"));
     }
 

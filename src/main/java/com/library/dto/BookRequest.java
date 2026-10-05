@@ -1,5 +1,6 @@
 package com.library.dto;
 
+import com.library.entity.enums.ClassificationLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
@@ -40,4 +41,8 @@ public class BookRequest {
 
     @Schema(description = "Auto-approve digital borrow requests", example = "false")
     private Boolean autoDigitalBorrowEnabled = false;
+
+    @Schema(description = "Security classification (omit to keep the current one; new books default to UNCLASSIFIED)",
+            example = "UNCLASSIFIED")
+    private ClassificationLevel classification;
 }

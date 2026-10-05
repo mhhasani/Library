@@ -12,6 +12,7 @@ import com.library.exception.BadRequestException;
 import com.library.exception.ResourceNotFoundException;
 import com.library.exception.UnauthorizedException;
 import com.library.repository.*;
+import com.library.security.ClassificationGuard;
 import com.library.util.SecurityUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +51,9 @@ public class BorrowService {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private ClassificationGuard classificationGuard;
 
     @Autowired
     private com.library.repository.BorrowEventRepository borrowEventRepository;
@@ -103,6 +107,7 @@ public class BorrowService {
         if (book.getDeletedAt() != null) {
             throw new ResourceNotFoundException("کتابی با این شناسه پیدا نشد: " + bookId);
         }
+        classificationGuard.assertCanRead(book);
 
         // Check user membership
         LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
@@ -329,6 +334,7 @@ public class BorrowService {
         if (book.getDeletedAt() != null) {
             throw new ResourceNotFoundException("کتاب پیدا نشد");
         }
+        classificationGuard.assertCanRead(book);
 
         LibraryMembership membership = membershipRepository.findByUserIdAndLibraryId(currentUserId, libraryId)
                 .orElseThrow(() -> new UnauthorizedException("شما عضو این کتابخانه نیستید"));

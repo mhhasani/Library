@@ -5,6 +5,7 @@ import { AuthProvider } from "./context/AuthContext";
 // Route guards
 import PrivateRoute from "./components/PrivateRoute";
 import AdminRoute from "./components/AdminRoute";
+import PrintLabel from "./components/PrintLabel";
 
 // Layouts
 import UserLayout from "./layouts/UserLayout";
@@ -51,6 +52,7 @@ function App() {
   return (
     <Router>
       <AuthProvider>
+        <PrintLabel />
         <Routes>
           {/* ── User routes (with Navbar) ── */}
           <Route element={<UserLayout />}>

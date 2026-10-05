@@ -8,6 +8,7 @@ import com.library.dto.UserDTO;
 import com.library.entity.User;
 import com.library.entity.enums.AccountStatus;
 import com.library.entity.enums.AuditAction;
+import com.library.entity.enums.ClassificationLevel;
 import com.library.entity.enums.NotificationType;
 import com.library.entity.enums.SystemRole;
 import com.library.exception.BadRequestException;
@@ -199,6 +200,28 @@ public class UserService {
         return dto;
     }
 
+    /** Grants a classification clearance; recorded as an access-control change. */
+    public UserDTO updateUserClearance(Long userId, ClassificationLevel newClearance) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        if (currentUserId.equals(userId)) {
+            throw new BadRequestException("نمی‌توانید سطح دسترسی خودتان را تغییر دهید");
+        }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("کاربری با این شناسه پیدا نشد: " + userId));
+
+        ClassificationLevel oldClearance = user.getClearance();
+        user.setClearance(newClearance);
+        user.setUpdatedAt(LocalDateTime.now());
+        UserDTO dto = toDto(userRepository.save(user));
+
+        if (oldClearance != newClearance) {
+            auditService.record(AuditEntry.success(AuditAction.USER_CLEARANCE_CHANGE)
+                    .entityType(ENTITY_USER).entityId(user.getId())
+                    .details(oldClearance + " -> " + newClearance).build());
+        }
+        return dto;
+    }
+
     private UserDTO toDto(User user) {
         return UserDTO.builder()
                 .id(user.getId())
@@ -210,6 +233,7 @@ public class UserService {
                 .internalExtension(user.getInternalExtension())
                 .systemRole(user.getSystemRole())
                 .accountStatus(user.getAccountStatus())
+                .clearance(user.getClearance())
                 .lastLoginAt(user.getLastLoginAt())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())

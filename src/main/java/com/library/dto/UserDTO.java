@@ -1,6 +1,7 @@
 package com.library.dto;
 
 import com.library.entity.enums.AccountStatus;
+import com.library.entity.enums.ClassificationLevel;
 import com.library.entity.enums.SystemRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -43,6 +44,9 @@ public class UserDTO {
 
     @Schema(description = "Account status", example = "ACTIVE")
     private AccountStatus accountStatus;
+
+    @Schema(description = "Classification clearance", example = "UNCLASSIFIED")
+    private ClassificationLevel clearance;
 
     @Schema(description = "Last login timestamp")
     private LocalDateTime lastLoginAt;

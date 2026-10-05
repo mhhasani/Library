@@ -2,6 +2,8 @@ package com.library.controller;
 
 import com.library.dto.ApiResponse;
 import com.library.dto.DigitalBookDTO;
+import com.library.labeling.LabeledDownloadService;
+import com.library.labeling.LabeledDownloadService.LabeledFile;
 import com.library.service.CoverImageService;
 import com.library.service.DigitalBookService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -17,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Slf4j
@@ -28,6 +32,10 @@ public class DigitalBookController {
 
     @Autowired private DigitalBookService digitalBookService;
     @Autowired private CoverImageService coverImageService;
+    @Autowired private LabeledDownloadService labeledDownloadService;
+
+    /** Output label (classification, user, IP, time) of every handed-out file. */
+    static final String OUTPUT_LABEL_HEADER = "X-Output-Label";
 
     // ── Cover Image ──────────────────────────────────────────────────────────
 
@@ -75,11 +83,16 @@ public class DigitalBookController {
         Resource resource = digitalBookService.downloadDigitalBook(digitalBookId);
         String contentType = digitalBookService.getContentType(digitalBookId);
         String filename = digitalBookService.getOriginalFilename(digitalBookId);
+        LabeledFile labeled = labeledDownloadService.labelPdf(
+                resource, digitalBookService.getClassification(digitalBookId));
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                .body(resource);
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(filename, StandardCharsets.UTF_8).build().toString())
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .header(OUTPUT_LABEL_HEADER, labeled.label().toAsciiLine())
+                .body(labeled.resource());
     }
 
     @DeleteMapping("/digital/{digitalBookId}")

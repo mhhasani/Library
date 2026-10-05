@@ -7,6 +7,7 @@ import com.library.entity.BookCopy;
 import com.library.entity.Library;
 import com.library.entity.LibraryMembership;
 import com.library.entity.enums.BookCopyStatus;
+import com.library.entity.enums.ClassificationLevel;
 import com.library.entity.enums.LibraryMembershipRole;
 import com.library.entity.enums.MembershipStatus;
 import com.library.exception.BadRequestException;
@@ -20,6 +21,7 @@ import com.library.repository.DigitalBookRepository;
 import com.library.repository.LibraryMembershipRepository;
 import com.library.repository.LibraryRepository;
 import com.library.repository.LibrarySubjectRepository;
+import com.library.security.ClassificationGuard;
 import com.library.util.SecurityUtils;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
@@ -36,6 +38,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -70,6 +73,9 @@ public class BookService {
     @Autowired
     private DigitalBookService digitalBookService;
 
+    @Autowired
+    private ClassificationGuard classificationGuard;
+
     public BookDTO createBook(Long libraryId, BookRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         
@@ -85,6 +91,7 @@ public class BookService {
         }
 
         List<LibrarySubject> subjects = resolveSubjects(libraryId, request.getSubjectIds());
+        classificationGuard.assertCanAssign(request.getClassification());
 
         Book book = Book.builder()
                 .library(library)
@@ -95,6 +102,8 @@ public class BookService {
                 .subjects(subjects)
                 .description(request.getDescription())
                 .autoDigitalBorrowEnabled(request.getAutoDigitalBorrowEnabled() != null ? request.getAutoDigitalBorrowEnabled() : false)
+                .classification(request.getClassification() != null
+                        ? request.getClassification() : ClassificationLevel.UNCLASSIFIED)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -128,6 +137,7 @@ public class BookService {
         if (book.getDeletedAt() != null) {
             throw new ResourceNotFoundException("کتابی با این شناسه پیدا نشد: " + bookId);
         }
+        classificationGuard.assertCanRead(book);
 
         return mapToBookDTO(book);
     }
@@ -138,7 +148,8 @@ public class BookService {
                 .orElseThrow(() -> new ResourceNotFoundException("کتابخانه‌ای با این شناسه پیدا نشد: " + libraryId));
         requireApprovedMembership(currentUserId, libraryId);
 
-        return bookRepository.findByLibraryIdAndDeletedAtIsNull(libraryId, pageable)
+        return bookRepository.findByLibraryIdAndDeletedAtIsNullAndClassificationIn(
+                        libraryId, classificationGuard.readableLevels(), pageable)
                 .map(this::mapToBookDTO);
     }
 
@@ -149,11 +160,13 @@ public class BookService {
     /** Public cross-library search over all ACTIVE libraries (no membership required). */
     public Page<BookDTO> globalSearch(String query, Pageable pageable) {
         String normalizedQuery = (query != null && !query.isBlank()) ? query.trim().toLowerCase() : null;
+        Set<ClassificationLevel> readable = classificationGuard.readableLevels();
 
         Specification<Book> spec = (root, cq, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.isTrue(root.get("library").get("isActive")));
             predicates.add(cb.isNull(root.get("deletedAt")));
+            predicates.add(root.get("classification").in(readable));
             if (normalizedQuery != null) {
                 String pattern = "%" + normalizedQuery + "%";
                 predicates.add(cb.or(
@@ -176,11 +189,13 @@ public class BookService {
         requireApprovedMembership(currentUserId, libraryId);
 
         String normalizedQuery = (query != null && !query.isBlank()) ? query.trim().toLowerCase() : null;
+        Set<ClassificationLevel> readable = classificationGuard.readableLevels();
 
         Specification<Book> spec = (root, cq, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("library").get("id"), libraryId));
             predicates.add(cb.isNull(root.get("deletedAt")));
+            predicates.add(root.get("classification").in(readable));
             if (normalizedQuery != null) {
                 String pattern = "%" + normalizedQuery + "%";
                 predicates.add(cb.or(
@@ -241,6 +256,7 @@ public class BookService {
         if (book.getDeletedAt() != null) {
             throw new BadRequestException("این کتاب حذف شده است؛ ابتدا آن را بازگردانید");
         }
+        classificationGuard.assertCanRead(book);
         return book;
     }
 
@@ -266,6 +282,7 @@ public class BookService {
         if (!book.getLibrary().getId().equals(libraryId)) {
             throw new BadRequestException("این کتاب مربوط به این کتابخانه نیست");
         }
+        classificationGuard.assertCanRead(book);
         return book;
     }
 
@@ -279,12 +296,21 @@ public class BookService {
         book.setSubjects(resolveSubjects(libraryId, request.getSubjectIds()));
         book.setDescription(request.getDescription());
         book.setAutoDigitalBorrowEnabled(request.getAutoDigitalBorrowEnabled());
+        applyClassification(book, request.getClassification());
         book.setUpdatedAt(LocalDateTime.now());
 
         book = bookRepository.save(book);
         log.info("Book updated: {} in library {}", book.getTitle(), libraryId);
 
         return mapToBookDTO(book);
+    }
+
+    /** Changes the book's label when one is given; a missing label keeps the current one. */
+    private void applyClassification(Book book, ClassificationLevel classification) {
+        if (classification != null) {
+            classificationGuard.assertCanAssign(classification);
+            book.setClassification(classification);
+        }
     }
 
     /** Partial update: only fields present (non-null) in {@code request} are changed. */
@@ -308,6 +334,7 @@ public class BookService {
         if (request.getSubjectIds() != null) book.setSubjects(resolveSubjects(libraryId, request.getSubjectIds()));
         if (request.getDescription() != null) book.setDescription(request.getDescription());
         if (request.getAutoDigitalBorrowEnabled() != null) book.setAutoDigitalBorrowEnabled(request.getAutoDigitalBorrowEnabled());
+        applyClassification(book, request.getClassification());
         book.setUpdatedAt(LocalDateTime.now());
 
         book = bookRepository.save(book);
@@ -407,7 +434,8 @@ public class BookService {
             throw new UnauthorizedException("فقط مدیر کتابخانه می‌تواند کتاب‌های حذف‌شده را ببیند");
         }
 
-        return bookRepository.findByLibraryIdAndDeletedAtIsNotNull(libraryId, pageable)
+        return bookRepository.findByLibraryIdAndDeletedAtIsNotNullAndClassificationIn(
+                        libraryId, classificationGuard.readableLevels(), pageable)
                 .map(this::mapToBookDTO);
     }
 
@@ -539,6 +567,7 @@ public class BookService {
                 .coverImageUrl(coverImageUrl)
                 .coverImageFileResourceId(coverImageFileResourceId)
                 .autoDigitalBorrowEnabled(book.getAutoDigitalBorrowEnabled())
+                .classification(book.getClassification())
                 .availableCopiesCount(availableCopies)
                 .totalCopiesCount(totalCopies)
                 .hasDigitalVersions(hasDigitalVersions)

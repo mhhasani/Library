@@ -334,8 +334,15 @@ export const adminAPI = {
     api.patch(`/v1/admin/users/${userId}/status`, { status }),
   updateUserRole: (userId, role) =>
     api.patch(`/v1/admin/users/${userId}/role`, { role }),
+  updateUserClearance: (userId, clearance) =>
+    api.patch(`/v1/admin/users/${userId}/clearance`, { clearance }),
   // params: { search?, page?, size? } → Page<LibraryDTO>
   getLibraries: (params) => api.get("/v1/admin/libraries", { params }),
+};
+
+// Output label printed on every page/report (classification, user, IP, time)
+export const outputLabelAPI = {
+  current: () => api.get("/v1/output-label"),
 };
 
 // Security audit trail (system admin)

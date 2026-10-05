@@ -1,6 +1,7 @@
 package com.library.entity;
 
 import com.library.entity.enums.AccountStatus;
+import com.library.entity.enums.ClassificationLevel;
 import com.library.entity.enums.SystemRole;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -56,6 +57,12 @@ public class User {
     @Column(nullable = false)
     @Builder.Default
     private AccountStatus accountStatus = AccountStatus.PENDING_VERIFICATION;
+
+    /** Highest classification of data this user may access. */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    @Builder.Default
+    private ClassificationLevel clearance = ClassificationLevel.UNCLASSIFIED;
 
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;

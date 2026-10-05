@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
+
+    <!--
+        Mandatory-access-control labels: books carry a classification, users a clearance.
+        Existing rows default to UNCLASSIFIED, so visibility is unchanged until an
+        administrator labels data or grants clearances. Allowed values are also enforced
+        by the database, so a value written directly to the table cannot bypass validation.
+    -->
+    <changeSet id="28" author="system">
+        <addColumn tableName="books">
+            <column name="classification" type="VARCHAR(30)" defaultValue="UNCLASSIFIED">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <addColumn tableName="users">
+            <column name="clearance" type="VARCHAR(30)" defaultValue="UNCLASSIFIED">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <sql>
+            ALTER TABLE books ADD CONSTRAINT ck_books_classification CHECK (classification IN
+                ('UNCLASSIFIED', 'CONFIDENTIAL', 'HIGHLY_CONFIDENTIAL', 'SECRET', 'TOP_SECRET'));
+            ALTER TABLE users ADD CONSTRAINT ck_users_clearance CHECK (clearance IN
+                ('UNCLASSIFIED', 'CONFIDENTIAL', 'HIGHLY_CONFIDENTIAL', 'SECRET', 'TOP_SECRET'));
+        </sql>
+
+        <createIndex indexName="idx_books_classification" tableName="books">
+            <column name="classification"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

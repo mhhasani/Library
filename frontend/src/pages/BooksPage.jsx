@@ -5,6 +5,7 @@ import { useLibrary } from "../context/LibraryContext";
 import { useDebounce } from "../hooks/useDebounce";
 import BorrowModal from "../components/BorrowModal";
 import ConfirmDialog from "../components/ConfirmDialog";
+import ClassificationBadge from "../components/ClassificationBadge";
 import { toPersian, toPersianNum } from "../utils/persian";
 import "./BooksPage.css";
 
@@ -415,6 +416,7 @@ const BooksPage = () => {
                       >
                         {book.title}
                       </h3>
+                      <ClassificationBadge level={book.classification} />
                       <p className="book-author">✍️ {book.author}</p>
                       {book.publisher && <p className="book-publisher">🏢 {book.publisher}</p>}
                       {book.subjectNames?.length > 0 && (

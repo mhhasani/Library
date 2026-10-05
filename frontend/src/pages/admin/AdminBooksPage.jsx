@@ -2,6 +2,8 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { bookAPI, subjectAPI } from "../../services/api";
 import { toPersian, toPersianNum } from "../../utils/persian";
+import ClassificationBadge from "../../components/ClassificationBadge";
+import { CLASSIFICATION_LEVELS } from "../../utils/classification";
 import "./AdminBooksPage.css";
 
 const EMPTY_FORM = {
@@ -12,6 +14,7 @@ const EMPTY_FORM = {
   subjectIds: [],
   description: "",
   autoDigitalBorrowEnabled: false,
+  classification: "UNCLASSIFIED",
   initialCopies: "",
 };
 
@@ -176,6 +179,7 @@ const AdminBooksPage = () => {
       subjectIds: book.subjectIds || [],
       description: book.description || "",
       autoDigitalBorrowEnabled: book.autoDigitalBorrowEnabled || false,
+      classification: book.classification || "UNCLASSIFIED",
       initialCopies: "",
     });
     setCoverFile(null);
@@ -236,6 +240,7 @@ const AdminBooksPage = () => {
         subjectIds: form.subjectIds.length > 0 ? form.subjectIds : undefined,
         description: form.description || undefined,
         autoDigitalBorrowEnabled: form.autoDigitalBorrowEnabled,
+        classification: form.classification,
       };
 
       const wasEditing = !!editingBook;
@@ -485,7 +490,9 @@ const AdminBooksPage = () => {
                     )}
                   </td>
                   <td>
-                    <div className="abk-title">{book.title}</div>
+                    <div className="abk-title">
+                      {book.title} <ClassificationBadge level={book.classification} />
+                    </div>
                     {book.publisher && <div className="abk-publisher">{book.publisher}</div>}
                   </td>
                   <td>{book.author}</td>
@@ -538,6 +545,14 @@ const AdminBooksPage = () => {
                 <div className="ap-form-group">
                   <label>سال انتشار</label>
                   <input name="publicationYear" type="number" value={form.publicationYear} onChange={handleFormChange} placeholder="مثلاً ۱۴۰۲" min="1000" max="2100" />
+                </div>
+                <div className="ap-form-group">
+                  <label>سطح طبقه‌بندی</label>
+                  <select name="classification" value={form.classification} onChange={handleFormChange}>
+                    {CLASSIFICATION_LEVELS.map((l) => (
+                      <option key={l.value} value={l.value}>{l.label}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="ap-form-group" style={{ gridColumn: "1 / -1" }}>
                   <label>موضوعات (می‌توانید چند موضوع انتخاب کنید)</label>

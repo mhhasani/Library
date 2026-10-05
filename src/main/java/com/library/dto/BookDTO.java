@@ -1,5 +1,6 @@
 package com.library.dto;
 
+import com.library.entity.enums.ClassificationLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -54,6 +55,9 @@ public class BookDTO {
 
     @Schema(description = "Auto-approve digital borrow requests")
     private Boolean autoDigitalBorrowEnabled;
+
+    @Schema(description = "Security classification label")
+    private ClassificationLevel classification;
 
     @Schema(description = "Number of available physical copies")
     private Long availableCopiesCount;

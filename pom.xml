@@ -26,6 +26,13 @@
     </properties>
 
     <dependencies>
+        <!-- PDF output labeling (classification footer on downloaded PDFs) -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.8</version>
+        </dependency>
+
         <!-- Spring Boot Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

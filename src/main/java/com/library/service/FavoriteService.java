@@ -4,11 +4,13 @@ import com.library.dto.BookDTO;
 import com.library.entity.Book;
 import com.library.entity.BookFavorite;
 import com.library.entity.User;
+import com.library.entity.enums.ClassificationLevel;
 import com.library.exception.ResourceNotFoundException;
 import com.library.exception.UnauthorizedException;
 import com.library.repository.BookFavoriteRepository;
 import com.library.repository.BookRepository;
 import com.library.repository.UserRepository;
+import com.library.security.ClassificationGuard;
 import com.library.util.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -21,6 +23,7 @@ import jakarta.persistence.criteria.Predicate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @Transactional
@@ -30,6 +33,7 @@ public class FavoriteService {
     @Autowired private BookRepository bookRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private BookService bookService;
+    @Autowired private ClassificationGuard classificationGuard;
 
     /** Toggle a book's favorite state for the current user. Returns true if now favorited. */
     public boolean toggle(Long bookId) {
@@ -43,6 +47,7 @@ public class FavoriteService {
                 .orElseThrow(() -> new UnauthorizedException("کاربر فعلی پیدا نشد"));
         Book book = bookRepository.findById(bookId)
                 .orElseThrow(() -> new ResourceNotFoundException("کتاب پیدا نشد"));
+        classificationGuard.assertCanRead(book);
         favoriteRepository.save(BookFavorite.builder()
                 .user(user).book(book).createdAt(LocalDateTime.now()).build());
         return true;
@@ -57,10 +62,12 @@ public class FavoriteService {
     public Page<BookDTO> getFavorites(String search, Pageable pageable) {
         Long uid = SecurityUtils.getCurrentUserId();
         final String q = (search != null && !search.isBlank()) ? search.trim().toLowerCase() : null;
+        final Set<ClassificationLevel> readable = classificationGuard.readableLevels();
         Specification<BookFavorite> spec = (root, cq, cb) -> {
             List<Predicate> ps = new ArrayList<>();
             ps.add(cb.equal(root.get("user").get("id"), uid));
             ps.add(cb.isNull(root.get("book").get("deletedAt")));
+            ps.add(root.get("book").get("classification").in(readable));
             if (q != null) {
                 var book = root.join("book");
                 String pat = "%" + q + "%";

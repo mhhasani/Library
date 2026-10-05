@@ -1,5 +1,6 @@
 package com.library.entity;
 
+import com.library.entity.enums.ClassificationLevel;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -62,6 +63,12 @@ public class Book {
     @Column(nullable = false)
     @Builder.Default
     private Boolean autoDigitalBorrowEnabled = false;
+
+    /** Security label; only users whose clearance dominates it can see the book. */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    @Builder.Default
+    private ClassificationLevel classification = ClassificationLevel.UNCLASSIFIED;
 
     @Column(nullable = false, updatable = false)
     @Builder.Default

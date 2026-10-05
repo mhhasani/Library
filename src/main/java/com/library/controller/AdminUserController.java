@@ -2,6 +2,7 @@ package com.library.controller;
 
 import com.library.dto.ApiResponse;
 import com.library.dto.LibraryDTO;
+import com.library.dto.UpdateClearanceRequest;
 import com.library.dto.UserDTO;
 import com.library.entity.enums.AccountStatus;
 import com.library.entity.enums.SystemRole;
@@ -10,6 +11,7 @@ import com.library.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -63,6 +65,16 @@ public class AdminUserController {
         SystemRole newRole = SystemRole.valueOf(body.get("role"));
         UserDTO user = userService.updateUserRole(userId, newRole);
         return ResponseEntity.ok(ApiResponse.success("User role updated successfully", user));
+    }
+
+    @PatchMapping("/users/{userId}/clearance")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @Operation(summary = "Update user classification clearance", description = "Super admin only")
+    public ResponseEntity<ApiResponse<UserDTO>> updateUserClearance(
+            @PathVariable Long userId,
+            @Valid @RequestBody UpdateClearanceRequest request) {
+        UserDTO user = userService.updateUserClearance(userId, request.clearance());
+        return ResponseEntity.ok(ApiResponse.success("User clearance updated successfully", user));
     }
 
     @GetMapping("/libraries")

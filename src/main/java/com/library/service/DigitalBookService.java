@@ -6,6 +6,7 @@ import com.library.entity.DigitalBook;
 import com.library.entity.FileResource;
 import com.library.entity.User;
 import com.library.entity.enums.BorrowStatus;
+import com.library.entity.enums.ClassificationLevel;
 import com.library.entity.enums.LibraryMembershipRole;
 import com.library.exception.BadRequestException;
 import com.library.exception.ResourceNotFoundException;
@@ -16,6 +17,7 @@ import com.library.repository.DigitalBookRepository;
 import com.library.repository.FileResourceRepository;
 import com.library.repository.LibraryMembershipRepository;
 import com.library.repository.UserRepository;
+import com.library.security.ClassificationGuard;
 import com.library.util.FileSignatures;
 import com.library.util.SecurityUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +48,7 @@ public class DigitalBookService {
     @Autowired private BookRepository bookRepository;
     @Autowired private FileResourceRepository fileResourceRepository;
     @Autowired private LibraryMembershipRepository membershipRepository;
+    @Autowired private ClassificationGuard classificationGuard;
     @Autowired private BorrowRepository borrowRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private StorageService storageService;
@@ -65,6 +68,7 @@ public class DigitalBookService {
         if (!book.getLibrary().getId().equals(libraryId)) {
             throw new BadRequestException("این کتاب مربوط به این کتابخانه نیست");
         }
+        classificationGuard.assertCanRead(book);
 
         // Validate content type
         String contentType = file.getContentType() != null ? file.getContentType() : "";
@@ -127,6 +131,7 @@ public class DigitalBookService {
         if (!book.getLibrary().getId().equals(libraryId)) {
             throw new BadRequestException("این کتاب مربوط به این کتابخانه نیست");
         }
+        classificationGuard.assertCanRead(book);
 
         return digitalBookRepository.findByBookId(bookId).stream()
                 .map(this::toDTO)
@@ -154,6 +159,7 @@ public class DigitalBookService {
     }
 
     private void checkDownloadAccess(DigitalBook digitalBook) {
+        classificationGuard.assertCanRead(digitalBook.getBook());
         Long currentUserId = SecurityUtils.getCurrentUserId();
         Long bookId = digitalBook.getBook().getId();
         Long libraryId = digitalBook.getBook().getLibrary().getId();
@@ -200,6 +206,12 @@ public class DigitalBookService {
         }
 
         log.info("Deleted digital book: id={}", digitalBookId);
+    }
+
+    public ClassificationLevel getClassification(Long digitalBookId) {
+        DigitalBook digitalBook = digitalBookRepository.findById(digitalBookId)
+                .orElseThrow(() -> new ResourceNotFoundException("نسخه‌ی دیجیتال پیدا نشد: " + digitalBookId));
+        return digitalBook.getBook().getClassification();
     }
 
     public String getContentType(Long digitalBookId) {

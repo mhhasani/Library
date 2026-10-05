@@ -4,6 +4,7 @@ import { bookAPI, borrowAPI, meAPI } from "../services/api";
 import { toPersian } from "../utils/persian";
 import PhysicalBorrowCard from "../components/PhysicalBorrowCard";
 import BorrowModal from "../components/BorrowModal";
+import ClassificationBadge from "../components/ClassificationBadge";
 import "./BookProfilePage.css";
 
 const fmt = (d) => (d ? new Date(d).toLocaleDateString("fa-IR") : "—");
@@ -125,6 +126,7 @@ const BookProfilePage = () => {
             </div>
           )}
           <div className="bp-badges">
+            <ClassificationBadge level={book.classification} showUnclassified />
             <span className={`ver-badge ${book.totalCopiesCount > 0 ? "ver-badge--phys" : "ver-badge--off"}`}>
               {book.totalCopiesCount > 0 ? "✓" : "✗"} نسخه چاپی
             </span>

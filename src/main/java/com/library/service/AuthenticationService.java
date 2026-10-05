@@ -133,6 +133,7 @@ public class AuthenticationService {
                 .phoneNumber(user.getPhoneNumber())
                 .systemRole(user.getSystemRole())
                 .accountStatus(user.getAccountStatus())
+                .clearance(user.getClearance())
                 .lastLoginAt(user.getLastLoginAt())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
