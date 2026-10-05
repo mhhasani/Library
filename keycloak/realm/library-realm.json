@@ -1,0 +1,164 @@
+{
+  "realm": "library",
+  "displayName": "کتابخانه هوشمند",
+  "enabled": true,
+  "sslRequired": "external",
+  "loginTheme": "library",
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "fa",
+    "en"
+  ],
+  "defaultLocale": "fa",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "editUsernameAllowed": false,
+  "resetPasswordAllowed": false,
+  "rememberMe": false,
+  "verifyEmail": false,
+  "passwordPolicy": "length(8) and maxLength(128) and upperCase(1) and lowerCase(1) and digits(1) and specialChars(1) and notUsername and notEmail and passwordHistory(3) and forceExpiredPasswordChange(90) and regexPattern((?i)^(?!.*(.)\\1\\1)(?!.*(?:012|123|210|234|321|345|432|456|543|567|654|678|765|789|876|987|abc|bcd|cba|cde|dcb|def|edc|efg|fed|fgh|gfe|ghi|hgf|hij|ihg|ijk|jih|jkl|kji|klm|lkj|lmn|mlk|mno|nml|nop|onm|opq|pon|pqr|qpo|qrs|rqp|rst|srq|stu|tsr|tuv|uts|uvw|vut|vwx|wvu|wxy|xwv|xyz|yxw|zyx)).*$)",
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyDigits": 6,
+  "otpPolicyPeriod": 30,
+  "otpPolicyLookAheadWindow": 1,
+  "bruteForceProtected": true,
+  "bruteForceStrategy": "MULTIPLE",
+  "permanentLockout": false,
+  "maxTemporaryLockouts": 0,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 900,
+  "maxFailureWaitSeconds": 900,
+  "maxDeltaTimeSeconds": 43200,
+  "minimumQuickLoginWaitSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "accessTokenLifespan": 300,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "eventsEnabled": true,
+  "eventsExpiration": 31536000,
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": true,
+  "attributes": {
+    "libraryMfaRequired": "true"
+  },
+  "browserFlow": "library browser",
+  "authenticationFlows": [
+    {
+      "alias": "library browser",
+      "description": "Cookie, then username/password with captcha, then OTP when required",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-cookie",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "flowAlias": "library browser forms",
+          "authenticatorFlow": true,
+          "requirement": "ALTERNATIVE",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "library browser forms",
+      "description": "Credentials and second factor",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "library-captcha-password-form",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "flowAlias": "library browser otp",
+          "authenticatorFlow": true,
+          "requirement": "CONDITIONAL",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "library browser otp",
+      "description": "One-time code when MFA is required or configured",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "library-condition-mfa-required",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-otp-form",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "library-app",
+      "name": "Library application",
+      "description": "Confidential backend client (BFF): browser never receives tokens",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${LIBRARY_OIDC_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "frontchannelLogout": false,
+      "redirectUris": [
+        "${APP_PUBLIC_URL}/api/login/oauth2/code/keycloak"
+      ],
+      "webOrigins": [
+        "${APP_PUBLIC_URL}"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "${APP_PUBLIC_URL}/*"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-library-app",
+      "enabled": true,
+      "serviceAccountClientId": "library-app",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "view-events",
+          "view-realm",
+          "manage-realm"
+        ]
+      }
+    }
+  ]
+}

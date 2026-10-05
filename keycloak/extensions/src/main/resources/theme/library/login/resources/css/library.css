@@ -1,0 +1,36 @@
+/* Library realm additions on top of the keycloak.v2 theme */
+
+.library-captcha-image {
+  display: block;
+  margin-block-end: 0.5rem;
+  border: 1px solid var(--pf-v5-global--BorderColor--100, #d2d2d2);
+  border-radius: 4px;
+}
+
+.library-strength {
+  margin-block-start: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.library-strength-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: #e0e0e0;
+  overflow: hidden;
+}
+
+.library-strength-fill {
+  height: 100%;
+  width: 0;
+  transition: width 0.2s ease;
+  background: #c9190b;
+}
+
+.library-strength[data-score="2"] .library-strength-fill { background: #f0ab00; }
+.library-strength[data-score="3"] .library-strength-fill,
+.library-strength[data-score="4"] .library-strength-fill { background: #3e8635; }
+
+.library-strength-text {
+  display: inline-block;
+  margin-block-start: 0.2rem;
+}

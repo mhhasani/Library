@@ -1,0 +1,2 @@
+com.library.keycloak.captcha.CaptchaUsernamePasswordFormFactory
+com.library.keycloak.mfa.ConditionalMfaRequiredAuthenticatorFactory

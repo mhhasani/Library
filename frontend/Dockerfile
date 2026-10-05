@@ -13,8 +13,11 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY nginx/proxy-headers.conf /etc/nginx/snippets/proxy-headers.conf
+COPY nginx/hsts.conf /etc/nginx/snippets/hsts.conf
 COPY nginx/10-ensure-tls-cert.sh /docker-entrypoint.d/10-ensure-tls-cert.sh
 ENV BACKEND_HOST=app
 ENV BACKEND_PORT=8080
+ENV KEYCLOAK_HOST=keycloak
+ENV KEYCLOAK_PORT=8080
 EXPOSE 443
 CMD ["nginx", "-g", "daemon off;"]

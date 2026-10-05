@@ -73,6 +73,26 @@ server {
         include /etc/nginx/snippets/proxy-headers.conf;
     }
 
+    # ── Keycloak (identity provider) ───────────────────────────────────────
+    # Administration is never reachable through the public entry point: the admin
+    # console and the master realm are only available on the server itself.
+    location ^~ /auth/admin/ {
+        return 404;
+    }
+    location ^~ /auth/realms/master/ {
+        return 404;
+    }
+
+    location /auth/ {
+        limit_req zone=auth_rate burst=20 nodelay;
+        proxy_pass http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT};
+        include /etc/nginx/snippets/proxy-headers.conf;
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        # Keycloak sends its own CSP/frame/nosniff headers for its pages; only HSTS is added here
+        include /etc/nginx/snippets/hsts.conf;
+    }
+
     # Hashed build assets are immutable — cache them aggressively
     location /assets/ {
         include /etc/nginx/snippets/security-headers.conf;
