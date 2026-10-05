@@ -1,27 +1,34 @@
 #!/usr/bin/env bash
-set -e
+# Installs and starts the offline bundle on the target machine (Docker only required).
+# Refuses to install anything whose integrity cannot be verified.
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
+echo "==> Verifying bundle integrity..."
+if [ -f SHA256SUMS.asc ]; then
+    gpg --verify SHA256SUMS.asc SHA256SUMS
+fi
+if ! sha256sum --quiet -c SHA256SUMS; then
+    echo "!! Integrity check FAILED - the bundle was modified or corrupted. Aborting." >&2
+    exit 1
+fi
+echo "    All files match SHA256SUMS."
 
 echo "==> Loading images..."
-docker load -i "$SCRIPT_DIR/postgres.tar"
-docker load -i "$SCRIPT_DIR/app.tar"
-docker load -i "$SCRIPT_DIR/frontend.tar"
+docker load -i postgres.tar
+docker load -i app.tar
+docker load -i frontend.tar
 
-if [ ! -f "$SCRIPT_DIR/.env" ]; then
-  cp "$SCRIPT_DIR/.env.example" "$SCRIPT_DIR/.env"
-  echo ""
-  echo "  .env file created from .env.example"
-  echo "  Edit $SCRIPT_DIR/.env to set your passwords before continuing."
-  echo ""
-  read -r -p "Press Enter when ready..."
+if [ ! -f .env ]; then
+    echo "==> Generating .env with random secrets..."
+    ENV_FILE="$SCRIPT_DIR/.env" ./generate-env.sh
 fi
 
 echo "==> Starting services..."
-docker compose -f "$SCRIPT_DIR/docker-compose.yml" --env-file "$SCRIPT_DIR/.env" up -d
+docker compose -f docker-compose.yml --env-file .env up -d
 
+PORT="$(grep -E '^FRONTEND_PORT=' .env | cut -d= -f2)"
 echo ""
-echo "==> Done! App is running at:"
-echo "    Frontend : http://localhost:3000"
-echo "    API      : http://localhost:8080/api"
-echo "    Swagger  : http://localhost:8080/api/swagger-ui.html"
+echo "==> Done! Open: https://<this-host>:${PORT:-3000}"

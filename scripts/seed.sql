@@ -1,4 +1,8 @@
 -- =============================================================
+-- DEMO / DEVELOPMENT DATA ONLY — NEVER RUN ON A PRODUCTION DATABASE.
+-- It creates demo accounts that share one well-known password; a production
+-- installation must contain no default accounts or default passwords.
+-- =============================================================
 -- Sarbazi Library System - Comprehensive Seed Data
 -- Run: docker exec -i library_db su -s /bin/sh postgres -c "psql -U libraryuser -d library_db" < seed.sql
 -- Password for all new users: User1234!

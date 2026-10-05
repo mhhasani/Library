@@ -15,7 +15,9 @@ RUN groupadd --system --gid 1001 appgroup && \
 COPY --from=builder /app/target/library-management-system-1.0.0.jar app.jar
 # Create the file-storage path owned by appuser so a fresh named volume mounted here
 # inherits writable ownership (otherwise uploads fail with AccessDeniedException).
-RUN mkdir -p /data/library-files && chown -R appuser:appgroup /data app.jar
+# Log directory is owned by appuser as well (rolling application/audit logs).
+RUN mkdir -p /data/library-files /var/log/library \
+    && chown -R appuser:appgroup /data /var/log/library app.jar
 USER appuser
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-XX:+ExitOnOutOfMemoryError", "-Djava.awt.headless=true", "-jar", "app.jar"]

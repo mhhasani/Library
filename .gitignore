@@ -34,6 +34,8 @@ uploads/
 *.log
 library-files/
 *.sql
+# Versioned database provisioning scripts are part of the deployment
+!deploy/postgres/*.sql
 
 # Deploy secrets (contains real DB/JWT credentials, never commit)
 k8s/env-vars.json
@@ -49,4 +51,7 @@ frontend/dist/
 
 # Offline deployment bundle
 bundle/
+
+# Backups written by scripts/generate-env.sh
+.env.bak.*
 *.tar.gz

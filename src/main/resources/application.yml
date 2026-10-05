@@ -61,6 +61,8 @@ server:
       enabled: false
   # Load-threshold management: bounded threads, queue and connections
   tomcat:
+    remoteip:
+      port-header: X-Forwarded-Port
     threads:
       max: ${TOMCAT_MAX_THREADS:200}
     accept-count: ${TOMCAT_ACCEPT_COUNT:100}

@@ -1,63 +1,127 @@
+# Secrets are never defaulted: create .env first with ./scripts/generate-env.sh
+#
+# Networks (defense in depth):
+#   edge     — nginx <-> app       (only nginx publishes a port, HTTPS only)
+#   data     — app   <-> postgres  (internal: no route to the outside world)
+
+x-hardening: &hardening
+  security_opt:
+    - no-new-privileges:true
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "10"
+
 services:
   postgres:
+    <<: *hardening
     image: postgres:16-alpine
     container_name: library_db
     environment:
       POSTGRES_DB: ${DB_NAME:-library_db}
-      POSTGRES_USER: ${DB_USER:-libraryuser}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-librarypass}
+      POSTGRES_USER: ${DB_USER:?DB_USER is not set - run ./scripts/generate-env.sh}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is not set - run ./scripts/generate-env.sh}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256 --auth-local=scram-sha-256
+      DB_APP_USER: ${DB_APP_USER:-}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:-}
       TZ: ${TZ:-Asia/Tehran}
-    ports:
-      - "5432:5432"
+    # Database-layer audit logging (connections, schema changes, slow statements)
+    command:
+      - postgres
+      - -c
+      - password_encryption=scram-sha-256
+      - -c
+      - log_connections=on
+      - -c
+      - log_disconnections=on
+      - -c
+      - log_statement=ddl
+      - -c
+      - log_min_duration_statement=2000
+      - -c
+      - log_line_prefix=%m [%p] user=%u db=%d client=%h
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./deploy/postgres/app-role.sql:/opt/library-db/app-role.sql:ro
+      - ./deploy/postgres/10-create-app-role.sh:/docker-entrypoint-initdb.d/10-create-app-role.sh:ro
+    networks:
+      - data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-libraryuser} -d ${DB_NAME:-library_db}"]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 10s
       timeout: 5s
       retries: 5
 
   app:
+    <<: *hardening
     build:
       context: .
-      dockerfile: Dockerfile.quick
+      dockerfile: Dockerfile
+    image: library-management-app:latest
     container_name: library_app
+    cap_drop:
+      - ALL
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: ${DB_NAME:-library_db}
-      DB_USER: ${DB_USER:-libraryuser}
-      DB_PASSWORD: ${DB_PASSWORD:-librarypass}
-      JWT_SECRET: ${JWT_SECRET:-local-dev-secret-change-this-in-production-now}
-      STORAGE_PATH: ${STORAGE_PATH:-/data/library-files}
+      # Runtime connection uses the DML-only role; migrations use the schema owner.
+      DB_USER: ${DB_APP_USER:-${DB_USER}}
+      DB_PASSWORD: ${DB_APP_PASSWORD:-${DB_PASSWORD}}
+      DB_MIGRATION_USER: ${DB_USER}
+      DB_MIGRATION_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is not set - run ./scripts/generate-env.sh}
+      STORAGE_PATH: /data/library-files
+      LOG_PATH: /var/log/library
       TZ: ${TZ:-Asia/Tehran}
-    ports:
-      - "${APP_PORT:-8080}:8080"
     volumes:
       - library_files:/data/library-files
+      - app_logs:/var/log/library
+    networks:
+      - edge
+      - data
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/stats"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/v1/stats"]
       interval: 15s
       timeout: 5s
       retries: 8
-      start_period: 30s
-    restart: unless-stopped
+      start_period: 40s
 
   frontend:
+    <<: *hardening
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    image: library-management-frontend:latest
     container_name: library_frontend
+    environment:
+      TLS_COMMON_NAME: ${TLS_COMMON_NAME:-library.local}
     ports:
-      - "${FRONTEND_PORT:-3000}:80"
+      - "${FRONTEND_PORT:-3000}:443"
+    volumes:
+      # Mount an organization-issued certificate here (tls.crt / tls.key);
+      # a self-signed one is generated on first start otherwise.
+      - tls_certs:/etc/nginx/certs
+      - nginx_logs:/var/log/nginx
+    networks:
+      - edge
     depends_on:
       app:
         condition: service_healthy
-    restart: unless-stopped
+
+networks:
+  edge:
+  data:
+    internal: true
 
 volumes:
   postgres_data:
   library_files:
+  app_logs:
+  nginx_logs:
+  tls_certs:
