@@ -117,7 +117,7 @@ public class BorrowController {
     public ResponseEntity<ApiResponse<BorrowDTO>> updateDeliveryDetails(
             @PathVariable Long libraryId,
             @PathVariable Long borrowId,
-            @RequestBody DeliveryDetailsRequest request) {
+            @Valid @RequestBody DeliveryDetailsRequest request) {
         log.info("Updating delivery details for borrow {} in library {}", borrowId, libraryId);
         BorrowDTO borrow = borrowService.updateDeliveryDetails(libraryId, borrowId, request);
         return ResponseEntity.ok(ApiResponse.success("Delivery details updated successfully", borrow));
@@ -140,7 +140,7 @@ public class BorrowController {
     public ResponseEntity<ApiResponse<BorrowDTO>> requestReturn(
             @PathVariable Long libraryId,
             @PathVariable Long borrowId,
-            @RequestBody ReturnRequest request) {
+            @Valid @RequestBody ReturnRequest request) {
         log.info("Return pickup requested for borrow {} in library {}", borrowId, libraryId);
         BorrowDTO borrow = borrowService.requestReturn(libraryId, borrowId, request);
         return ResponseEntity.ok(ApiResponse.success("Return requested successfully", borrow));
@@ -152,7 +152,7 @@ public class BorrowController {
     public ResponseEntity<ApiResponse<BorrowDTO>> scheduleReturnPickup(
             @PathVariable Long libraryId,
             @PathVariable Long borrowId,
-            @RequestBody ReturnScheduleRequest request) {
+            @Valid @RequestBody ReturnScheduleRequest request) {
         log.info("Scheduling return pickup for borrow {} in library {}", borrowId, libraryId);
         BorrowDTO borrow = borrowService.scheduleReturnPickup(libraryId, borrowId, request);
         return ResponseEntity.ok(ApiResponse.success("Return pickup scheduled successfully", borrow));

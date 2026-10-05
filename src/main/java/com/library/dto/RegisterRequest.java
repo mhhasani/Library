@@ -1,5 +1,6 @@
 package com.library.dto;
 
+import com.library.validation.SafeText;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -29,13 +30,17 @@ public class RegisterRequest {
     @NotBlank(message = "نام را وارد کنید")
     @Size(min = 2, max = 100, message = "نام باید بین ۲ تا ۱۰۰ کاراکتر باشد")
     @Schema(description = "First name", example = "John")
+    @SafeText
     private String firstName;
 
     @NotBlank(message = "نام خانوادگی را وارد کنید")
     @Size(min = 2, max = 100, message = "نام خانوادگی باید بین ۲ تا ۱۰۰ کاراکتر باشد")
     @Schema(description = "Last name", example = "Doe")
+    @SafeText
     private String lastName;
 
     @Schema(description = "Phone number (optional)", example = "+1234567890")
+    @Size(max = 20, message = "حداکثر ۲۰ نویسه مجاز است")
+    @SafeText
     private String phoneNumber;
 }

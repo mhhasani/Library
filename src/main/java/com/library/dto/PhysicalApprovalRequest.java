@@ -1,8 +1,10 @@
 package com.library.dto;
 
+import com.library.validation.SafeText;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -27,9 +29,13 @@ public class PhysicalApprovalRequest {
     private Integer approvedDurationDays;
 
     @Schema(description = "Unique code of the physical copy being dispatched", example = "LIB-A-00123")
+    @Size(max = 100, message = "حداکثر ۱۰۰ نویسه مجاز است")
+    @SafeText
     private String copyUniqueCode;
 
     @Schema(description = "Courier name (optional, can be set later)", example = "علی رضایی")
+    @Size(max = 255, message = "حداکثر ۲۵۵ نویسه مجاز است")
+    @SafeText
     private String courierName;
 
     @Schema(description = "Specific book copy id to assign (optional, auto-selected if omitted)")

@@ -55,7 +55,7 @@ public class LibraryRequestController {
     @Operation(summary = "Approve a library creation request (system admin)")
     public ResponseEntity<ApiResponse<LibraryCreationRequestDTO>> approve(
             @PathVariable Long id,
-            @RequestBody(required = false) LibraryRequest override) {
+            @Valid @RequestBody(required = false) LibraryRequest override) {
         return ResponseEntity.ok(ApiResponse.success("درخواست تأیید و کتابخانه ایجاد شد", service.approveRequest(id, override)));
     }
 

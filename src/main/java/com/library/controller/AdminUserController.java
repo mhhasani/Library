@@ -3,9 +3,10 @@ package com.library.controller;
 import com.library.dto.ApiResponse;
 import com.library.dto.LibraryDTO;
 import com.library.dto.UpdateClearanceRequest;
+import com.library.dto.UpdateRoleRequest;
+import com.library.dto.UpdateStatusRequest;
 import com.library.dto.UserDTO;
 import com.library.entity.enums.AccountStatus;
-import com.library.entity.enums.SystemRole;
 import com.library.service.LibraryService;
 import com.library.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,7 +19,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/v1/admin")
@@ -50,9 +50,8 @@ public class AdminUserController {
     @Operation(summary = "Update user account status", description = "Suspend or activate a user account")
     public ResponseEntity<ApiResponse<UserDTO>> updateUserStatus(
             @PathVariable Long userId,
-            @RequestBody Map<String, String> body) {
-        AccountStatus newStatus = AccountStatus.valueOf(body.get("status"));
-        UserDTO user = userService.updateUserStatus(userId, newStatus);
+            @Valid @RequestBody UpdateStatusRequest request) {
+        UserDTO user = userService.updateUserStatus(userId, request.status());
         return ResponseEntity.ok(ApiResponse.success("User status updated successfully", user));
     }
 
@@ -61,9 +60,8 @@ public class AdminUserController {
     @Operation(summary = "Update user system role", description = "Promote or demote a user's system role — super admin only")
     public ResponseEntity<ApiResponse<UserDTO>> updateUserRole(
             @PathVariable Long userId,
-            @RequestBody Map<String, String> body) {
-        SystemRole newRole = SystemRole.valueOf(body.get("role"));
-        UserDTO user = userService.updateUserRole(userId, newRole);
+            @Valid @RequestBody UpdateRoleRequest request) {
+        UserDTO user = userService.updateUserRole(userId, request.role());
         return ResponseEntity.ok(ApiResponse.success("User role updated successfully", user));
     }
 
