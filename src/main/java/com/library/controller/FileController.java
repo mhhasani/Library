@@ -43,10 +43,22 @@ public class FileController {
         } catch (Exception e) {
             mediaType = MediaType.APPLICATION_OCTET_STREAM;
         }
+        // Only images and PDFs are ever served inline; anything else is forced to download.
+        boolean image = "image".equals(mediaType.getType()) && !mediaType.getSubtype().contains("svg");
+        boolean pdf = MediaType.APPLICATION_PDF.equalsTypeAndSubtype(mediaType);
+        if (!image && !pdf) {
+            mediaType = MediaType.APPLICATION_OCTET_STREAM;
+        }
 
         return ResponseEntity.ok()
                 .contentType(mediaType)
-                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
+                // Public cover images may be cached; gated files (digital books) must never be
+                // stored by the browser or intermediate proxies.
+                .header(HttpHeaders.CACHE_CONTROL, image ? "public, max-age=86400" : "no-store, private")
+                .header(HttpHeaders.CONTENT_DISPOSITION, (image || pdf) ? "inline" : "attachment")
+                // Served bytes can never run script in the app's origin
+                .header("Content-Security-Policy", "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox")
+                .header("X-Content-Type-Options", "nosniff")
                 .body(resource);
     }
 }

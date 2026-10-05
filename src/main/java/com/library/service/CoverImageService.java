@@ -11,6 +11,7 @@ import com.library.repository.BookRepository;
 import com.library.repository.FileResourceRepository;
 import com.library.repository.LibraryMembershipRepository;
 import com.library.repository.UserRepository;
+import com.library.util.FileSignatures;
 import com.library.util.SecurityUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,6 +53,9 @@ public class CoverImageService {
         String contentType = file.getContentType();
         if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase())) {
             throw new BadRequestException("فرمت تصویر پشتیبانی نمی‌شود. فرمت‌های مجاز: JPEG، PNG، WEBP، GIF");
+        }
+        if (!FileSignatures.isImage(file)) {
+            throw new BadRequestException("محتوای فایل با یک تصویر معتبر مطابقت ندارد");
         }
 
         Book book = bookRepository.findById(bookId)

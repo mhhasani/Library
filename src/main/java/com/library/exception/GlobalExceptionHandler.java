@@ -6,7 +6,17 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import jakarta.validation.ConstraintViolationException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -81,8 +91,64 @@ public class GlobalExceptionHandler {
         );
     }
 
+    /** Malformed / missing / wrongly-typed client input: 400 with a generic message (no parser internals). */
+    @ExceptionHandler({
+            HttpMessageNotReadableException.class,
+            MissingServletRequestParameterException.class,
+            MissingServletRequestPartException.class,
+            MissingRequestHeaderException.class,
+            MethodArgumentTypeMismatchException.class,
+            ConstraintViolationException.class,
+            IllegalArgumentException.class
+    })
+    public ResponseEntity<ApiResponse<Object>> handleMalformedInput(Exception ex, WebRequest request) {
+        log.warn("Malformed request input: {}: {}", ex.getClass().getSimpleName(), ex.getMessage());
+        return new ResponseEntity<>(
+                ApiResponse.error("درخواست نامعتبر", "اطلاعات ارسالی نامعتبر یا ناقص است"),
+                HttpStatus.BAD_REQUEST
+        );
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        log.warn("Method not supported: {}", ex.getMessage());
+        return new ResponseEntity<>(
+                ApiResponse.error("درخواست نامعتبر", "این نوع درخواست پشتیبانی نمی‌شود"),
+                HttpStatus.METHOD_NOT_ALLOWED
+        );
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleMediaType(HttpMediaTypeNotSupportedException ex) {
+        log.warn("Unsupported media type: {}", ex.getMessage());
+        return new ResponseEntity<>(
+                ApiResponse.error("درخواست نامعتبر", "قالب داده‌ی ارسالی پشتیبانی نمی‌شود"),
+                HttpStatus.UNSUPPORTED_MEDIA_TYPE
+        );
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Object>> handleMaxUpload(MaxUploadSizeExceededException ex) {
+        log.warn("Upload too large: {}", ex.getMessage());
+        return new ResponseEntity<>(
+                ApiResponse.error("درخواست نامعتبر", "حجم فایل بیش از حد مجاز است"),
+                HttpStatus.PAYLOAD_TOO_LARGE
+        );
+    }
+
+    /** Unknown paths: plain 404, never a directory listing or framework error page. */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Object>> handleNoResource(NoResourceFoundException ex) {
+        log.warn("No resource: {}", ex.getResourcePath());
+        return new ResponseEntity<>(
+                ApiResponse.error("یافت نشد", "مسیر درخواستی وجود ندارد"),
+                HttpStatus.NOT_FOUND
+        );
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleGenericException(Exception ex, WebRequest request) {
+        // Unexpected failure: full detail goes to the log only, the client gets a generic message
         log.error("خطای داخلی سرور", ex);
         return new ResponseEntity<>(
                 ApiResponse.error("خطای داخلی سرور", "خطای غیرمنتظره‌ای رخ داد"),

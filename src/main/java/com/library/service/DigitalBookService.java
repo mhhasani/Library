@@ -16,6 +16,7 @@ import com.library.repository.DigitalBookRepository;
 import com.library.repository.FileResourceRepository;
 import com.library.repository.LibraryMembershipRepository;
 import com.library.repository.UserRepository;
+import com.library.util.FileSignatures;
 import com.library.util.SecurityUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -69,6 +70,9 @@ public class DigitalBookService {
         String contentType = file.getContentType() != null ? file.getContentType() : "";
         if (!ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase())) {
             throw new BadRequestException("فقط فایل PDF پذیرفته می‌شود");
+        }
+        if (!FileSignatures.isPdf(file)) {
+            throw new BadRequestException("محتوای فایل با یک PDF معتبر مطابقت ندارد");
         }
 
         // One PDF per book: uploading again replaces (updates) the existing version.

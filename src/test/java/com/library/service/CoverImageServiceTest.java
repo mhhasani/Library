@@ -1,5 +1,6 @@
 package com.library.service;
 
+import com.library.util.TestFiles;
 import com.library.BaseIntegrationTest;
 import com.library.entity.*;
 import com.library.entity.enums.*;
@@ -82,7 +83,7 @@ class CoverImageServiceTest extends BaseIntegrationTest {
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
 
         imageFile = new MockMultipartFile(
-                "file", "cover.jpg", "image/jpeg", "fake image content".getBytes());
+                "file", "cover.jpg", "image/jpeg", TestFiles.jpeg("fake image content"));
 
         when(storageService.store(any(), anyString())).thenReturn("covers/test-uuid.jpg");
         doNothing().when(storageService).delete(anyString());
@@ -153,6 +154,18 @@ class CoverImageServiceTest extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("Spoofed content type (HTML declared as image/png) — throws BadRequestException")
+    void uploadCoverImage_spoofedContent_throws() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        MockMultipartFile disguised = new MockMultipartFile(
+                "file", "cover.png", "image/png", "<html><script>alert(1)</script></html>".getBytes());
+
+        assertThatThrownBy(() -> coverImageService.uploadCoverImage(library.getId(), book.getId(), disguised))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("تصویر معتبر");
+    }
+
+    @Test
     @DisplayName("Book belonging to another library — throws BadRequestException")
     void uploadCoverImage_bookNotInLibrary_throws() {
         Library otherLibrary = libraryRepository.save(Library.builder()
@@ -178,7 +191,7 @@ class CoverImageServiceTest extends BaseIntegrationTest {
         coverImageService.uploadCoverImage(library.getId(), book.getId(), imageFile);
 
         MockMultipartFile secondImage = new MockMultipartFile(
-                "file", "cover2.png", "image/png", "different content".getBytes());
+                "file", "cover2.png", "image/png", TestFiles.png("different content"));
         when(storageService.store(any(), anyString())).thenReturn("covers/other-uuid.png");
 
         coverImageService.uploadCoverImage(library.getId(), book.getId(), secondImage);

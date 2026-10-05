@@ -7,6 +7,8 @@ spring:
     password:
   liquibase:
     enabled: true  # Run Liquibase migrations to match production
+    user: sa
+    password: ""
     default-schema: PUBLIC
   jpa:
     hibernate:
@@ -24,3 +26,12 @@ logging:
   level:
     liquibase: OFF
     com.library: DEBUG
+  file:
+    path: target/test-logs
+
+jwt:
+  secret: test-only-secret-key-at-least-32-characters-long-xx
+
+app:
+  security:
+    max-page-size: 100

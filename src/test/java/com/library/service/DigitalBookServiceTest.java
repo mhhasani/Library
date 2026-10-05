@@ -1,5 +1,6 @@
 package com.library.service;
 
+import com.library.util.TestFiles;
 import com.library.BaseIntegrationTest;
 import com.library.dto.DigitalBookDTO;
 import com.library.entity.*;
@@ -87,7 +88,7 @@ class DigitalBookServiceTest extends BaseIntegrationTest {
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
 
         pdfFile = new MockMultipartFile(
-                "file", "test.pdf", "application/pdf", "fake pdf content".getBytes());
+                "file", "test.pdf", "application/pdf", TestFiles.pdf("fake pdf content"));
 
         when(storageService.store(any(), anyString()))
                 .thenReturn("digital-books/test-uuid.pdf");
@@ -142,13 +143,26 @@ class DigitalBookServiceTest extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("Spoofed content type (non-PDF bytes declared as application/pdf) — throws BadRequestException")
+    void uploadDigitalBook_spoofedContent_throws() {
+        SecurityTestUtils.setSecurityContext(adminUser, "USER");
+        MockMultipartFile disguised = new MockMultipartFile(
+                "file", "book.pdf", "application/pdf", "MZ executable bytes".getBytes());
+
+        assertThatThrownBy(() -> digitalBookService.uploadDigitalBook(
+                library.getId(), book.getId(), disguised, null))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("PDF معتبر");
+    }
+
+    @Test
     @DisplayName("Uploading a second PDF replaces the existing one — no exception thrown")
     void uploadDigitalBook_duplicatePdf_replaces() {
         SecurityTestUtils.setSecurityContext(adminUser, "USER");
         digitalBookService.uploadDigitalBook(library.getId(), book.getId(), pdfFile, null);
 
         MockMultipartFile pdfFile2 = new MockMultipartFile(
-                "file", "another.pdf", "application/pdf", "different pdf content".getBytes());
+                "file", "another.pdf", "application/pdf", TestFiles.pdf("different pdf content"));
         when(storageService.store(any(), anyString())).thenReturn("digital-books/other-uuid.pdf");
 
         // Second upload should succeed (replaces previous)

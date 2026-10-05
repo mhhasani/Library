@@ -1,5 +1,6 @@
 package com.library.service;
 
+import com.library.util.TestFiles;
 import com.library.BaseIntegrationTest;
 import com.library.config.WithMockCustomUser;
 import com.library.dto.BookDTO;
@@ -1084,8 +1085,8 @@ class BookServiceTest extends BaseIntegrationTest {
     @DisplayName("createBookWithAssets: creates book and applies cover + digital + copy count in one call")
     void testCreateBookWithAssets_allAssets() {
         SecurityTestUtils.setSecurityContext(adminUser, "USER");
-        MockMultipartFile cover = new MockMultipartFile("cover", "cover.jpg", "image/jpeg", "img".getBytes());
-        MockMultipartFile digital = new MockMultipartFile("digital", "book.pdf", "application/pdf", "pdf".getBytes());
+        MockMultipartFile cover = new MockMultipartFile("cover", "cover.jpg", "image/jpeg", TestFiles.jpeg("img"));
+        MockMultipartFile digital = new MockMultipartFile("digital", "book.pdf", "application/pdf", TestFiles.pdf("pdf"));
 
         BookDTO result = bookService.createBookWithAssets(library.getId(), bookRequest, cover, digital, "v1", 3);
 
@@ -1111,7 +1112,7 @@ class BookServiceTest extends BaseIntegrationTest {
     void testUpdateBookWithAssets() {
         SecurityTestUtils.setSecurityContext(adminUser, "USER");
         BookDTO created = bookService.createBook(library.getId(), bookRequest);
-        MockMultipartFile cover = new MockMultipartFile("cover", "cover.jpg", "image/jpeg", "img".getBytes());
+        MockMultipartFile cover = new MockMultipartFile("cover", "cover.jpg", "image/jpeg", TestFiles.jpeg("img"));
 
         BookRequest updateRequest = BookRequest.builder()
                 .title("Clean Code 2nd Edition").author("Robert C. Martin")
