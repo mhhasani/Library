@@ -1,89 +1,42 @@
 package com.library.controller;
 
 import com.library.dto.ApiResponse;
-import com.library.dto.AuthResponse;
-import com.library.dto.LoginRequest;
-import com.library.dto.RegisterRequest;
-import com.library.dto.UserDTO;
-import com.library.service.AuthenticationService;
+import com.library.dto.SessionInfoDTO;
+import com.library.security.AuthSessionService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Slf4j
+/**
+ * Session endpoints for the SPA. Login, registration and password changes happen in
+ * Keycloak (start at /api/oauth2/authorization/keycloak); logout is POST /api/v1/auth/logout.
+ */
 @RestController
 @RequestMapping("/v1/auth")
-@Tag(name = "Authentication", description = "User authentication and registration endpoints")
+@Tag(name = "Authentication", description = "Session state and post-login security notice")
 public class AuthenticationController {
 
-    @Autowired
-    private AuthenticationService authenticationService;
+    private final AuthSessionService authSessionService;
 
-    @PostMapping("/register")
-    @Operation(summary = "Register a new user", description = "Create a new user account")
-    @ApiResponses(value = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "201",
-                    description = "User registered successfully",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserDTO.class))
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "400",
-                    description = "Invalid input or email already exists"
-            )
-    })
-    public ResponseEntity<ApiResponse<UserDTO>> register(@Valid @RequestBody RegisterRequest request) {
-        log.info("Registering user: {}", request.getEmail());
-        UserDTO user = authenticationService.register(request);
-        return new ResponseEntity<>(
-                ApiResponse.success("User registered successfully", user),
-                HttpStatus.CREATED
-        );
+    public AuthenticationController(AuthSessionService authSessionService) {
+        this.authSessionService = authSessionService;
     }
 
-    @PostMapping("/login")
-    @Operation(summary = "Login user", description = "Authenticate user and get JWT tokens")
-    @ApiResponses(value = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "200",
-                    description = "Login successful",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = AuthResponse.class))
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "401",
-                    description = "Invalid credentials"
-            )
-    })
-    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
-        log.info("Login attempt for user: {}", request.getEmail());
-        AuthResponse response = authenticationService.login(request);
-        return ResponseEntity.ok(ApiResponse.success("Login successful", response));
+    @GetMapping("/session")
+    @Operation(summary = "Current session", description = "Who is logged in and what the security notice must show")
+    public ResponseEntity<ApiResponse<SessionInfoDTO>> session(HttpServletRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Session", authSessionService.describe(request)));
     }
 
-    @PostMapping("/refresh")
-    @Operation(summary = "Refresh access token", description = "Get a new access token using refresh token")
-    @ApiResponses(value = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "200",
-                    description = "Token refreshed successfully"
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "401",
-                    description = "Invalid or expired refresh token"
-            )
-    })
-    public ResponseEntity<ApiResponse<AuthResponse>> refreshToken(@RequestHeader("Authorization") String authHeader) {
-        String token = authHeader.substring(7);  // Remove "Bearer " prefix
-        log.info("Refreshing access token");
-        AuthResponse response = authenticationService.refreshToken(token);
-        return ResponseEntity.ok(ApiResponse.success("Token refreshed successfully", response));
+    @PostMapping("/notice")
+    @Operation(summary = "Acknowledge the post-login security notice")
+    public ResponseEntity<ApiResponse<Void>> acknowledgeNotice(HttpServletRequest request) {
+        authSessionService.acknowledgeNotice(request);
+        return ResponseEntity.ok(ApiResponse.success("Notice acknowledged"));
     }
 }

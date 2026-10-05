@@ -31,5 +31,6 @@
     <include file="db/changelog/v1/26-add-book-deleted-at.xml"/>
     <include file="db/changelog/v1/27-audit-log-security-fields.xml"/>
     <include file="db/changelog/v1/28-classification-labels.xml"/>
+    <include file="db/changelog/v1/29-sso-sessions-security-settings.xml"/>
 
 </databaseChangeLog>

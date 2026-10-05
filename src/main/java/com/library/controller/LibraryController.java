@@ -4,6 +4,8 @@ import com.library.dto.ApiResponse;
 import com.library.dto.LibraryDTO;
 import com.library.dto.LibraryRequest;
 import com.library.dto.MembershipDTO;
+import com.library.entity.enums.SensitiveOperation;
+import com.library.security.RequiresRecentAuthentication;
 import com.library.service.LibraryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -89,6 +91,7 @@ public class LibraryController {
     }
 
     @DeleteMapping("/{libraryId}")
+    @RequiresRecentAuthentication(SensitiveOperation.LIBRARY_DELETE)
     @Operation(summary = "Delete library", description = "Delete library (owner only)")
     public ResponseEntity<ApiResponse<Void>> deleteLibrary(@PathVariable Long libraryId) {
         log.info("Deleting library: {}", libraryId);
@@ -125,6 +128,7 @@ public class LibraryController {
     }
 
     @PatchMapping("/{libraryId}/members/{userId}/role")
+    @RequiresRecentAuthentication(SensitiveOperation.LIBRARY_ROLE_CHANGE)
     @Operation(summary = "Set a member's role",
             description = "Promote to ADMIN or demote to MEMBER (library owner or system admin only)")
     public ResponseEntity<ApiResponse<com.library.dto.LibraryDTO>> setMemberRole(

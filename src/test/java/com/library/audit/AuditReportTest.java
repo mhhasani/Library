@@ -8,7 +8,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.http.MediaType;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.event.AuthenticationFailureBadCredentialsEvent;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -26,6 +29,7 @@ class AuditReportTest extends BaseIntegrationTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private AuditService auditService;
     @Autowired private AuditLogRepository repository;
+    @Autowired private ApplicationEventPublisher events;
 
     @BeforeEach
     void seed() {
@@ -77,11 +81,10 @@ class AuditReportTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("A failed login attempt is recorded with the presented identity")
-    void failedLoginIsAudited() throws Exception {
-        mockMvc.perform(post("/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"nobody@x.ir\",\"password\":\"wrong-password\"}"))
-                .andExpect(status().isUnauthorized());
+    void failedLoginIsAudited() {
+        var attempt = UsernamePasswordAuthenticationToken.unauthenticated("nobody@x.ir", "n/a");
+        events.publishEvent(new AuthenticationFailureBadCredentialsEvent(
+                attempt, new BadCredentialsException("bad credentials")));
 
         assertThat(repository.findByAction(AuditAction.LOGIN.name()))
                 .anyMatch(r -> "nobody@x.ir".equals(r.getActorEmail()) && r.getOutcome().name().equals("FAILURE"));

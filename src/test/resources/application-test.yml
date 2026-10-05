@@ -29,9 +29,19 @@ logging:
   file:
     path: target/test-logs
 
-jwt:
-  secret: test-only-secret-key-at-least-32-characters-long-xx
-
 app:
+  organization-name: سامانه‌ی آزمون
   security:
     max-page-size: 100
+  oidc:
+    public-url: https://library.test
+    issuer-uri: https://library.test/auth/realms/library
+    client-id: library-app
+    client-secret: test-client-secret
+    bootstrap-super-admin-email: root@library.test
+    admin-sync-enabled: false
+  session:
+    cookie-name: LIBSESSION
+    cookie-secure: true
+    cookie-same-site: Strict
+    bind-client-ip: true

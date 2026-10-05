@@ -1,7 +1,7 @@
 package com.library.util;
 
 import com.library.entity.User;
-import com.library.security.CustomUserDetailsService;
+import com.library.security.AppUserDetails;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
@@ -13,8 +13,8 @@ import java.util.stream.Collectors;
 public class SecurityTestUtils {
 
     public static void setSecurityContext(User user, String... roles) {
-        CustomUserDetailsService.UserDetailsImpl principal = 
-                new CustomUserDetailsService.UserDetailsImpl(user);
+        AppUserDetails principal = 
+                new AppUserDetails(user);
 
         UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                 principal,

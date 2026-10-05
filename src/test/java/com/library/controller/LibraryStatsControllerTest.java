@@ -10,7 +10,7 @@ import com.library.entity.LibraryMembership;
 import com.library.entity.User;
 import com.library.entity.enums.*;
 import com.library.repository.*;
-import com.library.security.CustomUserDetailsService;
+import com.library.security.AppUserDetails;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -76,7 +76,7 @@ class LibraryStatsControllerTest extends BaseIntegrationTest {
 
     /** Logs the given (already-persisted) user in as the current security principal. */
     private void loginAs(User user) {
-        CustomUserDetailsService.UserDetailsImpl principal = new CustomUserDetailsService.UserDetailsImpl(user);
+        AppUserDetails principal = new AppUserDetails(user);
         Authentication auth = new UsernamePasswordAuthenticationToken(
                 principal, "password", principal.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(auth);

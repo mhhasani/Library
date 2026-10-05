@@ -11,6 +11,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -42,7 +43,9 @@ public class AuditingSecurityHandlers implements AuthenticationEntryPoint, Acces
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException {
-        auditService.record(AuditEntry.failure(AuditAction.ACCESS_DENIED)
+        AuditAction action = accessDeniedException instanceof CsrfException
+                ? AuditAction.CSRF_REJECTED : AuditAction.ACCESS_DENIED;
+        auditService.record(AuditEntry.failure(action)
                 .entityType("API").details(request.getMethod() + " " + request.getRequestURI()).build());
         write(response, HttpStatus.FORBIDDEN, "دسترسی رد شد", "شما اجازه‌ی دسترسی به این بخش را ندارید");
     }

@@ -2,12 +2,14 @@ package com.library.controller;
 
 import com.library.audit.AuditEntry;
 import com.library.audit.AuditQueryService;
-import com.library.audit.AuditService;
 import com.library.audit.AuditService.ChainVerification;
+import com.library.audit.AuditService;
 import com.library.dto.ApiResponse;
 import com.library.dto.AuditLogDTO;
 import com.library.entity.enums.AuditAction;
 import com.library.entity.enums.AuditOutcome;
+import com.library.entity.enums.SensitiveOperation;
+import com.library.security.RequiresRecentAuthentication;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -66,6 +68,7 @@ public class AdminAuditController {
     }
 
     @GetMapping("/export")
+    @RequiresRecentAuthentication(SensitiveOperation.AUDIT_LOG_EXPORT)
     @Operation(summary = "Export the filtered audit trail as labeled CSV")
     public ResponseEntity<byte[]> export(
             @RequestParam(required = false) String action,

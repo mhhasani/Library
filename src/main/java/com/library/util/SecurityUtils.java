@@ -3,7 +3,7 @@ package com.library.util;
 import lombok.experimental.UtilityClass;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import com.library.security.CustomUserDetailsService.UserDetailsImpl;
+import com.library.security.AppUserDetails;
 
 import java.util.Map;
 import java.util.Set;
@@ -26,8 +26,8 @@ public class SecurityUtils {
 
     public static Long getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
-            return ((UserDetailsImpl) authentication.getPrincipal()).getId();
+        if (authentication != null && authentication.getPrincipal() instanceof AppUserDetails) {
+            return ((AppUserDetails) authentication.getPrincipal()).getId();
         }
         return null;
     }

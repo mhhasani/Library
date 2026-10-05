@@ -2,11 +2,15 @@ package com.library.controller;
 
 import com.library.dto.ApiResponse;
 import com.library.dto.LibraryDTO;
+import com.library.dto.TemporaryPasswordRequest;
 import com.library.dto.UpdateClearanceRequest;
 import com.library.dto.UpdateRoleRequest;
 import com.library.dto.UpdateStatusRequest;
 import com.library.dto.UserDTO;
 import com.library.entity.enums.AccountStatus;
+import com.library.entity.enums.SensitiveOperation;
+import com.library.keycloak.IdentityAccountService;
+import com.library.security.RequiresRecentAuthentication;
 import com.library.service.LibraryService;
 import com.library.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,6 +37,9 @@ public class AdminUserController {
     @Autowired
     private LibraryService libraryService;
 
+    @Autowired
+    private IdentityAccountService identityAccountService;
+
     @GetMapping("/users")
     @Operation(summary = "Get users", description = "Paginated, searchable users (optionally filter by account status)")
     public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<UserDTO>>> getUsers(
@@ -47,6 +54,7 @@ public class AdminUserController {
     }
 
     @PatchMapping("/users/{userId}/status")
+    @RequiresRecentAuthentication(SensitiveOperation.USER_STATUS_CHANGE)
     @Operation(summary = "Update user account status", description = "Suspend or activate a user account")
     public ResponseEntity<ApiResponse<UserDTO>> updateUserStatus(
             @PathVariable Long userId,
@@ -56,6 +64,7 @@ public class AdminUserController {
     }
 
     @PatchMapping("/users/{userId}/role")
+    @RequiresRecentAuthentication(SensitiveOperation.USER_ROLE_CHANGE)
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Operation(summary = "Update user system role", description = "Promote or demote a user's system role — super admin only")
     public ResponseEntity<ApiResponse<UserDTO>> updateUserRole(
@@ -66,6 +75,7 @@ public class AdminUserController {
     }
 
     @PatchMapping("/users/{userId}/clearance")
+    @RequiresRecentAuthentication(SensitiveOperation.USER_CLEARANCE_CHANGE)
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Operation(summary = "Update user classification clearance", description = "Super admin only")
     public ResponseEntity<ApiResponse<UserDTO>> updateUserClearance(
@@ -73,6 +83,17 @@ public class AdminUserController {
             @Valid @RequestBody UpdateClearanceRequest request) {
         UserDTO user = userService.updateUserClearance(userId, request.clearance());
         return ResponseEntity.ok(ApiResponse.success("User clearance updated successfully", user));
+    }
+
+    @PostMapping("/users/{userId}/temporary-password")
+    @RequiresRecentAuthentication(SensitiveOperation.USER_PASSWORD_RESET)
+    @Operation(summary = "Assign a temporary password",
+            description = "The user must change it at the next login; their open sessions are ended")
+    public ResponseEntity<ApiResponse<Void>> assignTemporaryPassword(
+            @PathVariable Long userId,
+            @Valid @RequestBody TemporaryPasswordRequest request) {
+        identityAccountService.assignTemporaryPassword(userId, request.password());
+        return ResponseEntity.ok(ApiResponse.success("Temporary password assigned"));
     }
 
     @GetMapping("/libraries")

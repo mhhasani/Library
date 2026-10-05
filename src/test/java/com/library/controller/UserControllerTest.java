@@ -95,43 +95,4 @@ class UserControllerTest extends BaseIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    // ── PUT /v1/users/me/password ──────────────────────────────────────────
-
-    @Test
-    @WithMockUser
-    @DisplayName("Change password with correct current password — 200")
-    void changePassword_success() throws Exception {
-        doNothing().when(userService).changePassword(any());
-
-        mockMvc.perform(put("/v1/users/me/password")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(
-                                Map.of("currentPassword", "old12345", "newPassword", "newPass123"))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
-    }
-
-    @Test
-    @WithMockUser
-    @DisplayName("Change password with wrong current password — 400")
-    void changePassword_wrongCurrent_badRequest() throws Exception {
-        doThrow(new BadRequestException("رمز عبور فعلی نادرست است"))
-                .when(userService).changePassword(any());
-
-        mockMvc.perform(put("/v1/users/me/password")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(
-                                Map.of("currentPassword", "wrong123", "newPassword", "newPass123"))))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("Unauthenticated request to PUT /v1/users/me/password — 401")
-    void changePassword_unauthenticated_unauthorized() throws Exception {
-        mockMvc.perform(put("/v1/users/me/password")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(
-                                Map.of("currentPassword", "x", "newPassword", "tooShort"))))
-                .andExpect(status().isUnauthorized());
-    }
 }

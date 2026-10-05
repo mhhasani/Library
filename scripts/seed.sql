@@ -34,18 +34,18 @@ WHERE id = 2;
 -- =============================================================
 -- 2. NEW USERS (password: User1234!)
 -- BCrypt hash of "User1234!":
--- $2b$10$FrTB.0FuOe/Gfz0x0igPPOwzJ/B0k5bbwF1uiAeu.2NqTX4nVhawy
+-- $2a$10$X7pZ9Cqc8gnA5zWGqnQqeOL4tsL.Yr9/4PAlAKxQrLxdvOS.bterK
 -- =============================================================
 
 INSERT INTO users (id, email, password_hash, first_name, last_name, phone_number, system_role, account_status, created_at, updated_at)
 VALUES
-    (4,  'ali.ahmadi@email.com',     '$2b$10$FrTB.0FuOe/Gfz0x0igPPOwzJ/B0k5bbwF1uiAeu.2NqTX4nVhawy', 'علی',   'احمدی',    '09121110001', 'USER', 'ACTIVE', NOW() - INTERVAL '60 days', NOW()),
-    (5,  'sara.hosseini@email.com',  '$2b$10$FrTB.0FuOe/Gfz0x0igPPOwzJ/B0k5bbwF1uiAeu.2NqTX4nVhawy', 'سارا',  'حسینی',    '09121110002', 'USER', 'ACTIVE', NOW() - INTERVAL '55 days', NOW()),
-    (6,  'mohsen.karimi@email.com',  '$2b$10$FrTB.0FuOe/Gfz0x0igPPOwzJ/B0k5bbwF1uiAeu.2NqTX4nVhawy', 'محسن',  'کریمی',    '09121110003', 'USER', 'ACTIVE', NOW() - INTERVAL '45 days', NOW()),
-    (7,  'maryam.rezaei@email.com',  '$2b$10$FrTB.0FuOe/Gfz0x0igPPOwzJ/B0k5bbwF1uiAeu.2NqTX4nVhawy', 'مریم',  'رضایی',    '09121110004', 'USER', 'ACTIVE', NOW() - INTERVAL '40 days', NOW()),
-    (8,  'reza.mohammadi@email.com', '$2b$10$FrTB.0FuOe/Gfz0x0igPPOwzJ/B0k5bbwF1uiAeu.2NqTX4nVhawy', 'رضا',   'محمدی',    '09121110005', 'USER', 'ACTIVE', NOW() - INTERVAL '30 days', NOW()),
-    (9,  'zahra.safari@email.com',   '$2b$10$FrTB.0FuOe/Gfz0x0igPPOwzJ/B0k5bbwF1uiAeu.2NqTX4nVhawy', 'زهرا',  'صفاری',    '09121110006', 'USER', 'ACTIVE', NOW() - INTERVAL '25 days', NOW()),
-    (10, 'amir.moradi@email.com',    '$2b$10$FrTB.0FuOe/Gfz0x0igPPOwzJ/B0k5bbwF1uiAeu.2NqTX4nVhawy', 'امیر',  'مرادی',    '09121110007', 'USER', 'ACTIVE', NOW() - INTERVAL '20 days', NOW())
+    (4,  'ali.ahmadi@email.com',     '$2a$10$X7pZ9Cqc8gnA5zWGqnQqeOL4tsL.Yr9/4PAlAKxQrLxdvOS.bterK', 'علی',   'احمدی',    '09121110001', 'USER', 'ACTIVE', NOW() - INTERVAL '60 days', NOW()),
+    (5,  'sara.hosseini@email.com',  '$2a$10$X7pZ9Cqc8gnA5zWGqnQqeOL4tsL.Yr9/4PAlAKxQrLxdvOS.bterK', 'سارا',  'حسینی',    '09121110002', 'USER', 'ACTIVE', NOW() - INTERVAL '55 days', NOW()),
+    (6,  'mohsen.karimi@email.com',  '$2a$10$X7pZ9Cqc8gnA5zWGqnQqeOL4tsL.Yr9/4PAlAKxQrLxdvOS.bterK', 'محسن',  'کریمی',    '09121110003', 'USER', 'ACTIVE', NOW() - INTERVAL '45 days', NOW()),
+    (7,  'maryam.rezaei@email.com',  '$2a$10$X7pZ9Cqc8gnA5zWGqnQqeOL4tsL.Yr9/4PAlAKxQrLxdvOS.bterK', 'مریم',  'رضایی',    '09121110004', 'USER', 'ACTIVE', NOW() - INTERVAL '40 days', NOW()),
+    (8,  'reza.mohammadi@email.com', '$2a$10$X7pZ9Cqc8gnA5zWGqnQqeOL4tsL.Yr9/4PAlAKxQrLxdvOS.bterK', 'رضا',   'محمدی',    '09121110005', 'USER', 'ACTIVE', NOW() - INTERVAL '30 days', NOW()),
+    (9,  'zahra.safari@email.com',   '$2a$10$X7pZ9Cqc8gnA5zWGqnQqeOL4tsL.Yr9/4PAlAKxQrLxdvOS.bterK', 'زهرا',  'صفاری',    '09121110006', 'USER', 'ACTIVE', NOW() - INTERVAL '25 days', NOW()),
+    (10, 'amir.moradi@email.com',    '$2a$10$X7pZ9Cqc8gnA5zWGqnQqeOL4tsL.Yr9/4PAlAKxQrLxdvOS.bterK', 'امیر',  'مرادی',    '09121110007', 'USER', 'ACTIVE', NOW() - INTERVAL '20 days', NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- =============================================================

@@ -25,6 +25,9 @@ public class ApiResponse<T> {
     @Schema(description = "Error details")
     private String error;
 
+    @Schema(description = "Machine-readable error code for clients (e.g. SESSION_EXPIRED)")
+    private String code;
+
     public static <T> ApiResponse<T> success(String message, T data) {
         return ApiResponse.<T>builder()
                 .success(true)
@@ -45,6 +48,15 @@ public class ApiResponse<T> {
                 .success(false)
                 .message(message)
                 .error(error)
+                .build();
+    }
+
+    public static <T> ApiResponse<T> error(String message, String error, String code) {
+        return ApiResponse.<T>builder()
+                .success(false)
+                .message(message)
+                .error(error)
+                .code(code)
                 .build();
     }
 

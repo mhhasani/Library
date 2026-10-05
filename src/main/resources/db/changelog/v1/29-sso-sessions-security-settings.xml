@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
+
+    <!-- Users are authenticated by Keycloak; the local row is linked by the OIDC subject. -->
+    <changeSet id="29-users-sso" author="system">
+        <addColumn tableName="users">
+            <column name="keycloak_subject" type="VARCHAR(64)">
+                <constraints unique="true" uniqueConstraintName="uk_users_keycloak_subject"/>
+            </column>
+            <column name="last_login_ip" type="VARCHAR(64)"/>
+        </addColumn>
+        <!-- Local password hashes are migrated to Keycloak and then removed -->
+        <dropNotNullConstraint tableName="users" columnName="password_hash" columnDataType="VARCHAR(255)"/>
+    </changeSet>
+
+    <!--
+        Spring Session JDBC store: HTTP sessions live in the database, not in application
+        memory (names unquoted so they resolve on both PostgreSQL and the H2 test database).
+    -->
+    <changeSet id="29-spring-session" author="system">
+        <createTable tableName="SPRING_SESSION">
+            <column name="PRIMARY_ID" type="CHAR(36)">
+                <constraints primaryKey="true" primaryKeyName="SPRING_SESSION_PK"/>
+            </column>
+            <column name="SESSION_ID" type="CHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CREATION_TIME" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="LAST_ACCESS_TIME" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="MAX_INACTIVE_INTERVAL" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="EXPIRY_TIME" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="PRINCIPAL_NAME" type="VARCHAR(100)"/>
+        </createTable>
+        <createIndex indexName="SPRING_SESSION_IX1" tableName="SPRING_SESSION" unique="true">
+            <column name="SESSION_ID"/>
+        </createIndex>
+        <createIndex indexName="SPRING_SESSION_IX2" tableName="SPRING_SESSION">
+            <column name="EXPIRY_TIME"/>
+        </createIndex>
+        <createIndex indexName="SPRING_SESSION_IX3" tableName="SPRING_SESSION">
+            <column name="PRINCIPAL_NAME"/>
+        </createIndex>
+
+        <createTable tableName="SPRING_SESSION_ATTRIBUTES">
+            <column name="SESSION_PRIMARY_ID" type="CHAR(36)">
+                <constraints nullable="false" foreignKeyName="SPRING_SESSION_ATTRIBUTES_FK"
+                             references="SPRING_SESSION(PRIMARY_ID)" deleteCascade="true"/>
+            </column>
+            <column name="ATTRIBUTE_NAME" type="VARCHAR(200)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ATTRIBUTE_BYTES" type="BYTEA">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="SPRING_SESSION_ATTRIBUTES" columnNames="SESSION_PRIMARY_ID, ATTRIBUTE_NAME"
+                       constraintName="SPRING_SESSION_ATTRIBUTES_PK"/>
+    </changeSet>
+
+    <!--
+        Administrator-tunable security settings (single row). Every range is also enforced
+        by the database, so a value written directly to the table cannot bypass validation.
+    -->
+    <changeSet id="29-security-settings" author="system">
+        <createTable tableName="security_settings">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" primaryKeyName="pk_security_settings"/>
+            </column>
+            <column name="max_failed_logins" type="INT" defaultValueNumeric="5">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lockout_minutes" type="INT" defaultValueNumeric="15">
+                <constraints nullable="false"/>
+            </column>
+            <column name="failure_reset_minutes" type="INT" defaultValueNumeric="720">
+                <constraints nullable="false"/>
+            </column>
+            <column name="session_idle_minutes" type="INT" defaultValueNumeric="30">
+                <constraints nullable="false"/>
+            </column>
+            <column name="password_history" type="INT" defaultValueNumeric="3">
+                <constraints nullable="false"/>
+            </column>
+            <column name="password_max_age_days" type="INT" defaultValueNumeric="90">
+                <constraints nullable="false"/>
+            </column>
+            <column name="mfa_required" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reauth_window_minutes" type="INT" defaultValueNumeric="5">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sensitive_operations" type="VARCHAR(1000)"/>
+            <column name="updated_at" type="TIMESTAMP"/>
+            <column name="updated_by" type="BIGINT"/>
+        </createTable>
+
+        <sql>
+            ALTER TABLE security_settings ADD CONSTRAINT ck_settings_single_row CHECK (id = 1);
+            ALTER TABLE security_settings ADD CONSTRAINT ck_settings_max_failed_logins CHECK (max_failed_logins BETWEEN 1 AND 6);
+            ALTER TABLE security_settings ADD CONSTRAINT ck_settings_lockout_minutes CHECK (lockout_minutes BETWEEN 1 AND 1440);
+            ALTER TABLE security_settings ADD CONSTRAINT ck_settings_failure_reset CHECK (failure_reset_minutes BETWEEN 1 AND 1440);
+            ALTER TABLE security_settings ADD CONSTRAINT ck_settings_session_idle CHECK (session_idle_minutes BETWEEN 15 AND 30);
+            ALTER TABLE security_settings ADD CONSTRAINT ck_settings_password_history CHECK (password_history BETWEEN 1 AND 3);
+            ALTER TABLE security_settings ADD CONSTRAINT ck_settings_password_max_age CHECK (password_max_age_days BETWEEN 1 AND 365);
+            ALTER TABLE security_settings ADD CONSTRAINT ck_settings_reauth_window CHECK (reauth_window_minutes BETWEEN 1 AND 60);
+        </sql>
+
+        <insert tableName="security_settings">
+            <column name="id" valueNumeric="1"/>
+            <column name="sensitive_operations"
+                    value="USER_ROLE_CHANGE,USER_STATUS_CHANGE,USER_CLEARANCE_CHANGE,USER_PASSWORD_RESET,SECURITY_SETTINGS_CHANGE,AUDIT_LOG_EXPORT"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

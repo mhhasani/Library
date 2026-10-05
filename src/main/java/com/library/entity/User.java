@@ -11,6 +11,8 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Entity
@@ -21,7 +23,11 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class User implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,8 +36,13 @@ public class User {
     @Column(nullable = false, unique = true, length = 255)
     private String email;
 
-    @Column(nullable = false, length = 255)
+    /** Legacy local password hash; migrated to Keycloak on first contact and then cleared. */
+    @Column(length = 255)
     private String passwordHash;
+
+    /** Subject ("sub") of the linked Keycloak account. */
+    @Column(name = "keycloak_subject", unique = true, length = 64)
+    private String keycloakSubject;
 
     @Column(nullable = false, length = 100)
     private String firstName;
@@ -66,6 +77,9 @@ public class User {
 
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
+
+    @Column(name = "last_login_ip", length = 64)
+    private String lastLoginIp;
 
     @Column(nullable = false, updatable = false)
     @Builder.Default

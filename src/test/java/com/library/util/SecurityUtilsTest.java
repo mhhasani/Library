@@ -21,8 +21,8 @@ class SecurityUtilsTest {
     }
 
     @Test
-    @DisplayName("getCurrentUserId returns id when principal is UserDetailsImpl")
-    void getCurrentUserId_withUserDetailsImpl() {
+    @DisplayName("getCurrentUserId returns id when principal is AppUserDetails")
+    void getCurrentUserId_withAppUserDetails() {
         User user = User.builder().id(42L).email("a@b.com").systemRole(SystemRole.USER).build();
         SecurityTestUtils.setSecurityContext(user, "USER");
 
@@ -38,7 +38,7 @@ class SecurityUtilsTest {
     }
 
     @Test
-    @DisplayName("getCurrentUserId returns null when principal is not UserDetailsImpl")
+    @DisplayName("getCurrentUserId returns null when principal is not AppUserDetails")
     void getCurrentUserId_nonUserDetailsPrincipal() {
         SecurityContextHolder.getContext().setAuthentication(
                 new TestingAuthenticationToken("plainPrincipal", "creds", Collections.emptyList()));

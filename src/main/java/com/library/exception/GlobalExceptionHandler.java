@@ -4,6 +4,7 @@ import com.library.audit.AuditEntry;
 import com.library.audit.AuditService;
 import com.library.dto.ApiResponse;
 import com.library.entity.enums.AuditAction;
+import com.library.keycloak.KeycloakAdminException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -149,6 +150,25 @@ public class GlobalExceptionHandler {
                 ApiResponse.error("درخواست نامعتبر", "حجم فایل بیش از حد مجاز است"),
                 HttpStatus.PAYLOAD_TOO_LARGE
         );
+    }
+
+    /**
+     * Identity-provider failures: a rejected value (e.g. a password that violates the policy)
+     * is the caller's error and Keycloak's reason is shown; anything else is reported as the
+     * identity service being unavailable.
+     */
+    @ExceptionHandler(KeycloakAdminException.class)
+    public ResponseEntity<ApiResponse<Object>> handleIdentityProvider(KeycloakAdminException ex) {
+        if (ex.getStatus() == HttpStatus.BAD_REQUEST.value() || ex.getStatus() == HttpStatus.CONFLICT.value()) {
+            log.warn("Identity provider rejected the request: {}", ex.getMessage());
+            return new ResponseEntity<>(
+                    ApiResponse.error("درخواست نامعتبر", "سامانه‌ی احراز هویت این مقدار را نپذیرفت: " + ex.getMessage()),
+                    HttpStatus.BAD_REQUEST);
+        }
+        log.error("Identity provider unavailable: {}", ex.getMessage(), ex);
+        return new ResponseEntity<>(
+                ApiResponse.error("خطای سامانه‌ی احراز هویت", "سامانه‌ی احراز هویت در دسترس نیست؛ دوباره تلاش کنید"),
+                HttpStatus.SERVICE_UNAVAILABLE);
     }
 
     /** Unknown paths: plain 404, never a directory listing or framework error page. */

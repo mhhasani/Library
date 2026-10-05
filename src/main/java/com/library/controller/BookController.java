@@ -4,6 +4,8 @@ import com.library.dto.AddBookCopyRequest;
 import com.library.dto.ApiResponse;
 import com.library.dto.BookDTO;
 import com.library.dto.BookRequest;
+import com.library.entity.enums.SensitiveOperation;
+import com.library.security.RequiresRecentAuthentication;
 import com.library.service.BookService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -159,6 +161,7 @@ public class BookController {
     }
 
     @DeleteMapping("/{bookId}")
+    @RequiresRecentAuthentication(SensitiveOperation.BOOK_DELETE)
     @Operation(summary = "Delete book", description = "Delete a book (admin only)")
     public ResponseEntity<ApiResponse<Void>> deleteBook(
             @PathVariable Long libraryId,

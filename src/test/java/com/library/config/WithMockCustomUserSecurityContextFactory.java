@@ -3,7 +3,7 @@ package com.library.config;
 import com.library.entity.User;
 import com.library.entity.enums.AccountStatus;
 import com.library.entity.enums.SystemRole;
-import com.library.security.CustomUserDetailsService;
+import com.library.security.AppUserDetails;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -35,8 +35,8 @@ public class WithMockCustomUserSecurityContextFactory implements WithSecurityCon
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        CustomUserDetailsService.UserDetailsImpl principal = 
-                new CustomUserDetailsService.UserDetailsImpl(user);
+        AppUserDetails principal = 
+                new AppUserDetails(user);
 
         Authentication auth = new UsernamePasswordAuthenticationToken(
                 principal,

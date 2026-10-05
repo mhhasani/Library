@@ -1,7 +1,6 @@
 package com.library.service;
 
 import com.library.BaseIntegrationTest;
-import com.library.dto.ChangePasswordRequest;
 import com.library.dto.UpdateProfileRequest;
 import com.library.dto.UserDTO;
 import com.library.entity.Notification;
@@ -23,7 +22,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,8 +43,6 @@ class UserServiceTest extends BaseIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
 
     @Autowired
     private NotificationRepository notificationRepository;
@@ -57,7 +53,7 @@ class UserServiceTest extends BaseIntegrationTest {
     void setUp() {
         testUser = User.builder()
                 .email("testuser@library.com")
-                .passwordHash(passwordEncoder.encode("password123"))
+                .passwordHash("legacy-hash")
                 .firstName("علی")
                 .lastName("احمدی")
                 .phoneNumber("09121234567")
@@ -119,35 +115,6 @@ class UserServiceTest extends BaseIntegrationTest {
         assertThat(result.getPhoneNumber()).isNull();
     }
 
-    @Test
-    @DisplayName("Should change password successfully")
-    void testChangePasswordSuccess() {
-        ChangePasswordRequest request = ChangePasswordRequest.builder()
-                .currentPassword("password123")
-                .newPassword("newPassword456")
-                .build();
-
-        assertThatNoException().isThrownBy(() -> userService.changePassword(request));
-
-        // Verify new password is set
-        User updated = userRepository.findById(testUser.getId()).orElseThrow();
-        assertThat(passwordEncoder.matches("newPassword456", updated.getPasswordHash())).isTrue();
-        assertThat(passwordEncoder.matches("password123", updated.getPasswordHash())).isFalse();
-    }
-
-    @Test
-    @DisplayName("Should throw BadRequestException when current password is wrong")
-    void testChangePasswordWrongCurrentPassword() {
-        ChangePasswordRequest request = ChangePasswordRequest.builder()
-                .currentPassword("wrongPassword")
-                .newPassword("newPassword456")
-                .build();
-
-        assertThatThrownBy(() -> userService.changePassword(request))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("رمز عبور فعلی نادرست است");
-    }
-
     // ── Last-admin protection ────────────────────────────────────────────────
 
     @Test
@@ -155,7 +122,7 @@ class UserServiceTest extends BaseIntegrationTest {
     void testUpdateStatusCannotSuspendLastAdmin() {
         User admin = User.builder()
                 .email("sysadmin@lib.com")
-                .passwordHash(passwordEncoder.encode("pass"))
+                .passwordHash("legacy-hash")
                 .firstName("Sys").lastName("Admin")
                 .systemRole(SystemRole.SYSTEM_ADMIN)
                 .accountStatus(AccountStatus.ACTIVE)
@@ -165,7 +132,7 @@ class UserServiceTest extends BaseIntegrationTest {
         // Caller is a plain USER (not counted as admin) — service-layer guard is role-agnostic
         User caller = User.builder()
                 .email("caller@lib.com")
-                .passwordHash(passwordEncoder.encode("pass"))
+                .passwordHash("legacy-hash")
                 .firstName("Caller").lastName("User")
                 .systemRole(SystemRole.USER)
                 .accountStatus(AccountStatus.ACTIVE)
@@ -184,14 +151,14 @@ class UserServiceTest extends BaseIntegrationTest {
     void testUpdateStatusCanSuspendNonLastAdmin() {
         // Two admins — suspending one should succeed
         User admin1 = User.builder()
-                .email("admin1@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .email("admin1@lib.com").passwordHash("legacy-hash")
                 .firstName("A1").lastName("A").systemRole(SystemRole.SYSTEM_ADMIN)
                 .accountStatus(AccountStatus.ACTIVE)
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
         admin1 = userRepository.save(admin1);
 
         User admin2 = User.builder()
-                .email("admin2@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .email("admin2@lib.com").passwordHash("legacy-hash")
                 .firstName("A2").lastName("A").systemRole(SystemRole.SYSTEM_ADMIN)
                 .accountStatus(AccountStatus.ACTIVE)
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
@@ -206,7 +173,7 @@ class UserServiceTest extends BaseIntegrationTest {
     @DisplayName("Cannot demote the only SYSTEM_ADMIN to USER")
     void testUpdateRoleCannotDemoteLastAdmin() {
         User admin = User.builder()
-                .email("sysadmin2@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .email("sysadmin2@lib.com").passwordHash("legacy-hash")
                 .firstName("Sys").lastName("Admin").systemRole(SystemRole.SYSTEM_ADMIN)
                 .accountStatus(AccountStatus.ACTIVE)
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
@@ -214,7 +181,7 @@ class UserServiceTest extends BaseIntegrationTest {
 
         // Caller is a plain USER — the service-layer guard does not check the caller's role
         User caller = User.builder()
-                .email("caller2@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .email("caller2@lib.com").passwordHash("legacy-hash")
                 .firstName("C").lastName("U").systemRole(SystemRole.USER)
                 .accountStatus(AccountStatus.ACTIVE)
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
@@ -285,25 +252,6 @@ class UserServiceTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("changePassword throws when current user no longer exists")
-    void testChangePasswordNotFound() {
-        User ghost = User.builder()
-                .id(999999L)
-                .email("ghost3@library.com")
-                .systemRole(SystemRole.USER)
-                .accountStatus(AccountStatus.ACTIVE)
-                .build();
-        SecurityTestUtils.setSecurityContext(ghost, "USER");
-
-        ChangePasswordRequest request = ChangePasswordRequest.builder()
-                .currentPassword("password123").newPassword("newPassword456").build();
-
-        assertThatThrownBy(() -> userService.changePassword(request))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("کاربر پیدا نشد");
-    }
-
-    @Test
     @DisplayName("updateProfile updates deliveryAddress and internalExtension too")
     void testUpdateProfileAllFields() {
         UpdateProfileRequest request = UpdateProfileRequest.builder()
@@ -333,7 +281,7 @@ class UserServiceTest extends BaseIntegrationTest {
     @DisplayName("getUsers(status) filters by account status")
     void testGetUsersWithStatusFilter() {
         User suspended = User.builder()
-                .email("suspended@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .email("suspended@lib.com").passwordHash("legacy-hash")
                 .firstName("S").lastName("U").systemRole(SystemRole.USER)
                 .accountStatus(AccountStatus.SUSPENDED)
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
@@ -359,7 +307,7 @@ class UserServiceTest extends BaseIntegrationTest {
     @DisplayName("getUsersPaged filters by status")
     void testGetUsersPagedByStatus() {
         User suspended = User.builder()
-                .email("suspended2@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .email("suspended2@lib.com").passwordHash("legacy-hash")
                 .firstName("S").lastName("U").systemRole(SystemRole.USER)
                 .accountStatus(AccountStatus.SUSPENDED)
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
@@ -406,7 +354,7 @@ class UserServiceTest extends BaseIntegrationTest {
     @DisplayName("Cannot suspend the only active SUPER_ADMIN")
     void testUpdateStatusCannotSuspendLastActiveSuperAdmin() {
         User superAdmin = User.builder()
-                .email("superadmin@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .email("superadmin@lib.com").passwordHash("legacy-hash")
                 .firstName("Super").lastName("Admin").systemRole(SystemRole.SUPER_ADMIN)
                 .accountStatus(AccountStatus.ACTIVE)
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
@@ -422,14 +370,14 @@ class UserServiceTest extends BaseIntegrationTest {
     @DisplayName("Can suspend a SUPER_ADMIN when another active SUPER_ADMIN exists")
     void testUpdateStatusCanSuspendSuperAdminWhenMultiple() {
         User superAdmin1 = User.builder()
-                .email("sa1@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .email("sa1@lib.com").passwordHash("legacy-hash")
                 .firstName("SA1").lastName("A").systemRole(SystemRole.SUPER_ADMIN)
                 .accountStatus(AccountStatus.ACTIVE)
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
         superAdmin1 = userRepository.save(superAdmin1);
 
         User superAdmin2 = User.builder()
-                .email("sa2@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .email("sa2@lib.com").passwordHash("legacy-hash")
                 .firstName("SA2").lastName("A").systemRole(SystemRole.SUPER_ADMIN)
                 .accountStatus(AccountStatus.ACTIVE)
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
@@ -446,7 +394,7 @@ class UserServiceTest extends BaseIntegrationTest {
     @DisplayName("Can suspend a regular (non-admin) user")
     void testUpdateStatusRegularUserSuccess() {
         User regular = User.builder()
-                .email("regular@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .email("regular@lib.com").passwordHash("legacy-hash")
                 .firstName("R").lastName("U").systemRole(SystemRole.USER)
                 .accountStatus(AccountStatus.ACTIVE)
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
@@ -461,7 +409,7 @@ class UserServiceTest extends BaseIntegrationTest {
     @DisplayName("Reactivating the only SUPER_ADMIN to ACTIVE bypasses the last-admin guard")
     void testUpdateStatusToActiveBypassesGuard() {
         User superAdmin = User.builder()
-                .email("sa-reactivate@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .email("sa-reactivate@lib.com").passwordHash("legacy-hash")
                 .firstName("SA").lastName("R").systemRole(SystemRole.SUPER_ADMIN)
                 .accountStatus(AccountStatus.SUSPENDED)
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
@@ -487,7 +435,7 @@ class UserServiceTest extends BaseIntegrationTest {
     @DisplayName("Cannot demote the only SUPER_ADMIN")
     void testUpdateRoleCannotDemoteLastSuperAdmin() {
         User superAdmin = User.builder()
-                .email("lastsuper@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .email("lastsuper@lib.com").passwordHash("legacy-hash")
                 .firstName("Last").lastName("Super").systemRole(SystemRole.SUPER_ADMIN)
                 .accountStatus(AccountStatus.ACTIVE)
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
@@ -503,14 +451,14 @@ class UserServiceTest extends BaseIntegrationTest {
     @DisplayName("Can demote a SUPER_ADMIN to SYSTEM_ADMIN when another SUPER_ADMIN exists")
     void testUpdateRoleCanDemoteSuperAdminWhenMultiple() {
         User superAdmin1 = User.builder()
-                .email("multi-sa1@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .email("multi-sa1@lib.com").passwordHash("legacy-hash")
                 .firstName("M1").lastName("A").systemRole(SystemRole.SUPER_ADMIN)
                 .accountStatus(AccountStatus.ACTIVE)
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
         superAdmin1 = userRepository.save(superAdmin1);
 
         User superAdmin2 = User.builder()
-                .email("multi-sa2@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .email("multi-sa2@lib.com").passwordHash("legacy-hash")
                 .firstName("M2").lastName("A").systemRole(SystemRole.SUPER_ADMIN)
                 .accountStatus(AccountStatus.ACTIVE)
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
@@ -525,7 +473,7 @@ class UserServiceTest extends BaseIntegrationTest {
     @DisplayName("Can promote a regular USER to SYSTEM_ADMIN")
     void testUpdateRolePromoteRegularToAdmin() {
         User regular = User.builder()
-                .email("promote@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .email("promote@lib.com").passwordHash("legacy-hash")
                 .firstName("P").lastName("U").systemRole(SystemRole.USER)
                 .accountStatus(AccountStatus.ACTIVE)
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
@@ -542,7 +490,7 @@ class UserServiceTest extends BaseIntegrationTest {
     @DisplayName("updateUserStatus notifies the affected user when status actually changes")
     void testUpdateUserStatus_notifiesUser() {
         User target = User.builder()
-                .email("notify-status@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .email("notify-status@lib.com").passwordHash("legacy-hash")
                 .firstName("N").lastName("S").systemRole(SystemRole.USER)
                 .accountStatus(AccountStatus.ACTIVE)
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
@@ -558,7 +506,7 @@ class UserServiceTest extends BaseIntegrationTest {
     @DisplayName("updateUserStatus does not notify when the status is unchanged")
     void testUpdateUserStatus_noChange_doesNotNotify() {
         User target = User.builder()
-                .email("notify-status-nochange@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .email("notify-status-nochange@lib.com").passwordHash("legacy-hash")
                 .firstName("N").lastName("C").systemRole(SystemRole.USER)
                 .accountStatus(AccountStatus.ACTIVE)
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
@@ -574,7 +522,7 @@ class UserServiceTest extends BaseIntegrationTest {
     @DisplayName("updateUserRole notifies the affected user")
     void testUpdateUserRole_notifiesUser() {
         User regular = User.builder()
-                .email("notify-role@lib.com").passwordHash(passwordEncoder.encode("pass"))
+                .email("notify-role@lib.com").passwordHash("legacy-hash")
                 .firstName("N").lastName("R").systemRole(SystemRole.USER)
                 .accountStatus(AccountStatus.ACTIVE)
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();

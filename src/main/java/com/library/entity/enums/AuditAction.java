@@ -12,6 +12,7 @@ public enum AuditAction {
     SESSION_EXPIRED,
     SESSION_TERMINATED,
     REAUTHENTICATION,
+    SECURITY_NOTICE_ACKNOWLEDGED,
     AUTHENTICATION_REQUIRED,
 
     // Attempts to get around access control
